@@ -28,10 +28,10 @@ export default function Overview({ account, go, onDownload }: PageProps) {
       action: { label: "Baixar", run: onDownload },
     },
     {
-      title: "Vincular o app",
-      body: "Digite o código que o app mostra em Configurações ▸ Conta.",
+      title: "Entrar no app",
+      body: "Abra o Orbi e entre com esta mesma conta — o que você já salvou aparece lá.",
       done: linked,
-      action: { label: "Vincular", run: () => go("/conta/dispositivos") },
+      action: { label: "Ver o app", run: () => go("/conta/dispositivos") },
     },
   ];
   const done = steps.filter((step) => step.done).length;
@@ -41,11 +41,11 @@ export default function Overview({ account, go, onDownload }: PageProps) {
     <>
       <PageHeader
         title={`Olá, ${firstName(account.name)}`}
-        description="Seu resumo do Orbi: instalação, aparelhos e atividade recente."
+        description="Sua memória, seus aparelhos e o que aconteceu na conta."
         actions={
           <>
             <Badge tone="ok">Conta ativa</Badge>
-            <Badge tone={linked ? "signal" : "plain"}>{linked ? "App vinculado" : "App não vinculado"}</Badge>
+            <Badge tone={linked ? "signal" : "plain"}>{linked ? "App conectado" : "App ainda não conectado"}</Badge>
           </>
         }
       />
@@ -161,12 +161,12 @@ export default function Overview({ account, go, onDownload }: PageProps) {
                 <span className="mx-auto grid h-11 w-11 place-items-center border border-dashed border-warm text-warm">
                   <Icon name="link" className="h-5 w-5" />
                 </span>
-                <p className="mt-3 text-[13.5px] font-medium text-ink">Nenhum app vinculado</p>
+                <p className="mt-3 text-[13.5px] font-medium text-ink">Conecte o app</p>
                 <p className="mx-auto mt-1 max-w-[30ch] text-[12.5px] leading-snug text-warm">
-                  Vincule para sincronizar preferências, apelidos e rotinas.
+                  Entre com esta conta no Orbi para a memória, as rotinas e os lembretes acompanharem você.
                 </p>
-                <Button size="sm" className="mt-4" onClick={() => go("/conta/dispositivos")}>
-                  Vincular app
+                <Button size="sm" className="mt-4" onClick={onDownload}>
+                  Baixar o app
                 </Button>
               </div>
             )}

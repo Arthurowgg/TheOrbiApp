@@ -84,8 +84,8 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
             <ol className="mb-5 space-y-3">
               {[
                 "Abra o Orbi e vá em Configurações ▸ Conta ▸ Vincular ao site.",
-                "O app mostra um código no formato ORBI-XXXX-XXXX.",
-                "Digite o código aqui e dê um nome ao computador.",
+                "O app entra com a sua conta — não existe código.",
+                "Cada PC que entrar com esta conta aparece aqui automaticamente.",
               ].map((text, index) => (
                 <li key={text} className="flex items-start gap-3">
                   <span className="grid h-5 w-5 shrink-0 place-items-center bg-ink font-mono text-[10px] text-paper">
@@ -181,7 +181,7 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
                   <Icon name="laptop" className="h-5 w-5" />
                 </span>
                 <p className="mt-3 text-[14px] font-medium text-ink">Nenhum aparelho ainda</p>
-                <p className="mt-1 text-[12.5px] text-warm">Quando você vincular o app, ele aparece aqui.</p>
+                <p className="mt-1 text-[12.5px] text-warm">Quando o app entrar com esta conta, ele aparece aqui.</p>
               </div>
             ) : (
               <ul className="divide-y divide-rule">
@@ -290,19 +290,19 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
       <Modal
         open={Boolean(removing)}
         onClose={() => setRemoving(null)}
-        title={`Desvincular ${removing?.name ?? "este aparelho"}?`}
+        title={`Remover ${removing?.name ?? "este aparelho"}?`}
         description="O app continua funcionando no PC, mas deixa de sincronizar com a sua conta."
       >
         <div>
           <p className="text-[13.5px] leading-[1.6] text-ink-2">
-            Você pode vincular de novo quando quiser, com um novo código gerado no app.
+            Ele volta à lista quando entrar na conta de novo.
           </p>
           <div className="mt-6 flex justify-end gap-2.5">
             <Button variant="ghost" onClick={() => setRemoving(null)}>
               Cancelar
             </Button>
             <Button variant="danger" onClick={confirmRemove}>
-              Desvincular
+              Remover
             </Button>
           </div>
         </div>
