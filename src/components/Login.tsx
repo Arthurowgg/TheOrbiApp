@@ -1,28 +1,25 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import AppMock from "./AppMock";
 import {
-  Avatar,
   Brand,
   Button,
-  CopyButton,
-  Eyebrow,
   Icon,
+  Mark,
   PasswordField,
   Spinner,
+  StrengthMeter,
   TextField,
 } from "./ui";
 import {
   AuthError,
   MIN_PASSWORD,
-  firstName,
-  formatRecoveryCode,
   isEmail,
-  recoverPassword,
+  sendResetEmail,
   signIn,
+  signInWithGoogle,
   signUp,
   type Account,
 } from "../lib/accounts";
-import { saveBlob } from "../lib/download";
 import type { LoginMode } from "../lib/router";
 
 type Props = {
@@ -30,19 +27,19 @@ type Props = {
   currentAccount: Account | null;
   message?: string;
   onMode: (mode: LoginMode) => void;
-  onSession: (account: Account) => void;
+  onSession: (account: Account) => void | Promise<void>;
   onFinish: () => void;
   onBack: () => void;
   onLogout: () => void;
 };
 
-type Errors = Partial<Record<"name" | "email" | "password" | "code" | "form", string>>;
+type Errors = Partial<Record<"name" | "email" | "password" | "form", string>>;
 
 const COPY: Record<LoginMode, { title: string; accent: string; lead: string }> = {
   signin: {
     title: "Entrar",
     accent: "na sua conta.",
-    lead: "Acesse seu painel, seus downloads e os aparelhos vinculados ao NOVA.",
+    lead: "Acesse o painel, os downloads e os aparelhos vinculados ao Orbi.",
   },
   signup: {
     title: "Criar",
@@ -52,7 +49,7 @@ const COPY: Record<LoginMode, { title: string; accent: string; lead: string }> =
   recover: {
     title: "Recuperar",
     accent: "o acesso.",
-    lead: "Use o código de recuperação que você recebeu ao criar a conta.",
+    lead: "Enviamos um link do Firebase para o seu e-mail. A senha nunca passa por aqui.",
   },
 };
 
@@ -69,19 +66,14 @@ export default function Login({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
-  const [remember, setRemember] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
-  const [saved, setSaved] = useState<{ account: Account; code: string; kind: "new" | "reset" } | null>(null);
-  const [confirmedSave, setConfirmedSave] = useState(false);
-  const attempts = useRef(0);
-  const lockedUntil = useRef(0);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [sent, setSent] = useState(false);
 
   useEffect(() => {
     setErrors({});
-    setPassword("");
-    setCode("");
+    setSent(false);
   }, [mode]);
 
   const copy = COPY[mode];
@@ -90,12 +82,8 @@ export default function Login({
     const next: Errors = {};
     if (mode === "signup" && name.trim().length < 2) next.name = "Digite como você quer ser chamado.";
     if (!isEmail(email)) next.email = "Digite um e-mail válido.";
-    if (mode === "signin" && !password) next.password = "Digite sua senha.";
-    if (mode !== "signin" && password.length < MIN_PASSWORD) {
+    if (mode !== "recover" && password.length < MIN_PASSWORD) {
       next.password = `Use pelo menos ${MIN_PASSWORD} caracteres.`;
-    }
-    if (mode === "recover" && formatRecoveryCode(code).length < 14) {
-      next.code = "O código tem 12 caracteres, no formato XXXX-XXXX-XXXX.";
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -104,369 +92,303 @@ export default function Login({
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (loading || !validate()) return;
-
-    const wait = Math.ceil((lockedUntil.current - Date.now()) / 1000);
-    if (mode === "signin" && wait > 0) {
-      setErrors({ form: `Muitas tentativas. Aguarde ${wait} s e tente de novo.` });
-      return;
-    }
-
     setLoading(true);
     setErrors({});
     try {
       if (mode === "signup") {
-        const result = await signUp({ name, email, password, remember });
-        onSession(result.account);
-        setSaved({ account: result.account, code: result.recoveryCode, kind: "new" });
-      } else if (mode === "recover") {
-        const result = await recoverPassword({ email, code, password });
-        onSession(result.account);
-        setSaved({ account: result.account, code: result.recoveryCode, kind: "reset" });
-      } else {
-        const account = await signIn({ email, password, remember });
-        attempts.current = 0;
-        onSession(account);
+        const result = await signUp({ name, email, password });
+        await onSession(result.account);
         onFinish();
+      } else if (mode === "signin") {
+        const account = await signIn({ email, password });
+        await onSession(account);
+        onFinish();
+      } else {
+        await sendResetEmail(email);
+        setSent(true);
       }
     } catch (error) {
-      if (error instanceof AuthError) {
-        if (error.code === "wrong_password") {
-          attempts.current += 1;
-          if (attempts.current >= 5) {
-            lockedUntil.current = Date.now() + 30_000;
-            attempts.current = 0;
-            setErrors({ form: "Muitas tentativas. Aguarde 30 s e tente de novo." });
-          } else {
-            setErrors({ password: error.message });
-          }
-        } else if (error.code === "wrong_recovery") {
-          setErrors({ code: error.message });
-        } else if (error.code === "email_taken" || error.code === "not_found") {
-          setErrors({ email: error.message });
-        } else {
-          setErrors({ form: error.message });
-        }
-      } else {
-        setErrors({ form: "Algo deu errado. Tente novamente." });
-      }
+      const authError = error instanceof AuthError ? error : null;
+      if (authError?.code === "email_taken") setErrors({ email: authError.message });
+      else if (authError?.code === "wrong_password") setErrors({ password: authError.message });
+      else if (authError?.code === "invalid_email") setErrors({ email: authError.message });
+      else if (authError?.code === "weak_password") setErrors({ password: authError.message });
+      else setErrors({ form: authError?.message ?? "Não foi possível concluir. Tente de novo." });
     } finally {
       setLoading(false);
     }
   };
 
-  const downloadCode = () => {
-    if (!saved) return;
-    const text = `NOVA — código de recuperação\nConta: ${saved.account.email}\nCódigo: ${saved.code}\n\nGuarde em um lugar seguro. Quem tiver este código consegue redefinir a sua senha.\n`;
-    saveBlob(new Blob([text], { type: "text/plain" }), "NOVA-codigo-de-recuperacao.txt");
+  const withGoogle = async () => {
+    if (googleLoading) return;
+    setGoogleLoading(true);
+    setErrors({});
+    try {
+      const account = await signInWithGoogle();
+      await onSession(account);
+      onFinish();
+    } catch (error) {
+      setErrors({ form: error instanceof Error ? error.message : "Não foi possível entrar com o Google." });
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
-  const previewName = saved?.account.name ?? currentAccount?.name ?? name;
-  const previewEmail = saved?.account.email ?? currentAccount?.email ?? email;
-  const previewColor = saved?.account.color ?? currentAccount?.color;
+  /* ---------------------- já está dentro da conta ---------------------- */
+  if (currentAccount && mode === "signin") {
+    return (
+      <div className="grid min-h-screen place-items-center bg-paper px-5 py-16">
+        <div className="w-full max-w-[420px] border border-rule bg-[#fbf9f3] p-7 shadow-panel">
+          <p className="label text-warm">sessão ativa</p>
+          <h1 className="mt-3 text-[24px] font-semibold tracking-[-0.01em] text-ink">
+            Você já está conectado.
+          </h1>
+          <p className="mt-1.5 text-[13.5px] leading-snug text-warm">
+            {currentAccount.email}
+          </p>
+          <div className="mt-6 grid gap-2">
+            <Button onClick={onFinish}>Ir para a minha conta</Button>
+            <Button variant="secondary" onClick={onBack}>
+              Voltar ao site
+            </Button>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="label mt-1 text-warm transition-colors hover:text-signal"
+            >
+              sair desta conta
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-paper lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.04fr)]">
-      {/* ------------------------------ formulário ------------------------------ */}
-      <div className="flex min-h-screen flex-col px-5 py-5 sm:px-10 sm:py-7">
-        <div className="flex items-center justify-between gap-4">
+    <div className="relative grid min-h-screen bg-paper lg:grid-cols-[1.02fr_0.98fr]">
+      {/* ---------------------------- formulário ---------------------------- */}
+      <div className="relative flex flex-col px-5 py-7 sm:px-10 lg:px-14">
+        <div className="flex items-center justify-between">
           <Brand onClick={onBack} />
           <button
             type="button"
             onClick={onBack}
-            className="label inline-flex items-center gap-2 text-warm transition-colors hover:text-ink"
+            className="label inline-flex items-center gap-1.5 text-warm transition-colors hover:text-ink"
           >
-            <Icon name="arrow-right" className="h-3.5 w-3.5 rotate-180" />
-            Voltar ao site
+            <Icon name="arrow-right" className="h-3 w-3 rotate-180" />
+            voltar ao site
           </button>
         </div>
 
-        <div className="mx-auto flex w-full max-w-[410px] flex-1 flex-col justify-center py-10">
-          {saved ? (
-            /* ----------- código de recuperação ----------- */
-            <div className="animate-fade-up">
-              <Eyebrow>{saved.kind === "new" ? "Conta criada" : "Senha redefinida"}</Eyebrow>
-              <h1 className="display mt-4 text-[clamp(2.4rem,5vw,3.2rem)] text-ink">
-                Guarde este
-                <br />
-                <span className="display-serif">código.</span>
-              </h1>
-              <p className="mt-4 text-[14.5px] leading-[1.65] text-ink-2">
-                {saved.kind === "new"
-                  ? "É a única forma de recuperar a conta se você esquecer a senha. Ele não aparece de novo."
-                  : "Seu código antigo foi usado e deixou de valer. Este é o novo — guarde-o."}
+        <div className="mx-auto flex w-full max-w-[430px] flex-1 flex-col justify-center py-10">
+          <p className="label text-warm">
+            {mode === "signup" ? "criar conta" : mode === "recover" ? "redefinir senha" : "bem-vindo de volta"}
+          </p>
+          <h1 className="display mt-3 text-[clamp(2.2rem,5vw,3rem)] text-ink">
+            {copy.title}
+            <br />
+            <span className="display-serif text-signal">{copy.accent}</span>
+          </h1>
+          <p className="mt-4 text-[13.5px] leading-[1.65] text-ink-2">{copy.lead}</p>
+
+          {message && (
+            <p className="mt-4 flex items-start gap-2 border border-signal/35 bg-signal-soft/40 px-3 py-2 text-[12.5px] text-signal-dark">
+              <Icon name="info" className="mt-[2px] h-3.5 w-3.5 shrink-0" />
+              {message}
+            </p>
+          )}
+
+          {/* recuperação enviada */}
+          {mode === "recover" && sent ? (
+            <div className="mt-7 border border-moss/35 bg-[#eff4ea] p-4">
+              <p className="flex items-center gap-2 text-[14px] font-medium text-[#2c5330]">
+                <Icon name="mail" className="h-4 w-4" />
+                Link enviado para {email}.
               </p>
-
-              <div className="mt-6 border border-ink bg-[#fbf9f3] p-4">
-                <p className="label text-warm">Código de recuperação</p>
-                <p className="mt-2 break-all font-mono text-[22px] font-medium tracking-[0.08em] text-ink sm:text-[26px]">
-                  {saved.code}
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <CopyButton value={saved.code} />
-                  <button
-                    type="button"
-                    onClick={downloadCode}
-                    className="label inline-flex items-center gap-1.5 border border-rule px-2.5 py-1.5 text-ink transition-colors hover:border-ink"
-                  >
-                    <Icon name="download" className="h-3 w-3" />
-                    Baixar .txt
-                  </button>
-                </div>
-              </div>
-
-              <label className="mt-5 flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={confirmedSave}
-                  onChange={(event) => setConfirmedSave(event.target.checked)}
-                  className="mt-[3px] h-4 w-4 shrink-0 accent-[#c7452a]"
-                />
-                <span className="text-[13px] leading-[1.55] text-ink-2">
-                  Guardei o código em um lugar seguro.
-                </span>
-              </label>
-
-              <Button size="lg" className="mt-5 w-full" disabled={!confirmedSave} onClick={onFinish}>
-                Ir para minha conta
-                <Icon name="arrow-right" className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          ) : currentAccount ? (
-            /* ----------- já conectado ----------- */
-            <div className="animate-fade-up">
-              <Eyebrow>Sessão ativa</Eyebrow>
-              <h1 className="display mt-4 text-[clamp(2.4rem,5vw,3.2rem)] text-ink">
-                Olá, <span className="display-serif">{firstName(currentAccount.name)}.</span>
-              </h1>
-              <p className="mt-4 text-[14.5px] leading-[1.65] text-ink-2">
-                Você já está conectado neste navegador.
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#3d5a3f]">
+                Abra o e-mail do Firebase e escolha uma nova senha. Se não chegar em alguns minutos,
+                confira a caixa de spam ou tente outro endereço.
               </p>
-              <div className="mt-6 flex items-center gap-3 border border-rule bg-[#fbf9f3] p-4">
-                <Avatar name={currentAccount.name} color={currentAccount.color} size="lg" />
-                <div className="min-w-0">
-                  <p className="truncate text-[14px] font-medium text-ink">{currentAccount.name}</p>
-                  <p className="truncate font-mono text-[11px] text-warm">{currentAccount.email}</p>
-                </div>
-              </div>
-              <div className="mt-5 space-y-2.5">
-                <Button className="w-full" onClick={onFinish}>
-                  Abrir meu painel
-                  <Icon name="arrow-right" className="h-3.5 w-3.5" />
+              <div className="mt-4 flex gap-2">
+                <Button size="sm" variant="secondary" onClick={() => onMode("signin")}>
+                  Voltar para entrar
                 </Button>
-                <Button variant="secondary" className="w-full" onClick={onLogout}>
-                  <Icon name="logout" className="h-3.5 w-3.5" />
-                  Trocar de conta
+                <Button size="sm" variant="ghost" onClick={() => setSent(false)}>
+                  Reenviar
                 </Button>
               </div>
             </div>
           ) : (
-            /* ----------- formulário principal ----------- */
-            <div className="animate-fade-up" key={mode}>
-              <Eyebrow>{mode === "signup" ? "Nova conta" : mode === "recover" ? "Recuperação" : "Sua conta NOVA"}</Eyebrow>
-              <h1 className="display mt-4 text-[clamp(2.6rem,5.2vw,3.6rem)] text-ink">
-                {copy.title}
-                <br />
-                <span className="display-serif">{copy.accent}</span>
-              </h1>
-              <p className="mt-4 text-[14.5px] leading-[1.65] text-ink-2">{message ?? copy.lead}</p>
-
-              {mode !== "recover" && (
-                <div className="mt-6 grid grid-cols-2 border border-rule p-0.5">
-                  {(["signin", "signup"] as const).map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      aria-pressed={mode === item}
-                      onClick={() => onMode(item)}
-                      className={`h-9 font-mono text-[10.5px] uppercase tracking-[0.13em] transition-colors ${
-                        mode === item ? "bg-ink text-paper" : "text-warm hover:text-ink"
-                      }`}
-                    >
-                      {item === "signin" ? "Entrar" : "Criar conta"}
-                    </button>
-                  ))}
-                </div>
+            <form onSubmit={submit} className="mt-7 space-y-4" noValidate>
+              {mode === "signup" && (
+                <TextField
+                  id="auth-name"
+                  label="Nome"
+                  icon="user"
+                  autoComplete="name"
+                  placeholder="Como quer ser chamado"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  error={errors.name}
+                />
               )}
 
-              <form onSubmit={submit} className="mt-5 space-y-4" noValidate>
-                {errors.form && (
-                  <p
-                    role="alert"
-                    className="flex items-start gap-2 border border-signal/40 bg-signal-soft/60 px-3 py-2.5 text-[12.5px] leading-snug text-signal-dark"
-                  >
-                    <Icon name="alert" className="mt-[1px] h-3.5 w-3.5 shrink-0" />
-                    {errors.form}
-                  </p>
-                )}
+              <TextField
+                id="auth-email"
+                label="E-mail"
+                type="email"
+                icon="mail"
+                autoComplete="email"
+                placeholder="voce@email.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                error={errors.email}
+              />
 
-                {mode === "signup" && (
-                  <TextField
-                    id="name"
-                    label="Seu nome"
-                    autoComplete="name"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="Como quer ser chamado"
-                    error={errors.name}
-                  />
-                )}
-
-                <TextField
-                  id="email"
-                  label="E-mail"
-                  type="email"
-                  autoComplete="email"
-                  autoFocus
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="voce@email.com"
-                  error={errors.email}
-                />
-
-                {mode === "recover" && (
-                  <TextField
-                    id="code"
-                    label="Código de recuperação"
-                    autoComplete="off"
-                    spellCheck={false}
-                    value={code}
-                    onChange={(event) => setCode(formatRecoveryCode(event.target.value))}
-                    placeholder="XXXX-XXXX-XXXX"
-                    className="font-mono tracking-[0.08em]"
-                    error={errors.code}
-                  />
-                )}
-
+              {mode !== "recover" && (
                 <div>
                   <PasswordField
-                    id="password"
-                    label={mode === "recover" ? "Nova senha" : "Senha"}
-                    hint={mode === "signin" ? undefined : `mín. ${MIN_PASSWORD} caracteres`}
-                    autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                    id="auth-password"
+                    label="Senha"
+                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                    placeholder={mode === "signup" ? `Pelo menos ${MIN_PASSWORD} caracteres` : "Sua senha"}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder="••••••••"
                     error={errors.password}
-                    showStrength={mode !== "signin"}
                   />
+                  {mode === "signup" && <StrengthMeter password={password} />}
                   {mode === "signin" && (
-                    <div className="mt-2.5 flex items-center justify-between gap-3">
-                      <label className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={remember}
-                          onChange={(event) => setRemember(event.target.checked)}
-                          className="h-3.5 w-3.5 accent-[#c7452a]"
-                        />
-                        <span className="text-[12.5px] text-ink-2">Manter conectado</span>
-                      </label>
+                    <div className="mt-2 flex justify-end">
                       <button
                         type="button"
                         onClick={() => onMode("recover")}
-                        className="text-[12.5px] text-signal underline decoration-rule underline-offset-2 hover:decoration-signal"
+                        className="font-mono text-[10.5px] text-warm underline decoration-rule underline-offset-2 transition-colors hover:text-signal"
                       >
-                        Esqueci a senha
+                        esqueci minha senha
                       </button>
                     </div>
                   )}
                 </div>
+              )}
 
-                {mode === "signup" && (
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={remember}
-                      onChange={(event) => setRemember(event.target.checked)}
-                      className="h-3.5 w-3.5 accent-[#c7452a]"
-                    />
-                    <span className="text-[12.5px] text-ink-2">Manter conectado neste navegador</span>
-                  </label>
-                )}
+              {errors.form && (
+                <p className="flex items-start gap-2 border border-signal/40 bg-signal-soft/40 px-3 py-2 text-[12.5px] leading-snug text-signal-dark">
+                  <Icon name="alert" className="mt-[2px] h-3.5 w-3.5 shrink-0" />
+                  {errors.form}
+                </p>
+              )}
 
-                <Button type="submit" size="lg" className="w-full" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Spinner className="h-3.5 w-3.5" />
-                      {mode === "signup" ? "Criando conta" : mode === "recover" ? "Redefinindo" : "Entrando"}
-                    </>
-                  ) : (
-                    <>
-                      {mode === "signup" ? "Criar conta" : mode === "recover" ? "Redefinir senha" : "Entrar"}
-                      <Icon name="arrow-right" className="h-3.5 w-3.5" />
-                    </>
-                  )}
-                </Button>
-              </form>
+              <Button type="submit" size="lg" loading={loading} className="w-full">
+                {mode === "signup"
+                  ? "Criar conta grátis"
+                  : mode === "recover"
+                    ? "Enviar link de redefinição"
+                    : "Entrar"}
+                {!loading && <Icon name="arrow-right" className="h-4 w-4" />}
+              </Button>
 
-              <div className="mt-5 flex flex-col gap-3 border-t border-rule pt-4 text-[12.5px] text-warm sm:flex-row sm:items-center sm:justify-between">
-                {mode === "recover" ? (
-                  <button
+              {mode !== "recover" && (
+                <>
+                  <div className="flex items-center gap-3 py-1">
+                    <span className="h-px flex-1 bg-rule" />
+                    <span className="label text-warm">ou</span>
+                    <span className="h-px flex-1 bg-rule" />
+                  </div>
+                  <Button
                     type="button"
-                    onClick={() => onMode("signin")}
-                    className="inline-flex items-center gap-1.5 text-ink hover:text-signal"
+                    variant="secondary"
+                    size="lg"
+                    className="w-full"
+                    onClick={withGoogle}
+                    disabled={googleLoading}
                   >
-                    <Icon name="arrow-right" className="h-3 w-3 rotate-180" />
-                    Voltar para entrar
-                  </button>
-                ) : (
-                  <button type="button" onClick={onBack} className="text-left text-ink hover:text-signal">
-                    Continuar sem conta
-                  </button>
-                )}
-                <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px]">
-                  <Icon name="lock" className="h-3 w-3" />
-                  Senha protegida por hash. Nunca em texto.
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
+                    {googleLoading ? <Spinner className="h-4 w-4" /> : <Icon name="google" className="h-4 w-4" />}
+                    Continuar com Google
+                  </Button>
+                </>
+              )}
 
-        <div className="flex items-center justify-between gap-3 border-t border-rule pt-3">
-          <p className="label text-warm">© {new Date().getFullYear()} NOVA</p>
-          <p className="label text-warm">Windows 11 · x64</p>
+              <p className="pt-1 text-center text-[12.5px] text-warm">
+                {mode === "signin" ? (
+                  <>
+                    Ainda não tem conta?{" "}
+                    <button
+                      type="button"
+                      onClick={() => onMode("signup")}
+                      className="font-medium text-ink underline decoration-rule underline-offset-2 hover:decoration-signal"
+                    >
+                      Criar agora
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Já tem conta?{" "}
+                    <button
+                      type="button"
+                      onClick={() => onMode("signin")}
+                      className="font-medium text-ink underline decoration-rule underline-offset-2 hover:decoration-signal"
+                    >
+                      Entrar
+                    </button>
+                  </>
+                )}
+              </p>
+            </form>
+          )}
+
+          <p className="mt-6 flex items-start gap-2 border-t border-rule pt-4 font-mono text-[10px] leading-relaxed text-warm">
+            <Icon name="shield" className="mt-[1px] h-3.5 w-3.5 shrink-0" />
+            Autenticação e banco de dados pelo Firebase (Google). Sua senha é guardada com hash no
+            servidor — este site nunca a vê.
+          </p>
         </div>
       </div>
 
-      {/* ------------------------------ lateral ------------------------------ */}
-      <aside className="hairline-grid-dark relative hidden overflow-hidden bg-film lg:flex lg:flex-col lg:justify-between lg:px-12 lg:py-10 xl:px-16">
-        <div className="flex items-center justify-between">
-          <Brand tone="paper" />
-          <span className="label border border-paper/20 px-2.5 py-1.5 text-bone/55">Conta NOVA</span>
-        </div>
-
-        <div className="my-10">
-          <h2 className="display text-[clamp(2.4rem,3.8vw,3.6rem)] text-bone">
-            Um login.
-            <br />
-            <span className="text-signal">Site e app.</span>
-          </h2>
-          <p className="mt-4 max-w-[44ch] text-[14.5px] leading-[1.65] text-bone/60">
-            Vincule o app com um código de 8 caracteres. Preferências, apelidos e rotinas acompanham
-            você — o resto fica no seu PC.
-          </p>
-
-          <div className="mt-8 max-w-[500px]">
-            <AppMock name={previewName} email={previewEmail} color={previewColor} />
-            <p className="mt-3 font-mono text-[10.5px] text-bone/40">
-              Assim aparece em Configurações ▸ Conta, no app.
+      {/* ---------------------------- lado visual ---------------------------- */}
+      <div className="relative hidden overflow-hidden bg-film text-bone lg:block">
+        <div className="hairline-grid-dark pointer-events-none absolute inset-0" aria-hidden />
+        <div
+          className="pointer-events-none absolute -left-24 top-1/4 h-[420px] w-[420px] rounded-full bg-signal/15 blur-3xl"
+          aria-hidden
+        />
+        <div className="relative flex h-full flex-col justify-between p-12">
+          <div>
+            <span className="grid h-10 w-10 place-items-center bg-signal text-white">
+              <Mark className="h-5 w-5" />
+            </span>
+            <h2 className="display mt-8 max-w-[15ch] text-[clamp(2.2rem,3.4vw,3rem)] text-bone">
+              O PC inteiro
+              <br />
+              <span className="text-signal">numa frase.</span>
+            </h2>
+            <p className="mt-4 max-w-[36ch] text-[13.5px] leading-[1.7] text-bone/55">
+              Sua conta guarda o que é útil: preferências, apelidos de apps, rotinas e os PCs
+              vinculados. O resto fica com você, no Windows.
             </p>
           </div>
-        </div>
 
-        <ul className="grid grid-cols-3 gap-4 border-t border-paper/15 pt-5">
-          {[
-            ["Vínculo", "código de 8 caracteres"],
-            ["Recuperação", "código de uso único"],
-            ["Privacidade", "dados sensíveis só no PC"],
-          ].map(([title, body]) => (
-            <li key={title}>
-              <p className="label text-bone">{title}</p>
-              <p className="mt-1 font-mono text-[10.5px] leading-snug text-bone/45">{body}</p>
-            </li>
-          ))}
-        </ul>
-      </aside>
+          <div className="my-8">
+            <AppMock
+              name={name || currentAccount?.name || "Ana Souza"}
+              email={email || currentAccount?.email || "ana@exemplo.com"}
+              color={currentAccount?.color}
+            />
+          </div>
+
+          <ul className="space-y-2.5 border-t border-white/12 pt-6">
+            {[
+              "E-mail e senha com hash no servidor do Firebase",
+              "Verificação de e-mail e link de redefinição",
+              "Cada documento do Firestore visível só para o dono",
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2.5 text-[12.5px] leading-snug text-bone/60">
+                <Icon name="check" className="mt-[2px] h-3.5 w-3.5 shrink-0 text-signal" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

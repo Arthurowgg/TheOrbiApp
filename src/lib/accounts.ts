@@ -1,13 +1,44 @@
 /* ------------------------------------------------------------------ *
- * Contas NOVA
+ * Contas Orbi — Firebase Authentication + Cloud Firestore
  *
- * Esta versão do site não tem servidor: contas, sessão, aparelhos e
- * histórico ficam salvos NESTE navegador. As senhas nunca são guardadas
- * em texto — só um hash PBKDF2 com sal próprio.
- *
- * Toda a interface fala com este módulo; quando existir um serviço
- * online, só ele precisa ser trocado.
+ * Antes: tudo vivia no localStorage do navegador. Agora:
+ *   • quem entra e sai é o Firebase Authentication (senha com hash no
+ *     servidor, verificação de e-mail, redefinição por link, sessão
+ *     persistente, provedor Google);
+ *   • perfil, aparelhos, downloads e atividade ficam em
+ *     `users/{uid}` no Firestore, protegidos por Security Rules —
+ *     cada pessoa só lê e escreve o próprio documento;
+ *   • a interface continua falando só com este módulo.
  * ------------------------------------------------------------------ */
+import {
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  deleteUser,
+  EmailAuthProvider,
+  linkWithCredential,
+  onAuthStateChanged,
+  reauthenticateWithCredential,
+  reload as reloadUser,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut as fbSignOut,
+  updateEmail,
+  updateProfile as updateAuthProfile,
+  type User,
+} from "firebase/auth";
+import {
+  doc,
+  getDoc,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  type DocumentData,
+} from "firebase/firestore";
+import { auth, db, configured } from "./firebaseClient";
 
 export type ActivityType = "conta" | "login" | "download" | "dispositivo" | "perfil" | "seguranca";
 
@@ -47,12 +78,8 @@ export type Account = {
   email: string;
   createdAt: string;
   color: string;
-  passwordHash: string;
-  passwordSalt: string;
-  passwordChangedAt: string;
-  recoveryHash: string;
-  recoverySalt: string;
-  recoveryCreatedAt: string;
+  emailVerified: boolean;
+  provider: string;
   sync: SyncPrefs;
   devices: Device[];
   downloads: DownloadRecord[];
@@ -68,14 +95,21 @@ export const DEFAULT_SYNC: SyncPrefs = {
   atalhos: true,
 };
 
+export const MIN_PASSWORD = 8;
+
 export type AuthErrorCode =
   | "not_found"
   | "wrong_password"
   | "email_taken"
   | "invalid_input"
-  | "wrong_recovery"
+  | "invalid_email"
+  | "weak_password"
+  | "too_many"
+  | "network"
+  | "not_configured"
   | "invalid_code"
   | "device_exists"
+  | "requires_recent_login"
   | "storage";
 
 export class AuthError extends Error {
@@ -93,26 +127,8 @@ export class AuthError extends Error {
 // Sem 0, 1, I, L e O para não confundir quando alguém digita o código.
 export const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
-const DB_KEY = "nova.db.v2";
-const SESSION_KEY = "nova.session.v2";
 const encoder = new TextEncoder();
-
-const toHex = (bytes: Uint8Array) =>
-  Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-
-function randomBytes(size: number): Uint8Array {
-  const out = new Uint8Array(size);
-  globalThis.crypto.getRandomValues(out);
-  return out;
-}
-
-function randomHex(size: number) {
-  return toHex(randomBytes(size));
-}
-
-function randomChars(size: number) {
-  return Array.from(randomBytes(size), (b) => ALPHABET[b % ALPHABET.length]).join("");
-}
+void encoder;
 
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -122,338 +138,456 @@ export function isEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 }
 
-async function hashSecret(secret: string, salt: string): Promise<string> {
-  const subtle = globalThis.crypto?.subtle;
-  if (subtle) {
-    const key = await subtle.importKey("raw", encoder.encode(secret), "PBKDF2", false, ["deriveBits"]);
-    const bits = await subtle.deriveBits(
-      { name: "PBKDF2", salt: encoder.encode(salt), iterations: 120_000, hash: "SHA-256" },
-      key,
-      256,
-    );
-    return `p1:${toHex(new Uint8Array(bits))}`;
+function randomChars(size: number) {
+  const out = new Uint8Array(size);
+  globalThis.crypto.getRandomValues(out);
+  return Array.from(out, (b) => ALPHABET[b % ALPHABET.length]).join("");
+}
+
+function randomColor() {
+  const out = new Uint8Array(1);
+  globalThis.crypto.getRandomValues(out);
+  return AVATAR_COLORS[out[0] % AVATAR_COLORS.length];
+}
+
+/** Traduz os erros do Firebase para mensagens em português. */
+export function toAuthError(error: unknown): AuthError {
+  if (error instanceof AuthError) return error;
+  const code = (error as { code?: string })?.code ?? "";
+  switch (code) {
+    case "auth/invalid-email":
+      return new AuthError("invalid_email", "Digite um e-mail válido.");
+    case "auth/missing-password":
+    case "auth/wrong-password":
+    case "auth/invalid-credential":
+      return new AuthError("wrong_password", "E-mail ou senha incorretos.");
+    case "auth/user-not-found":
+      return new AuthError("not_found", "Não encontramos uma conta com este e-mail.");
+    case "auth/email-already-in-use":
+      return new AuthError("email_taken", "Já existe uma conta com este e-mail.");
+    case "auth/weak-password":
+      return new AuthError("weak_password", `A senha precisa de pelo menos ${MIN_PASSWORD} caracteres.`);
+    case "auth/too-many-requests":
+      return new AuthError("too_many", "Muitas tentativas. Espere um minuto e tente de novo.");
+    case "auth/network-request-failed":
+      return new AuthError("network", "Sem conexão com o Firebase. Confira sua internet.");
+    case "auth/popup-closed-by-user":
+    case "auth/cancelled-popup-request":
+      return new AuthError("invalid_input", "A janela do Google foi fechada.");
+    case "auth/popup-blocked":
+      return new AuthError("invalid_input", "O navegador bloqueou a janela do Google. Libere pop-ups e tente de novo.");
+    case "auth/operation-not-allowed":
+      return new AuthError(
+        "storage",
+        "Este método de login ainda não está ligado no console do Firebase.",
+      );
+    case "auth/requires-recent-login":
+      return new AuthError("requires_recent_login", "Por segurança, entre de novo antes de fazer isso.");
+    case "auth/account-exists-with-different-credential":
+      return new AuthError("email_taken", "Esta conta usa outro método de login (Google ou e-mail).");
+    case "permission-denied":
+    case "firestore/permission-denied":
+      return new AuthError("storage", "O Firestore recusou a operação. Confira as Security Rules publicadas.");
+    default:
+      break;
   }
-  // Contexto sem WebCrypto (HTTP simples): hash simples, só para não guardar texto puro.
-  let h1 = 0x811c9dc5;
-  let h2 = 0x01000193;
-  const input = `${salt}:${secret}`;
-  for (let round = 0; round < 2000; round += 1) {
-    for (let i = 0; i < input.length; i += 1) {
-      h1 = Math.imul(h1 ^ input.charCodeAt(i), 16777619);
-      h2 = (h2 + h1) | 0;
+  if (error instanceof Error && error.message) {
+    if (/offline|unavailable/i.test(error.message)) {
+      return new AuthError("network", "Sem conexão com o Firestore. Confira sua internet.");
     }
+    return new AuthError("storage", error.message);
   }
-  return `f1:${(h1 >>> 0).toString(16)}${(h2 >>> 0).toString(16)}`;
+  return new AuthError("storage", "Algo deu errado. Tente de novo.");
+}
+
+function ensureConfigured() {
+  if (!configured) {
+    throw new AuthError(
+      "not_configured",
+      "Firebase não configurado. Preencha o arquivo .env com as chaves do projeto.",
+    );
+  }
 }
 
 /* ------------------------------------------------------------------ */
-/* Armazenamento                                                      */
+/* Documento do usuário                                               */
 /* ------------------------------------------------------------------ */
-type Db = { version: 2; accounts: Account[] };
-
-function hydrate(raw: Partial<Account>): Account {
-  const now = new Date().toISOString();
+function toAccount(user: User, data: DocumentData | undefined): Account {
+  const raw = data ?? {};
+  const created = raw.createdAt?.toDate?.() ?? new Date(user.metadata.creationTime ?? Date.now());
   return {
-    id: raw.id ?? `NV-${randomChars(6)}`,
-    name: raw.name ?? "Você",
-    email: raw.email ?? "",
-    createdAt: raw.createdAt ?? now,
-    color: raw.color ?? AVATAR_COLORS[0],
-    passwordHash: raw.passwordHash ?? "",
-    passwordSalt: raw.passwordSalt ?? "",
-    passwordChangedAt: raw.passwordChangedAt ?? raw.createdAt ?? now,
-    recoveryHash: raw.recoveryHash ?? "",
-    recoverySalt: raw.recoverySalt ?? "",
-    recoveryCreatedAt: raw.recoveryCreatedAt ?? raw.createdAt ?? now,
+    id: user.uid,
+    name: (raw.name as string) ?? user.displayName ?? (user.email?.split("@")[0] ?? "Você"),
+    email: (raw.email as string) ?? user.email ?? "",
+    createdAt: created.toISOString(),
+    color: (raw.color as string) ?? AVATAR_COLORS[0],
+    emailVerified: user.emailVerified,
+    provider: user.providerData[0]?.providerId ?? "password",
     sync: { ...DEFAULT_SYNC, ...(raw.sync ?? {}) },
-    devices: Array.isArray(raw.devices) ? raw.devices : [],
-    downloads: Array.isArray(raw.downloads) ? raw.downloads : [],
-    activity: Array.isArray(raw.activity) ? raw.activity : [],
+    devices: Array.isArray(raw.devices) ? (raw.devices as Device[]) : [],
+    downloads: Array.isArray(raw.downloads) ? (raw.downloads as DownloadRecord[]) : [],
+    activity: Array.isArray(raw.activity) ? (raw.activity as Activity[]) : [],
   };
 }
 
-function readDb(): Db {
-  try {
-    const raw = window.localStorage.getItem(DB_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as { accounts?: Partial<Account>[] };
-      if (parsed && Array.isArray(parsed.accounts)) {
-        return { version: 2, accounts: parsed.accounts.map(hydrate) };
-      }
-    }
-  } catch {
-    // Leitura falhou: começamos vazio.
+export function userDoc(uid: string) {
+  return doc(db, "users", uid);
+}
+
+/** Cria o documento `users/{uid}` na primeira entrada (idempotente). */
+export async function ensureProfile(user: User, name?: string): Promise<Account> {
+  ensureConfigured();
+  const ref = userDoc(user.uid);
+  const snapshot = await getDoc(ref);
+  if (!snapshot.exists()) {
+    const payload = {
+      name: (name ?? user.displayName ?? user.email?.split("@")[0] ?? "Você").trim().slice(0, 80),
+      email: user.email ?? "",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      color: randomColor(),
+      plan: "gratis",
+      sync: { ...DEFAULT_SYNC },
+      devices: [],
+      downloads: [],
+      activity: [
+        {
+          id: randomChars(8),
+          at: new Date().toISOString(),
+          type: "conta" as ActivityType,
+          text: "Conta criada",
+        },
+      ],
+    };
+    await setDoc(ref, payload);
+    return toAccount(user, payload);
   }
-  return { version: 2, accounts: [] };
+  return toAccount(user, snapshot.data());
 }
 
-function writeDb(db: Db) {
-  try {
-    window.localStorage.setItem(DB_KEY, JSON.stringify(db));
-  } catch {
-    throw new AuthError("storage", "Não foi possível salvar neste navegador. Verifique se o armazenamento está liberado.");
-  }
-}
-
-function mutate(id: string, change: (account: Account) => void): Account {
-  const db = readDb();
-  const account = db.accounts.find((item) => item.id === id);
-  if (!account) throw new AuthError("not_found", "Conta não encontrada.");
-  change(account);
-  writeDb(db);
-  return account;
-}
-
-function pushActivity(account: Account, type: ActivityType, text: string) {
-  account.activity.unshift({
-    id: randomChars(8),
-    at: new Date().toISOString(),
-    type,
-    text,
+/** Escuta o documento do usuário em tempo real. */
+export function watchAccount(uid: string, onChange: (account: Account, user: User) => void, onError?: (error: AuthError) => void) {
+  let current: User | null = auth.currentUser;
+  const stopAuth = onAuthStateChanged(auth, (user) => {
+    current = user;
   });
-  account.activity = account.activity.slice(0, 40);
+  const stopDoc = onSnapshot(
+    userDoc(uid),
+    (snapshot) => {
+      if (current) onChange(toAccount(current, snapshot.data()), current);
+    },
+    (error) => onError?.(toAuthError(error)),
+  );
+  return () => {
+    stopAuth();
+    stopDoc();
+  };
+}
+
+/** Lê o documento uma vez (usado pelo `reload` das páginas). */
+export async function fetchAccount(): Promise<Account | null> {
+  const user = auth.currentUser;
+  if (!user || !configured) return null;
+  const snapshot = await getDoc(userDoc(user.uid));
+  return toAccount(user, snapshot.data());
+}
+
+async function patchUser(payload: Record<string, unknown>) {
+  const user = auth.currentUser;
+  if (!user) throw new AuthError("not_found", "Entre na sua conta primeiro.");
+  await updateDoc(userDoc(user.uid), { ...payload, updatedAt: serverTimestamp() });
+}
+
+async function pushActivity(type: ActivityType, text: string) {
+  const user = auth.currentUser;
+  if (!user) return;
+  const snapshot = await getDoc(userDoc(user.uid));
+  const activity = (snapshot.data()?.activity as Activity[] | undefined) ?? [];
+  const next = [{ id: randomChars(8), at: new Date().toISOString(), type, text }, ...activity].slice(0, 40);
+  await updateDoc(userDoc(user.uid), { activity: next, updatedAt: serverTimestamp() });
 }
 
 /* ------------------------------------------------------------------ */
-/* Sessão                                                             */
+/* Cadastro, entrada e saída                                          */
 /* ------------------------------------------------------------------ */
-export function startSession(id: string, remember: boolean) {
-  endSession();
-  try {
-    (remember ? window.localStorage : window.sessionStorage).setItem(SESSION_KEY, id);
-  } catch {
-    // Sem armazenamento: a sessão vive só em memória nesta aba.
-  }
-}
-
-export function endSession() {
-  try {
-    window.localStorage.removeItem(SESSION_KEY);
-    window.sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    // Nada a fazer.
-  }
-}
-
-export function sessionMode(): "persistente" | "temporária" {
-  try {
-    return window.sessionStorage.getItem(SESSION_KEY) ? "temporária" : "persistente";
-  } catch {
-    return "temporária";
-  }
-}
-
-export function getCurrentAccount(): Account | null {
-  try {
-    const id = window.sessionStorage.getItem(SESSION_KEY) ?? window.localStorage.getItem(SESSION_KEY);
-    if (!id) return null;
-    return readDb().accounts.find((account) => account.id === id) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* Cadastro, entrada e recuperação                                    */
-/* ------------------------------------------------------------------ */
-export const MIN_PASSWORD = 8;
-
-export function formatRecoveryCode(raw: string) {
-  const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
-  return clean.match(/.{1,4}/g)?.join("-") ?? "";
-}
-
-function normalizeRecovery(code: string) {
-  return code.toUpperCase().replace(/[^A-Z0-9]/g, "");
-}
-
 export async function signUp(input: {
   name: string;
   email: string;
   password: string;
-  remember: boolean;
-}): Promise<{ account: Account; recoveryCode: string }> {
-  const email = normalizeEmail(input.email);
-  if (input.name.trim().length < 2 || !isEmail(email) || input.password.length < MIN_PASSWORD) {
-    throw new AuthError("invalid_input", "Confira os dados informados.");
-  }
-  const db = readDb();
-  if (db.accounts.some((account) => account.email === email)) {
-    throw new AuthError("email_taken", "Já existe uma conta com este e-mail.");
-  }
-
-  const now = new Date().toISOString();
-  const passwordSalt = randomHex(16);
-  const recoverySalt = randomHex(16);
-  const recoveryCode = formatRecoveryCode(randomChars(12));
-
-  const account: Account = {
-    id: `NV-${randomChars(6)}`,
-    name: input.name.trim(),
-    email,
-    createdAt: now,
-    color: AVATAR_COLORS[randomBytes(1)[0] % AVATAR_COLORS.length],
-    passwordSalt,
-    passwordHash: await hashSecret(input.password, passwordSalt),
-    passwordChangedAt: now,
-    recoverySalt,
-    recoveryHash: await hashSecret(normalizeRecovery(recoveryCode), recoverySalt),
-    recoveryCreatedAt: now,
-    sync: { ...DEFAULT_SYNC },
-    devices: [],
-    downloads: [],
-    activity: [],
-  };
-  pushActivity(account, "conta", "Conta criada");
-  db.accounts.push(account);
-  writeDb(db);
-  startSession(account.id, input.remember);
-  return { account, recoveryCode };
-}
-
-export async function verifyPassword(account: Account, password: string) {
-  return (await hashSecret(password, account.passwordSalt)) === account.passwordHash;
-}
-
-export async function signIn(input: {
-  email: string;
-  password: string;
-  remember: boolean;
-}): Promise<Account> {
-  const email = normalizeEmail(input.email);
-  const account = readDb().accounts.find((item) => item.email === email);
-  if (!account) throw new AuthError("not_found", "Não encontramos uma conta com este e-mail.");
-  if (!(await verifyPassword(account, input.password))) {
-    throw new AuthError("wrong_password", "Senha incorreta.");
-  }
-  const updated = mutate(account.id, (item) => pushActivity(item, "login", "Entrou neste navegador"));
-  startSession(updated.id, input.remember);
-  return updated;
-}
-
-export async function recoverPassword(input: {
-  email: string;
-  code: string;
-  password: string;
-}): Promise<{ account: Account; recoveryCode: string }> {
-  const email = normalizeEmail(input.email);
-  const account = readDb().accounts.find((item) => item.email === email);
-  if (!account) throw new AuthError("not_found", "Não encontramos uma conta com este e-mail.");
-  if (input.password.length < MIN_PASSWORD) {
-    throw new AuthError("invalid_input", "A nova senha é curta demais.");
-  }
-  const attempt = await hashSecret(normalizeRecovery(input.code), account.recoverySalt);
-  if (attempt !== account.recoveryHash) {
-    throw new AuthError("wrong_recovery", "Código de recuperação incorreto.");
-  }
-
-  // O código é de uso único: depois de usado, geramos um novo.
-  const passwordSalt = randomHex(16);
-  const recoverySalt = randomHex(16);
-  const recoveryCode = formatRecoveryCode(randomChars(12));
-  const passwordHash = await hashSecret(input.password, passwordSalt);
-  const recoveryHash = await hashSecret(normalizeRecovery(recoveryCode), recoverySalt);
-  const now = new Date().toISOString();
-
-  const updated = mutate(account.id, (item) => {
-    item.passwordSalt = passwordSalt;
-    item.passwordHash = passwordHash;
-    item.passwordChangedAt = now;
-    item.recoverySalt = recoverySalt;
-    item.recoveryHash = recoveryHash;
-    item.recoveryCreatedAt = now;
-    pushActivity(item, "seguranca", "Senha redefinida com o código de recuperação");
-  });
-  startSession(updated.id, true);
-  return { account: updated, recoveryCode };
-}
-
-/* ------------------------------------------------------------------ */
-/* Perfil e segurança                                                 */
-/* ------------------------------------------------------------------ */
-export function updateProfile(
-  id: string,
-  patch: { name?: string; email?: string; color?: string },
-): Account {
-  const email = patch.email !== undefined ? normalizeEmail(patch.email) : undefined;
-  if (patch.name !== undefined && patch.name.trim().length < 2) {
+}): Promise<{ account: Account; needsVerification: boolean }> {
+  ensureConfigured();
+  if (input.name.trim().length < 2) {
     throw new AuthError("invalid_input", "Digite como você quer ser chamado.");
   }
-  if (email !== undefined && !isEmail(email)) {
-    throw new AuthError("invalid_input", "Digite um e-mail válido.");
+  if (!isEmail(input.email)) throw new AuthError("invalid_email", "Digite um e-mail válido.");
+  if (input.password.length < MIN_PASSWORD) {
+    throw new AuthError("weak_password", `A senha precisa de pelo menos ${MIN_PASSWORD} caracteres.`);
   }
-  const others = readDb().accounts.filter((account) => account.id !== id);
-  if (email && others.some((account) => account.email === email)) {
-    throw new AuthError("email_taken", "Este e-mail já está em uso por outra conta.");
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, normalizeEmail(input.email), input.password);
+    const name = input.name.trim().slice(0, 80);
+    await updateAuthProfile(cred.user, { displayName: name });
+    const account = await ensureProfile(cred.user, name);
+    // O link de verificação é opcional: não bloqueia o uso do site.
+    sendEmailVerification(cred.user).catch(() => undefined);
+    return { account, needsVerification: !cred.user.emailVerified };
+  } catch (error) {
+    throw toAuthError(error);
   }
-  return mutate(id, (account) => {
-    const changes: string[] = [];
-    if (patch.name !== undefined && patch.name.trim() !== account.name) {
-      account.name = patch.name.trim();
-      changes.push("nome");
-    }
-    if (email !== undefined && email !== account.email) {
-      account.email = email;
-      changes.push("e-mail");
-    }
-    if (patch.color !== undefined && patch.color !== account.color) {
-      account.color = patch.color;
-      changes.push("cor do avatar");
-    }
-    if (changes.length) pushActivity(account, "perfil", `Perfil atualizado (${changes.join(", ")})`);
-  });
 }
 
-export async function changePassword(id: string, current: string, next: string): Promise<Account> {
-  const account = readDb().accounts.find((item) => item.id === id);
-  if (!account) throw new AuthError("not_found", "Conta não encontrada.");
-  if (!(await verifyPassword(account, current))) {
-    throw new AuthError("wrong_password", "A senha atual está incorreta.");
+export async function signIn(input: { email: string; password: string }): Promise<Account> {
+  ensureConfigured();
+  if (!isEmail(input.email)) throw new AuthError("invalid_email", "Digite um e-mail válido.");
+  try {
+    const cred = await signInWithEmailAndPassword(auth, normalizeEmail(input.email), input.password);
+    const account = await ensureProfile(cred.user);
+    pushActivity("login", "Entrada no site").catch(() => undefined);
+    return account;
+  } catch (error) {
+    throw toAuthError(error);
   }
+}
+
+export async function signInWithGoogle(): Promise<Account> {
+  ensureConfigured();
+  try {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    const cred = await signInWithPopup(auth, provider);
+    const account = await ensureProfile(cred.user);
+    pushActivity("login", "Entrada com Google").catch(() => undefined);
+    return account;
+  } catch (error) {
+    throw toAuthError(error);
+  }
+}
+
+export async function signOut() {
+  await fbSignOut(auth);
+}
+
+/** Envia o link de redefinição de senha do Firebase para o e-mail. */
+export async function sendResetEmail(email: string): Promise<void> {
+  ensureConfigured();
+  if (!isEmail(email)) throw new AuthError("invalid_email", "Digite um e-mail válido.");
+  try {
+    await sendPasswordResetEmail(auth, normalizeEmail(email), {
+      url: `${window.location.origin}/#/entrar`,
+      handleCodeInApp: false,
+    });
+  } catch (error) {
+    throw toAuthError(error);
+  }
+}
+
+export async function resendVerification(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new AuthError("not_found", "Entre na sua conta primeiro.");
+  try {
+    await reloadUser(user);
+    if (user.emailVerified) return;
+    await sendEmailVerification(user);
+  } catch (error) {
+    throw toAuthError(error);
+  }
+}
+
+/** Confere a senha atual do usuário (reautenticação). */
+async function requirePassword(password: string) {
+  const user = auth.currentUser;
+  if (!user || !user.email) throw new AuthError("not_found", "Entre na sua conta primeiro.");
+  const provider = user.providerData.some((item) => item.providerId === "google.com")
+    ? await signInWithPopup(auth, new GoogleAuthProvider())
+    : null;
+  const current = provider?.user ?? user;
+  if (!current.email) return;
+  if (!current.providerData.some((item) => item.providerId === "password")) return;
+  try {
+    await reauthenticateWithCredential(
+      current,
+      EmailAuthProvider.credential(current.email, password),
+    );
+  } catch (error) {
+    const translated = toAuthError(error);
+    if (translated.code === "wrong_password" || translated.code === "not_found") {
+      throw new AuthError("wrong_password", "A senha atual está incorreta.");
+    }
+    throw translated;
+  }
+}
+
+export async function changePassword(current: string, next: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new AuthError("not_found", "Entre na sua conta primeiro.");
   if (next.length < MIN_PASSWORD) {
-    throw new AuthError("invalid_input", `A nova senha precisa de pelo menos ${MIN_PASSWORD} caracteres.`);
+    throw new AuthError("weak_password", `A nova senha precisa de pelo menos ${MIN_PASSWORD} caracteres.`);
   }
-  const salt = randomHex(16);
-  const hash = await hashSecret(next, salt);
-  return mutate(id, (item) => {
-    item.passwordSalt = salt;
-    item.passwordHash = hash;
-    item.passwordChangedAt = new Date().toISOString();
-    pushActivity(item, "seguranca", "Senha alterada");
+  try {
+    await requirePassword(current);
+    const { updatePassword } = await import("firebase/auth");
+    await updatePassword(user, next);
+    await pushActivity("seguranca", "Senha alterada");
+  } catch (error) {
+    throw toAuthError(error);
+  }
+}
+
+export async function deleteAccount(password: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new AuthError("not_found", "Entre na sua conta primeiro.");
+  try {
+    await requirePassword(password);
+    await deleteDoc(userDoc(user.uid)).catch(() => undefined);
+    await deleteUser(user);
+  } catch (error) {
+    throw toAuthError(error);
+  }
+}
+
+export async function updateProfile(patch: {
+  name?: string;
+  email?: string;
+  color?: string;
+}): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new AuthError("not_found", "Entre na sua conta primeiro.");
+  const payload: Record<string, unknown> = {};
+  const changes: string[] = [];
+
+  if (patch.name !== undefined) {
+    const name = patch.name.trim().slice(0, 80);
+    if (name.length < 2) throw new AuthError("invalid_input", "Digite como você quer ser chamado.");
+    payload.name = name;
+    changes.push("nome");
+    await updateAuthProfile(user, { displayName: name }).catch(() => undefined);
+  }
+  if (patch.color !== undefined) {
+    payload.color = patch.color;
+    changes.push("cor do avatar");
+  }
+  if (patch.email !== undefined) {
+    const email = normalizeEmail(patch.email);
+    if (!isEmail(email)) throw new AuthError("invalid_email", "Digite um e-mail válido.");
+    if (email !== user.email) {
+      try {
+        // O Firebase exige login recente para trocar o e-mail.
+        await updateEmail(user, email);
+      } catch (error) {
+        throw toAuthError(error);
+      }
+      payload.email = email;
+      changes.push("e-mail");
+      sendEmailVerification(user).catch(() => undefined);
+    }
+  }
+
+  try {
+    await patchUser(payload);
+    if (changes.length) await pushActivity("perfil", `Perfil atualizado (${changes.join(", ")})`);
+  } catch (error) {
+    throw toAuthError(error);
+  }
+}
+
+export function setSync(sync: SyncPrefs): Promise<void> {
+  return patchUser({ sync }).catch((error) => {
+    throw toAuthError(error);
   });
 }
 
-export async function regenerateRecovery(
-  id: string,
-  password: string,
-): Promise<{ account: Account; recoveryCode: string }> {
-  const account = readDb().accounts.find((item) => item.id === id);
-  if (!account) throw new AuthError("not_found", "Conta não encontrada.");
-  if (!(await verifyPassword(account, password))) {
-    throw new AuthError("wrong_password", "Senha incorreta.");
-  }
-  const recoveryCode = formatRecoveryCode(randomChars(12));
-  const salt = randomHex(16);
-  const hash = await hashSecret(normalizeRecovery(recoveryCode), salt);
-  const updated = mutate(id, (item) => {
-    item.recoverySalt = salt;
-    item.recoveryHash = hash;
-    item.recoveryCreatedAt = new Date().toISOString();
-    pushActivity(item, "seguranca", "Novo código de recuperação gerado");
-  });
-  return { account: updated, recoveryCode };
+/* ------------------------------------------------------------------ */
+/* Aparelhos: o app mostra um código ORBI-XXXX-XXXX; o último caractere
+ * é um dígito verificador, então o site recusa erro de digitação.     */
+/* ------------------------------------------------------------------ */
+function checkChar(body: string) {
+  let sum = 0;
+  for (let i = 0; i < body.length; i += 1) sum += (i + 1) * ALPHABET.indexOf(body[i]);
+  return ALPHABET[sum % ALPHABET.length];
 }
 
-export async function deleteAccount(id: string, password: string) {
-  const db = readDb();
-  const account = db.accounts.find((item) => item.id === id);
-  if (!account) throw new AuthError("not_found", "Conta não encontrada.");
-  if (!(await verifyPassword(account, password))) {
-    throw new AuthError("wrong_password", "Senha incorreta.");
+export function normalizePairingCode(input: string): string | null {
+  let clean = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (clean.startsWith("ORBI")) clean = clean.slice(4);
+  if (clean.length !== 8) return null;
+  if ([...clean].some((char) => !ALPHABET.includes(char))) return null;
+  if (checkChar(clean.slice(0, 7)) !== clean[7]) return null;
+  return `ORBI-${clean.slice(0, 4)}-${clean.slice(4)}`;
+}
+
+export function formatPairingInput(input: string): string {
+  let clean = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (clean.startsWith("ORBI")) clean = clean.slice(4);
+  clean = clean.slice(0, 8);
+  return clean.length > 4 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
+}
+
+export function generateSampleCode(): string {
+  const body = randomChars(7);
+  const full = body + checkChar(body);
+  return `ORBI-${full.slice(0, 4)}-${full.slice(4)}`;
+}
+
+export async function linkDevice(rawCode: string, name: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new AuthError("not_found", "Entre na sua conta primeiro.");
+  const code = normalizePairingCode(rawCode);
+  if (!code) throw new AuthError("invalid_code", "Código inválido. Confira os 8 caracteres exibidos no app.");
+  const snapshot = await getDoc(userDoc(user.uid));
+  const devices = (snapshot.data()?.devices as Device[] | undefined) ?? [];
+  if (devices.some((device) => device.code === code)) {
+    throw new AuthError("device_exists", "Este código já foi usado para vincular um aparelho.");
   }
-  db.accounts = db.accounts.filter((item) => item.id !== id);
-  writeDb(db);
-  endSession();
+  if (devices.length >= 20) throw new AuthError("invalid_input", "Limite de 20 aparelhos por conta.");
+  const device: Device = {
+    id: randomChars(8),
+    name: name.trim().slice(0, 60) || "Meu PC",
+    os: "Windows 11",
+    linkedAt: new Date().toISOString(),
+    code,
+  };
+  await patchUser({ devices: [device, ...devices] });
+  await pushActivity("dispositivo", `App vinculado: ${device.name}`);
+}
+
+export async function removeDevice(deviceId: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new AuthError("not_found", "Entre na sua conta primeiro.");
+  const snapshot = await getDoc(userDoc(user.uid));
+  const devices = (snapshot.data()?.devices as Device[] | undefined) ?? [];
+  const device = devices.find((item) => item.id === deviceId);
+  await patchUser({ devices: devices.filter((item) => item.id !== deviceId) });
+  if (device) await pushActivity("dispositivo", `App desvinculado: ${device.name}`);
+}
+
+export async function renameDevice(deviceId: string, name: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new AuthError("not_found", "Entre na sua conta primeiro.");
+  const clean = name.trim().slice(0, 60);
+  if (!clean) throw new AuthError("invalid_input", "Digite um nome para o aparelho.");
+  const snapshot = await getDoc(userDoc(user.uid));
+  const devices = (snapshot.data()?.devices as Device[] | undefined) ?? [];
+  await patchUser({ devices: devices.map((item) => (item.id === deviceId ? { ...item, name: clean } : item)) });
+}
+
+/* ------------------------------------------------------------------ */
+/* Downloads                                                          */
+/* ------------------------------------------------------------------ */
+export async function addDownload(record: {
+  version: string;
+  checksum: string;
+  filename: string;
+}): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) return; // visitante baixa sem conta, sem erro.
+  const snapshot = await getDoc(userDoc(user.uid));
+  const downloads = (snapshot.data()?.downloads as DownloadRecord[] | undefined) ?? [];
+  const next = [
+    { id: randomChars(8), at: new Date().toISOString(), ...record },
+    ...downloads,
+  ].slice(0, 30);
+  await patchUser({ downloads: next }).catch(() => undefined);
+  await pushActivity("download", `Download do instalador ${record.version}`).catch(() => undefined);
 }
 
 export function exportAccount(account: Account): string {
@@ -474,101 +608,6 @@ export function exportAccount(account: Account): string {
     null,
     2,
   );
-}
-
-export function setSync(id: string, sync: SyncPrefs): Account {
-  return mutate(id, (account) => {
-    account.sync = sync;
-    pushActivity(account, "perfil", "Preferências de sincronização atualizadas");
-  });
-}
-
-/* ------------------------------------------------------------------ */
-/* Aparelhos: o app mostra um código NOVA-XXXX-XXXX; o último caractere
- * é um dígito verificador, assim o site recusa erros de digitação.    */
-/* ------------------------------------------------------------------ */
-function checkChar(body: string) {
-  let sum = 0;
-  for (let i = 0; i < body.length; i += 1) sum += (i + 1) * ALPHABET.indexOf(body[i]);
-  return ALPHABET[sum % ALPHABET.length];
-}
-
-export function normalizePairingCode(input: string): string | null {
-  let clean = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (clean.startsWith("NOVA")) clean = clean.slice(4);
-  if (clean.length !== 8) return null;
-  if ([...clean].some((char) => !ALPHABET.includes(char))) return null;
-  if (checkChar(clean.slice(0, 7)) !== clean[7]) return null;
-  return `NOVA-${clean.slice(0, 4)}-${clean.slice(4)}`;
-}
-
-export function formatPairingInput(input: string): string {
-  let clean = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (clean.startsWith("NOVA")) clean = clean.slice(4);
-  clean = clean.slice(0, 8);
-  return clean.length > 4 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
-}
-
-export function generateSampleCode(): string {
-  const body = randomChars(7);
-  const full = body + checkChar(body);
-  return `NOVA-${full.slice(0, 4)}-${full.slice(4)}`;
-}
-
-export function linkDevice(id: string, rawCode: string, name: string): Account {
-  const code = normalizePairingCode(rawCode);
-  if (!code) {
-    throw new AuthError("invalid_code", "Código inválido. Confira os 8 caracteres exibidos no app.");
-  }
-  const deviceName = name.trim() || "Meu PC";
-  return mutate(id, (account) => {
-    if (account.devices.some((device) => device.code === code)) {
-      throw new AuthError("device_exists", "Este código já foi usado para vincular um aparelho.");
-    }
-    account.devices.push({
-      id: randomChars(8),
-      name: deviceName,
-      os: "Windows 11",
-      linkedAt: new Date().toISOString(),
-      code,
-    });
-    pushActivity(account, "dispositivo", `App vinculado: ${deviceName}`);
-  });
-}
-
-export function renameDevice(id: string, deviceId: string, name: string): Account {
-  const clean = name.trim();
-  if (!clean) throw new AuthError("invalid_input", "Digite um nome para o aparelho.");
-  return mutate(id, (account) => {
-    const device = account.devices.find((item) => item.id === deviceId);
-    if (device) device.name = clean;
-  });
-}
-
-export function removeDevice(id: string, deviceId: string): Account {
-  return mutate(id, (account) => {
-    const device = account.devices.find((item) => item.id === deviceId);
-    account.devices = account.devices.filter((item) => item.id !== deviceId);
-    if (device) pushActivity(account, "dispositivo", `App desvinculado: ${device.name}`);
-  });
-}
-
-/* ------------------------------------------------------------------ */
-/* Downloads                                                          */
-/* ------------------------------------------------------------------ */
-export function addDownload(
-  id: string,
-  record: { version: string; checksum: string; filename: string },
-): Account {
-  return mutate(id, (account) => {
-    account.downloads.unshift({
-      id: randomChars(8),
-      at: new Date().toISOString(),
-      ...record,
-    });
-    account.downloads = account.downloads.slice(0, 20);
-    pushActivity(account, "download", `Download da versão ${record.version}`);
-  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -623,5 +662,10 @@ export function passwordStrength(password: string): { score: 0 | 1 | 2 | 3 | 4; 
   if (/\d/.test(password) && /[^A-Za-z0-9]/.test(password)) score += 1;
   const clamped = Math.min(4, score) as 0 | 1 | 2 | 3 | 4;
   const labels = ["Muito curta", "Fraca", "Razoável", "Boa", "Forte"];
-  return { score: password.length < MIN_PASSWORD ? 0 : clamped, label: password.length < MIN_PASSWORD ? labels[0] : labels[clamped] };
+  return {
+    score: password.length < MIN_PASSWORD ? 0 : clamped,
+    label: password.length < MIN_PASSWORD ? labels[0] : labels[clamped],
+  };
 }
+
+export const linkGoogleCredential = linkWithCredential;

@@ -1,0 +1,181 @@
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace Orbi.Services;
+
+/// <summary>Dados que vivem só neste PC, em %APPDATA%\Orbi\orbi.json.</summary>
+public sealed class OrbiSettings
+{
+    public string UserName { get; set; } = "";
+    public string? PairingCode { get; set; }
+    public string? AccountEmail { get; set; }
+    public string? AccountName { get; set; }
+    public bool StartWithWindows { get; set; } = true;
+    public bool UseGemini { get; set; } = true;
+    public string GeminiModel { get; set; } = "gemini-2.0-flash";
+    public int Volume { get; set; } = 50;
+    public int LockAfterMinutes { get; set; } = 5;
+    public bool LockEnabled { get; set; }
+    public List<Reminder> Reminders { get; set; } = new();
+    public List<Note> Notes { get; set; } = new();
+    public List<string> ClipboardHistory { get; set; } = new();
+    public List<TextShortcut> Shortcuts { get; set; } = new();
+    public List<AliasEntry> Aliases { get; set; } = new();
+    public List<string> Commands { get; set; } = new();
+    public List<Routine> Routines { get; set; } = new();
+}
+
+public sealed class Reminder
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    public string Text { get; set; } = "";
+    public DateTime DueAt { get; set; }
+    public bool Done { get; set; }
+}
+
+public sealed class Note
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    public string Text { get; set; } = "";
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+
+public sealed class TextShortcut
+{
+    public string Trigger { get; set; } = "";
+    public string Expansion { get; set; } = "";
+}
+
+public sealed class AliasEntry
+{
+    public string Alias { get; set; } = "";
+    public string Target { get; set; } = "";
+}
+
+public sealed class Routine
+{
+    public string Name { get; set; } = "";
+    public List<string> Commands { get; set; } = new();
+}
+
+/// <summary>Persistência em JSON + segredos no DPAPI (por usuário).</summary>
+public static class Store
+{
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    public static string Root { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Orbi");
+
+    private static string SettingsPath => Path.Combine(Root, "orbi.json");
+    private static string SecretPath => Path.Combine(Root, "gemini.bin");
+
+    private static OrbiSettings? _cached;
+
+    public static OrbiSettings Current
+    {
+        get
+        {
+            if (_cached is not null) return _cached;
+            try
+            {
+                Directory.CreateDirectory(Root);
+                if (File.Exists(SettingsPath))
+                {
+                    var json = File.ReadAllText(SettingsPath, Encoding.UTF8);
+                    _cached = JsonSerializer.Deserialize<OrbiSettings>(json, Options) ?? new OrbiSettings();
+                }
+            }
+            catch
+            {
+                // Arquivo corrompido: começamos limpo em vez de travar o app.
+            }
+            _cached ??= new OrbiSettings();
+            if (string.IsNullOrWhiteSpace(_cached.UserName))
+            {
+                _cached.UserName = Environment.UserName;
+            }
+            return _cached;
+        }
+    }
+
+    public static void Save()
+    {
+        try
+        {
+            Directory.CreateDirectory(Root);
+            var json = JsonSerializer.Serialize(Current, Options);
+            var temp = SettingsPath + ".tmp";
+            File.WriteAllText(temp, json, Encoding.UTF8);
+            File.Move(temp, SettingsPath, true);
+        }
+        catch
+        {
+            // Sem permissão de escrita: o app continua funcionando em memória.
+        }
+    }
+
+    /// <summary>Guarda a chave do Gemini cifrada com DPAPI (só este usuário do Windows lê).</summary>
+    public static void SaveApiKey(string key)
+    {
+        try
+        {
+            Directory.CreateDirectory(Root);
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                if (File.Exists(SecretPath)) File.Delete(SecretPath);
+                return;
+            }
+            var bytes = Encoding.UTF8.GetBytes(key.Trim());
+            var cipher = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
+            File.WriteAllBytes(SecretPath, cipher);
+        }
+        catch
+        {
+            // Sem DPAPI disponível, a chave simplesmente não é guardada.
+        }
+    }
+
+    public static string? LoadApiKey()
+    {
+        try
+        {
+            if (!File.Exists(SecretPath)) return null;
+            var cipher = File.ReadAllBytes(SecretPath);
+            var bytes = ProtectedData.Unprotect(cipher, null, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(bytes);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public static bool HasApiKey() => !string.IsNullOrWhiteSpace(LoadApiKey());
+
+    public static void PushClipboard(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        var list = Current.ClipboardHistory;
+        list.RemoveAll(item => string.Equals(item, text, StringComparison.Ordinal));
+        list.Insert(0, text.Length > 2000 ? text[..2000] : text);
+        if (list.Count > 30) list.RemoveRange(30, list.Count - 30);
+        Save();
+    }
+
+    public static void PushCommand(string command)
+    {
+        if (string.IsNullOrWhiteSpace(command)) return;
+        var list = Current.Commands;
+        list.RemoveAll(item => string.Equals(item, command, StringComparison.OrdinalIgnoreCase));
+        list.Insert(0, command.Trim());
+        if (list.Count > 40) list.RemoveRange(40, list.Count - 40);
+        Save();
+    }
+}

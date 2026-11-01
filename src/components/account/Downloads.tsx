@@ -11,7 +11,7 @@ export default function Downloads({ account, onDownload }: PageProps) {
     <>
       <PageHeader
         title="Downloads"
-        description="A versão atual do NOVA e o histórico dos arquivos que você baixou."
+        description="A versão atual do Orbi e o histórico dos arquivos que você baixou."
       />
 
       <div className="grid gap-5 lg:grid-cols-[1.25fr_1fr]">
@@ -42,7 +42,7 @@ export default function Downloads({ account, onDownload }: PageProps) {
             {[
               ["Requisito", BUILD.minimum],
               ["Instalação", "Automática"],
-              ["Conta no pacote", "NOVA-conta.json"],
+              ["Conta no pacote", "orbi-conta.json"],
             ].map(([term, value]) => (
               <div key={term} className="bg-[#fbf9f3] p-4">
                 <p className="label text-warm">{term}</p>
@@ -78,7 +78,7 @@ export default function Downloads({ account, onDownload }: PageProps) {
               {account.downloads.map((item) => (
                 <li key={item.id} className="px-5 py-3.5">
                   <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-[13.5px] font-medium text-ink">NOVA {item.version}</p>
+                    <p className="text-[13.5px] font-medium text-ink">Orbi {item.version}</p>
                     <span className="font-mono text-[11px] text-warm">{formatDateTime(item.at)}</span>
                   </div>
                   <p className="mt-1 truncate font-mono text-[11px] text-warm">{item.filename}</p>

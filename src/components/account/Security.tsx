@@ -1,24 +1,14 @@
 import { useState, type FormEvent } from "react";
-import {
-  Badge,
-  Button,
-  CopyButton,
-  Icon,
-  Modal,
-  PasswordField,
-  Panel,
-  Spinner,
-} from "../ui";
+import { Badge, Button, Icon, Modal, Panel, PasswordField, Spinner, StrengthMeter } from "../ui";
 import { PageHeader, type PageProps } from "./AccountShell";
 import {
-  AuthError,
   MIN_PASSWORD,
   changePassword,
   deleteAccount,
   exportAccount,
   formatDate,
-  regenerateRecovery,
-  sessionMode,
+  resendVerification,
+  sendResetEmail,
 } from "../../lib/accounts";
 import { saveBlob } from "../../lib/download";
 
@@ -28,14 +18,10 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
   const [errors, setErrors] = useState<{ current?: string; next?: string }>({});
   const [busy, setBusy] = useState(false);
 
-  const [recoveryOpen, setRecoveryOpen] = useState(false);
-  const [recoveryPassword, setRecoveryPassword] = useState("");
-  const [recoveryError, setRecoveryError] = useState("");
-  const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
-
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
+  const [sending, setSending] = useState(false);
 
   const submitPassword = async (event: FormEvent) => {
     event.preventDefault();
@@ -47,49 +33,49 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
 
     setBusy(true);
     try {
-      await changePassword(account.id, current, next);
-      reload();
+      await changePassword(current, next);
+      await reload();
       setCurrent("");
       setNext("");
-      notify("Senha alterada.");
+      setErrors({});
+      notify("Senha alterada. Use a nova senha na próxima entrada.");
     } catch (error) {
-      if (error instanceof AuthError && error.code === "wrong_password") {
-        setErrors({ current: error.message });
-      } else {
-        notify(error instanceof Error ? error.message : "Não foi possível alterar a senha.");
-      }
+      const message = error instanceof Error ? error.message : "Não foi possível alterar a senha.";
+      if (/atual/i.test(message)) setErrors({ current: message });
+      else setErrors({ next: message });
     } finally {
       setBusy(false);
     }
   };
 
-  const generateRecovery = async (event: FormEvent) => {
-    event.preventDefault();
-    setRecoveryError("");
-    setBusy(true);
+  const sendReset = async () => {
+    setSending(true);
     try {
-      const result = await regenerateRecovery(account.id, recoveryPassword);
-      setRecoveryCode(result.recoveryCode);
-      setRecoveryPassword("");
-      reload();
+      await sendResetEmail(account.email);
+      notify(`Link de redefinição enviado para ${account.email}.`);
     } catch (error) {
-      setRecoveryError(error instanceof Error ? error.message : "Não foi possível gerar o código.");
+      notify(error instanceof Error ? error.message : "Não foi possível enviar o link.");
     } finally {
-      setBusy(false);
+      setSending(false);
     }
   };
 
-  const closeRecovery = () => {
-    setRecoveryOpen(false);
-    setRecoveryCode(null);
-    setRecoveryPassword("");
-    setRecoveryError("");
+  const verify = async () => {
+    setSending(true);
+    try {
+      await resendVerification();
+      notify("Enviamos um novo link de verificação para o seu e-mail.");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Não foi possível enviar o link.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const exportData = () => {
     saveBlob(
       new Blob([exportAccount(account)], { type: "application/json" }),
-      `NOVA-dados-${account.id}.json`,
+      `orbi-dados-${account.id}.json`,
     );
     notify("Seus dados foram exportados.");
   };
@@ -99,10 +85,10 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
     setDeleteError("");
     setBusy(true);
     try {
-      await deleteAccount(account.id, deletePassword);
+      await deleteAccount(deletePassword);
       setDeleteOpen(false);
       go("/");
-      window.setTimeout(() => window.location.reload(), 60);
+      window.setTimeout(() => window.location.reload(), 80);
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : "Não foi possível excluir a conta.");
     } finally {
@@ -112,13 +98,16 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
 
   return (
     <>
-      <PageHeader title="Segurança" description="Senha, recuperação de acesso e os dados da sua conta." />
+      <PageHeader
+        title="Segurança"
+        description="Senha, verificação de e-mail e os dados da sua conta — tudo no Firebase."
+      />
 
       <div className="grid gap-5 xl:grid-cols-[1.1fr_1fr]">
         <div className="space-y-5">
           <Panel
             title="Alterar senha"
-            description={`Última alteração em ${formatDate(account.passwordChangedAt)}.`}
+            description="Pedimos a senha atual antes de qualquer troca. O Firebase exige login recente."
           >
             <form onSubmit={submitPassword} className="space-y-4" noValidate>
               <PasswordField
@@ -129,15 +118,17 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
                 onChange={(event) => setCurrent(event.target.value)}
                 error={errors.current}
               />
-              <PasswordField
-                id="new-password"
-                label="Nova senha"
-                autoComplete="new-password"
-                value={next}
-                onChange={(event) => setNext(event.target.value)}
-                error={errors.next}
-                showStrength
-              />
+              <div>
+                <PasswordField
+                  id="new-password"
+                  label="Nova senha"
+                  autoComplete="new-password"
+                  value={next}
+                  onChange={(event) => setNext(event.target.value)}
+                  error={errors.next}
+                />
+                <StrengthMeter password={next} />
+              </div>
               <Button type="submit" disabled={busy}>
                 {busy ? <Spinner className="h-3.5 w-3.5" /> : <Icon name="key" className="h-3.5 w-3.5" />}
                 Atualizar senha
@@ -146,17 +137,36 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
           </Panel>
 
           <Panel
-            title="Código de recuperação"
-            description="Permite redefinir a senha se você esquecer. É de uso único."
-            action={<Badge tone="ok">Ativo</Badge>}
+            title="Verificação de e-mail"
+            description="Confirma que o endereço é seu. Não bloqueia o uso do app."
+            action={
+              account.emailVerified ? <Badge tone="ok">verificado</Badge> : <Badge tone="signal">pendente</Badge>
+            }
           >
             <p className="text-[13px] leading-[1.6] text-ink-2">
-              Gerado em {formatDate(account.recoveryCreatedAt)}. Por segurança, o código não pode ser
-              exibido de novo — se você o perdeu, gere um novo. O anterior deixa de valer.
+              {account.emailVerified
+                ? `O endereço ${account.email} está verificado. Você já pode receber links de redefinição de senha normalmente.`
+                : `Enviamos um link de confirmação para ${account.email}. Abra o e-mail e clique em “Verificar”. Depois volte aqui e recarregue a página.`}
             </p>
-            <Button variant="secondary" className="mt-4" onClick={() => setRecoveryOpen(true)}>
-              <Icon name="key" className="h-3.5 w-3.5" />
-              Gerar novo código
+            {!account.emailVerified && (
+              <Button variant="secondary" className="mt-4" onClick={verify} disabled={sending}>
+                {sending ? <Spinner className="h-3.5 w-3.5" /> : <Icon name="mail" className="h-3.5 w-3.5" />}
+                Reenviar verificação
+              </Button>
+            )}
+          </Panel>
+
+          <Panel
+            title="Redefinição de senha por e-mail"
+            description="Sem códigos para guardar: o Firebase envia um link seguro, válido por uma hora."
+          >
+            <p className="text-[13px] leading-[1.6] text-ink-2">
+              Se você esquecer a senha, o link resolve. É mais seguro que um código de recuperação
+              porque expira sozinho e só chega na caixa de entrada de {account.email}.
+            </p>
+            <Button variant="secondary" className="mt-4" onClick={sendReset} disabled={sending}>
+              {sending ? <Spinner className="h-3.5 w-3.5" /> : <Icon name="mail" className="h-3.5 w-3.5" />}
+              Enviar link de redefinição
             </Button>
           </Panel>
         </div>
@@ -165,12 +175,23 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
           <Panel title="Esta sessão">
             <dl className="space-y-3 text-[13px]">
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-warm">Dispositivo</dt>
-                <dd className="text-ink">Este navegador</dd>
+                <dt className="text-warm">Método</dt>
+                <dd className="flex items-center gap-1.5 text-ink">
+                  <Icon name={account.provider === "google.com" ? "google" : "mail"} className="h-3.5 w-3.5" />
+                  {account.provider === "google.com" ? "Google" : "E-mail e senha"}
+                </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-warm">Sessão</dt>
-                <dd className="text-ink">{sessionMode() === "persistente" ? "Mantida conectada" : "Até fechar a aba"}</dd>
+                <dd className="text-ink">Mantida conectada neste navegador</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-warm">Conta desde</dt>
+                <dd className="text-ink">{formatDate(account.createdAt)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-warm">Identificador</dt>
+                <dd className="truncate font-mono text-[11px] text-warm">{account.id}</dd>
               </div>
             </dl>
             <Button variant="secondary" className="mt-4" onClick={onLogout}>
@@ -179,10 +200,10 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
             </Button>
           </Panel>
 
-          <Panel title="Seus dados" description="Leve uma cópia do que a NOVA guarda sobre a sua conta.">
+          <Panel title="Seus dados" description="Leve uma cópia do que o Orbi guarda sobre a sua conta.">
             <p className="text-[13px] leading-[1.6] text-ink-2">
-              O arquivo inclui perfil, aparelhos, downloads e atividade. Senha e código de recuperação
-              nunca são incluídos.
+              O arquivo inclui perfil, aparelhos, downloads e atividade do Firestore. Senha e tokens
+              nunca são incluídos — eles nem passam por este site.
             </p>
             <Button variant="secondary" className="mt-4" onClick={exportData}>
               <Icon name="download" className="h-3.5 w-3.5" />
@@ -193,8 +214,8 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
           <section className="border border-signal/40 bg-signal-soft/30 p-5">
             <h2 className="text-[14px] font-semibold text-signal-dark">Excluir conta</h2>
             <p className="mt-1.5 text-[13px] leading-[1.6] text-ink-2">
-              Remove a conta, os aparelhos vinculados e o histórico deste navegador. O app instalado no
-              PC continua funcionando, sem sincronização.
+              Remove a conta no Firebase Authentication, o documento no Firestore, os aparelhos
+              vinculados e o histórico. O app instalado no PC continua funcionando, sem sincronização.
             </p>
             <Button variant="danger" className="mt-4" onClick={() => setDeleteOpen(true)}>
               <Icon name="trash" className="h-3.5 w-3.5" />
@@ -204,70 +225,16 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
         </div>
       </div>
 
-      {/* modal: novo código de recuperação */}
-      <Modal open={recoveryOpen} onClose={closeRecovery} labelledBy="recovery-title" width="max-w-[460px]">
-        <div className="p-6">
-          {recoveryCode ? (
-            <>
-              <h2 id="recovery-title" className="text-[18px] font-semibold text-ink">
-                Novo código gerado
-              </h2>
-              <p className="mt-2 text-[13.5px] leading-[1.6] text-ink-2">
-                Guarde agora em um lugar seguro. Ele não aparece de novo.
-              </p>
-              <p className="mt-4 break-all border border-ink bg-[#fbf9f3] p-4 text-center font-mono text-[22px] font-medium tracking-[0.08em] text-ink">
-                {recoveryCode}
-              </p>
-              <div className="mt-5 flex items-center justify-between gap-3">
-                <CopyButton value={recoveryCode} />
-                <Button onClick={closeRecovery}>Já guardei</Button>
-              </div>
-            </>
-          ) : (
-            <form onSubmit={generateRecovery} noValidate>
-              <h2 id="recovery-title" className="text-[18px] font-semibold text-ink">
-                Gerar novo código
-              </h2>
-              <p className="mt-2 text-[13.5px] leading-[1.6] text-ink-2">
-                O código atual deixará de funcionar. Confirme com a sua senha.
-              </p>
-              <PasswordField
-                id="recovery-password"
-                label="Senha"
-                wrapperClassName="mt-4"
-                autoComplete="current-password"
-                autoFocus
-                value={recoveryPassword}
-                onChange={(event) => setRecoveryPassword(event.target.value)}
-                error={recoveryError}
-              />
-              <div className="mt-5 flex justify-end gap-2.5">
-                <Button variant="ghost" onClick={closeRecovery}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={busy || !recoveryPassword}>
-                  {busy && <Spinner className="h-3.5 w-3.5" />}
-                  Gerar código
-                </Button>
-              </div>
-            </form>
-          )}
-        </div>
-      </Modal>
-
-      {/* modal: excluir conta */}
-      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} labelledBy="delete-title" width="max-w-[460px]">
-        <form onSubmit={confirmDelete} className="p-6" noValidate>
-          <h2 id="delete-title" className="text-[18px] font-semibold text-ink">
-            Excluir a conta de verdade?
-          </h2>
-          <p className="mt-2 text-[13.5px] leading-[1.6] text-ink-2">
-            Isso não pode ser desfeito. Confirme com a sua senha para continuar.
-          </p>
+      <Modal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="Excluir a conta de verdade?"
+        description="Isso não pode ser desfeito. Confirme com a sua senha para continuar."
+      >
+        <form onSubmit={confirmDelete} noValidate>
           <PasswordField
             id="delete-password"
             label="Senha"
-            wrapperClassName="mt-4"
             autoComplete="current-password"
             autoFocus
             value={deletePassword}

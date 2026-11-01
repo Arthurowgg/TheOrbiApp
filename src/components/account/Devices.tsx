@@ -22,12 +22,12 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
   const [removing, setRemoving] = useState<Device | null>(null);
 
-  const link = (event: FormEvent) => {
+  const link = async (event: FormEvent) => {
     event.preventDefault();
     setCodeError("");
     try {
-      linkDevice(account.id, `NOVA-${code}`, deviceName);
-      reload();
+      await linkDevice(`ORBI-${code}`, deviceName);
+      await reload();
       setCode("");
       setDeviceName("");
       notify("App vinculado à sua conta.");
@@ -36,28 +36,36 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
     }
   };
 
-  const saveName = () => {
+  const saveName = async () => {
     if (!editing) return;
     try {
-      renameDevice(account.id, editing.id, editing.value);
-      reload();
+      await renameDevice(editing.id, editing.value);
+      await reload();
       setEditing(null);
     } catch (error) {
       notify(error instanceof Error ? error.message : "Não foi possível renomear.");
     }
   };
 
-  const confirmRemove = () => {
+  const confirmRemove = async () => {
     if (!removing) return;
-    removeDevice(account.id, removing.id);
-    reload();
-    notify(`${removing.name} foi desvinculado.`);
+    try {
+      await removeDevice(removing.id);
+      await reload();
+      notify(`${removing.name} foi desvinculado.`);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Não foi possível desvincular.");
+    }
     setRemoving(null);
   };
 
-  const toggleSync = (key: keyof SyncPrefs, value: boolean) => {
-    setSync(account.id, { ...account.sync, [key]: value });
-    reload();
+  const toggleSync = async (key: keyof SyncPrefs, value: boolean) => {
+    try {
+      await setSync({ ...account.sync, [key]: value });
+      await reload();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
   };
 
   return (
@@ -71,12 +79,12 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
         <div className="space-y-5">
           <Panel
             title="Vincular o app"
-            description="Leva menos de um minuto, com o NOVA aberto no seu PC."
+            description="Leva menos de um minuto, com o Orbi aberto no seu PC."
           >
             <ol className="mb-5 space-y-3">
               {[
-                "Abra o NOVA e vá em Configurações ▸ Conta ▸ Vincular ao site.",
-                "O app mostra um código no formato NOVA-XXXX-XXXX.",
+                "Abra o Orbi e vá em Configurações ▸ Conta ▸ Vincular ao site.",
+                "O app mostra um código no formato ORBI-XXXX-XXXX.",
                 "Digite o código aqui e dê um nome ao computador.",
               ].map((text, index) => (
                 <li key={text} className="flex items-start gap-3">
@@ -111,7 +119,7 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
                   }`}
                 >
                   <span className="flex items-center border-r border-rule bg-paper-2/70 px-3.5 font-mono text-[14px] text-warm">
-                    NOVA-
+                    ORBI-
                   </span>
                   <input
                     id="pairing"
@@ -279,14 +287,15 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
         </div>
       </div>
 
-      <Modal open={Boolean(removing)} onClose={() => setRemoving(null)} labelledBy="remove-title" width="max-w-[440px]">
-        <div className="p-6">
-          <h2 id="remove-title" className="text-[18px] font-semibold text-ink">
-            Desvincular {removing?.name}?
-          </h2>
-          <p className="mt-2 text-[13.5px] leading-[1.6] text-ink-2">
-            O app continua funcionando no PC, mas deixa de sincronizar com a sua conta. Você pode
-            vincular de novo quando quiser, com um novo código.
+      <Modal
+        open={Boolean(removing)}
+        onClose={() => setRemoving(null)}
+        title={`Desvincular ${removing?.name ?? "este aparelho"}?`}
+        description="O app continua funcionando no PC, mas deixa de sincronizar com a sua conta."
+      >
+        <div>
+          <p className="text-[13.5px] leading-[1.6] text-ink-2">
+            Você pode vincular de novo quando quiser, com um novo código gerado no app.
           </p>
           <div className="mt-6 flex justify-end gap-2.5">
             <Button variant="ghost" onClick={() => setRemoving(null)}>

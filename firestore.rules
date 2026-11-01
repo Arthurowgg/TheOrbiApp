@@ -1,0 +1,48 @@
+rules_version = '2';
+
+// Orbi — cada pessoa só enxerga o próprio documento.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function onlyKeys(allowed) {
+      return request.resource.data.keys().hasOnly(allowed);
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+                    && onlyKeys(['name', 'email', 'createdAt', 'color', 'plan',
+                                 'sync', 'devices', 'downloads', 'activity', 'updatedAt'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() <= 80
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() <= 254;
+      allow update: if isOwner(uid)
+                    && onlyKeys(['name', 'email', 'createdAt', 'color', 'plan',
+                                 'sync', 'devices', 'downloads', 'activity', 'updatedAt'])
+                    && request.resource.data.devices.size() <= 20
+                    && request.resource.data.downloads.size() <= 30
+                    && request.resource.data.activity.size() <= 40;
+      allow delete: if isOwner(uid);
+    }
+
+    // Códigos de pareamento: o app Windows grava um "claim" aqui e o site
+    // consome. Nada além de uid + nome do PC é guardado, e a leitura é
+    // autenticada.
+    match /pairings/{code} {
+      allow read, write: if signedIn();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Icon, Mark, Spinner } from "./ui";
+import { aiLabel, askGemini, onAiStatus, type AiStatus } from "../lib/gemini";
 
 /* ------------------------------------------------------------------ */
 /* Tipos                                                              */
@@ -8,13 +9,14 @@ type Sinal = "local" | "ia" | "confirmar" | "privado";
 type Acao = { label: string; value: string; primary?: boolean };
 type Resposta = {
   text: string;
+  needsAi?: boolean;
   signal?: Sinal;
   detail?: string;
   actions?: Acao[];
 };
-type Mensagem = Resposta & { id: number; from: "nova" | "voce" };
+type Mensagem = Resposta & { id: number; from: "orbi" | "voce" };
 
-type NovaChatProps = {
+type OrbiChatProps = {
   onDownload: () => void;
   onLogin?: () => void;
 };
@@ -227,7 +229,7 @@ export function interpret(input: string): Resposta {
 
   if (/(baixar|download|instalar|instalador|setup|programa)/.test(text)) {
     return {
-      text: "O NOVA é um instalador único para Windows 11. Ele já traz tudo o que precisa — não pede Python, terminal nem administrador.",
+      text: "O Orbi é um instalador único para Windows 11. Ele já traz tudo o que precisa — não pede Python, terminal nem administrador.",
       signal: "privado",
       detail: "A conta é opcional.",
       actions: [{ label: "Abrir download", value: "app:download", primary: true }],
@@ -325,7 +327,7 @@ export function interpret(input: string): Resposta {
 
   if (/(bloqueia|bloquear|tranca|lock)/.test(text)) {
     return {
-      text: "O Windows bloqueia na hora, com a sua senha de verdade. Para voltar, nenhuma senha do NOVA: a mesma de sempre.",
+      text: "O Windows bloqueia na hora, com a sua senha de verdade. Para voltar, nenhuma senha do Orbi: a mesma de sempre.",
       signal: "local",
       detail: "O bloqueio usa o próprio Windows, não uma tela do app.",
     };
@@ -452,32 +454,28 @@ export function interpret(input: string): Resposta {
 
   if (/(json|codigo|código|como funciona a ia|gemini|api|chave)/.test(text)) {
     return {
-      text: "Você fala em português. A IA devolve uma ação e a NOVA confere se ela está na lista permitida. Sua chave é gratuita e fica no Cofre do Windows.",
+      text: "Você fala em português. A IA devolve uma ação e o Orbi confere se ela está na lista permitida. Sua chave é gratuita e fica no Cofre do Windows.",
       signal: "privado",
       detail: "O código nunca aparece para você — só a resposta.",
     };
   }
 
   return {
-    text: "Essa pergunta precisa da IA; esta prévia está no modo local. No app, o Gemini responde com a chave gratuita. Aqui ainda posso abrir apps, ajustar o volume ou criar lembretes.",
-    signal: "privado",
-    detail: "Sem internet, a NOVA continua útil assim.",
-    actions: [
-      { label: "Ver exemplos", value: "try:apps", primary: true },
-      { label: "Baixar o NOVA", value: "app:download" },
-    ],
+    text: "",
+    needsAi: true,
+    signal: "ia",
   };
 }
 
 /* ------------------------------------------------------------------ */
 /* Componente                                                         */
 /* ------------------------------------------------------------------ */
-export default function NovaChat({ onDownload, onLogin }: NovaChatProps) {
+export default function OrbiChat({ onDownload, onLogin }: OrbiChatProps) {
   const [messages, setMessages] = useState<Mensagem[]>([
     {
       id: 1,
-      from: "nova",
-      text: "Oi. Eu sou a NOVA. O que você precisa?",
+      from: "orbi",
+      text: "Oi. Eu sou o Orbi. O que você precisa?",
       signal: "local",
       detail: "Experimente os exemplos ou escreva do seu jeito.",
     },
@@ -488,7 +486,7 @@ export default function NovaChat({ onDownload, onLogin }: NovaChatProps) {
     },
     {
       id: 3,
-      from: "nova",
+      from: "orbi",
       text: "Combinado. Te aviso em 20 minutos. O lembrete fica no seu PC e continua valendo mesmo se você reiniciar.",
       signal: "local",
       detail: "Funciona sem internet.",
@@ -496,6 +494,9 @@ export default function NovaChat({ onDownload, onLogin }: NovaChatProps) {
   ]);
   const [value, setValue] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [ai, setAi] = useState<AiStatus>("unknown");
+
+  useEffect(() => onAiStatus(setAi), []);
   const seq = useRef(3);
   const timer = useRef<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -516,14 +517,55 @@ export default function NovaChat({ onDownload, onLogin }: NovaChatProps) {
     setMessages((previous) => [...previous, { ...message, id: seq.current }]);
   };
 
+  const push = (message: Omit<Mensagem, "id">) => {
+    addMessage(message);
+  };
+
+  /** Resposta local (rápida) ou Gemini quando o comando foge do script. */
   const reply = (userText: string, response: Resposta) => {
-    addMessage({ from: "voce", text: userText });
+    push({ from: "voce", text: userText });
     setThinking(true);
     if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      addMessage({ from: "nova", ...response });
+
+    if (!response.needsAi) {
+      timer.current = window.setTimeout(() => {
+        push({ from: "orbi", ...response });
+        setThinking(false);
+      }, 420 + Math.random() * 200);
+      return;
+    }
+
+    // Precisa da IA: pergunta ao Gemini (Firebase AI Logic) com o histórico.
+    const history = messages
+      .filter((message) => !message.needsAi)
+      .slice(-6)
+      .map((message) => ({
+        role: message.from === "voce" ? ("user" as const) : ("model" as const),
+        text: message.text,
+      }));
+
+    void askGemini(userText, history).then((answer) => {
       setThinking(false);
-    }, 520 + Math.random() * 260);
+      if (answer) {
+        push({
+          from: "orbi",
+          text: answer,
+          signal: "ia",
+          detail: "Respondido pelo Gemini via Firebase AI Logic.",
+        });
+      } else {
+        push({
+          from: "orbi",
+          text: "Não consegui falar com o Gemini agora. Mesmo sem ele eu abro apps, ajusto o volume, crio lembretes e mostro o status do PC — tenta um desses.",
+          signal: "privado",
+          detail: "Sem internet, o app continua funcionando no modo local.",
+          actions: [
+            { label: "Ver exemplos", value: "try:apps", primary: true },
+            { label: "Baixar o Orbi", value: "app:download" },
+          ],
+        });
+      }
+    });
   };
 
   const send = (text: string) => {
@@ -541,8 +583,8 @@ export default function NovaChat({ onDownload, onLogin }: NovaChatProps) {
       setThinking(true);
       timer.current = window.setTimeout(() => {
         addMessage({
-          from: "nova",
-          text: "Abri o download do NOVA para Windows 11.",
+          from: "orbi",
+          text: "Abri o download do Orbi para Windows 11.",
           signal: "privado",
         });
         setThinking(false);
@@ -587,8 +629,8 @@ export default function NovaChat({ onDownload, onLogin }: NovaChatProps) {
     setMessages([
       {
         id: 1,
-        from: "nova",
-        text: "Oi. Eu sou a NOVA. O que você precisa?",
+        from: "orbi",
+        text: "Oi. Eu sou o Orbi. O que você precisa?",
         signal: "local",
         detail: "Experimente os exemplos ou escreva do seu jeito.",
       },
@@ -606,7 +648,7 @@ export default function NovaChat({ onDownload, onLogin }: NovaChatProps) {
             </span>
             <div className="min-w-0">
               <p className="font-cond text-[16px] font-bold uppercase leading-none tracking-[0.08em] text-bone">
-                Nova
+                Orbi
               </p>
               <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.12em] text-bone/65">
                 prévia interativa
@@ -615,9 +657,19 @@ export default function NovaChat({ onDownload, onLogin }: NovaChatProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="label hidden items-center gap-1.5 rounded-full border border-white/15 px-2.5 py-1 text-bone/75 sm:flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#d9d1c1]" aria-hidden />
-              modo local
+            <span
+              className={`label hidden items-center gap-1.5 rounded-full border px-2.5 py-1 sm:flex ${
+                ai === "online"
+                  ? "border-signal/60 bg-signal/10 text-[#f0a38e]"
+                  : "border-white/15 text-bone/75"
+              }`}
+              title="Se o Gemini já estiver habilitado no console do Firebase, o assistente conversa de verdade."
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${ai === "online" ? "bg-signal" : "bg-[#d9d1c1]"}`}
+                aria-hidden
+              />
+              {aiLabel(ai)}
             </span>
             <button
               type="button"
@@ -636,7 +688,7 @@ export default function NovaChat({ onDownload, onLogin }: NovaChatProps) {
           aria-live="polite"
           aria-relevant="additions"
           aria-busy={thinking}
-          aria-label="Conversa de prévia da NOVA"
+          aria-label="Conversa de prévia do Orbi"
           className="thin-scrollbar min-h-[270px] max-h-[340px] space-y-4 overflow-y-auto px-3.5 py-5 sm:max-h-[360px] sm:px-5"
         >
           {messages.map((message, index) => {
@@ -735,7 +787,7 @@ export default function NovaChat({ onDownload, onLogin }: NovaChatProps) {
 
           <form onSubmit={submit} className="flex items-center gap-2">
             <label htmlFor="nova-chat-input" className="sr-only">
-              Mensagem para a NOVA
+              Mensagem para o Orbi
             </label>
             <input
               id="nova-chat-input"
@@ -772,7 +824,8 @@ export default function NovaChat({ onDownload, onLogin }: NovaChatProps) {
 
       <p className="mt-3 flex items-center gap-2 font-mono text-[10.5px] leading-relaxed text-warm">
         <span className="h-1.5 w-1.5 shrink-0 bg-signal" aria-hidden />
-        Prévia no navegador. No app, os comandos agem de verdade no seu Windows 11.
+        Este assistente roda de verdade no navegador: regras locais para os comandos do app e Gemini
+        para o resto. No Windows, ele age no seu PC.
       </p>
     </div>
   );

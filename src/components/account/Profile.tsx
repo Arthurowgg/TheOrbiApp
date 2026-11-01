@@ -10,7 +10,7 @@ export default function Profile({ account, reload, notify }: PageProps) {
 
   const dirty = name.trim() !== account.name || email.trim().toLowerCase() !== account.email;
 
-  const save = (event: FormEvent) => {
+  const save = async (event: FormEvent) => {
     event.preventDefault();
     const next: typeof errors = {};
     if (name.trim().length < 2) next.name = "Digite como você quer ser chamado.";
@@ -19,9 +19,9 @@ export default function Profile({ account, reload, notify }: PageProps) {
     if (Object.keys(next).length) return;
 
     try {
-      updateProfile(account.id, { name, email });
-      reload();
-      notify("Perfil atualizado.");
+      await updateProfile({ name, email });
+      await reload();
+      notify(email.trim().toLowerCase() === account.email ? "Perfil atualizado." : "Perfil atualizado. Confirme o novo e-mail na caixa de entrada.");
     } catch (error) {
       if (error instanceof AuthError && error.code === "email_taken") {
         setErrors({ email: error.message });
@@ -31,10 +31,10 @@ export default function Profile({ account, reload, notify }: PageProps) {
     }
   };
 
-  const pickColor = (color: string) => {
+  const pickColor = async (color: string) => {
     try {
-      updateProfile(account.id, { color });
-      reload();
+      await updateProfile({ color });
+      await reload();
     } catch (error) {
       notify(error instanceof Error ? error.message : "Não foi possível salvar.");
     }
@@ -42,7 +42,7 @@ export default function Profile({ account, reload, notify }: PageProps) {
 
   return (
     <>
-      <PageHeader title="Perfil" description="Como você aparece no site e no app NOVA." />
+      <PageHeader title="Perfil" description="Como você aparece no site e no app Orbi." />
 
       <div className="grid gap-5 lg:grid-cols-[1fr_310px]">
         <Panel title="Informações pessoais" description="Estes dados aparecem em Configurações ▸ Conta, no app.">

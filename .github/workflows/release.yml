@@ -1,0 +1,181 @@
+name: Release
+
+# Compila o app Windows, gera o instalador Inno Setup, publica a release e
+# entrega o site no Firebase Hosting.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publicar uma release no GitHub"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  web:
+    name: Site (build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist
+          retention-days: 14
+
+  windows:
+    name: App + instalador
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore app/Orbi.App/Orbi.App.csproj
+
+      - name: Build (Release)
+        run: dotnet build app/Orbi.App/Orbi.App.csproj -c Release --no-restore
+
+      - name: Publish single-file self-contained
+        run: >
+          dotnet publish app/Orbi.App/Orbi.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -o artifacts/publish
+
+      - name: Instalar Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Gerar o instalador
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" app\installer\orbi.iss
+
+      - name: Checksums
+        shell: powershell
+        run: |
+          $file = Get-ChildItem artifacts\OrbiSetup-*.exe | Select-Object -First 1
+          $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($file.Name)" | Out-File -Encoding ascii artifacts\SHA256SUMS.txt
+          "installer=$($file.FullName)" | Out-File -Encoding utf8 -Append $env:GITHUB_OUTPUT
+          Write-Host "SHA-256: $hash"
+
+      - name: Smoke test do executável
+        shell: powershell
+        run: |
+          # Confere que o binário publicado existe e tem tamanho plausível.
+          $exe = Get-ChildItem artifacts\publish\Orbi.exe
+          if ($exe.Length -lt 5MB) { throw "Orbi.exe suspeito: $($exe.Length) bytes" }
+          Write-Host "Orbi.exe: $([math]::Round($exe.Length/1MB,1)) MB"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: |
+            artifacts/OrbiSetup-*.exe
+            artifacts/SHA256SUMS.txt
+          retention-days: 14
+
+  release:
+    name: Publicar release
+    needs: windows
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: installer
+          path: artifacts
+
+      - name: Criar/atualizar a release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: Orbi 1.0.0
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: |
+            artifacts/OrbiSetup-1.0.0.exe
+            artifacts/SHA256SUMS.txt
+          body: |
+            ## Orbi 1.0.0 — para Windows 11
+
+            Instalador único, sem Python, sem privilégio de administrador.
+
+            **Baixe `OrbiSetup-1.0.0.exe`** e execute. Depois aperte `Alt+Space`.
+
+            - Barra de comando global com atalhos, histórico e sugestões
+            - Comandos em português: abrir apps, volume, brilho, energia, captura
+            - Lembretes, notas, atalhos de texto e apelidos de apps
+            - Status do PC (CPU, memória, disco, bateria)
+            - Bloqueio por inatividade com aviso e exceções
+            - Gemini opcional (chave gratuita do AI Studio, cifrada com DPAPI)
+            - Conta Orbi: Firebase Authentication + Firestore, vínculo por código
+
+            **Verificação:** compare o SHA-256 com `SHA256SUMS.txt`.
+
+            ```powershell
+            certutil -hashfile OrbiSetup-1.0.0.exe SHA256
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Só roda quando existe o secret FIREBASE_SERVICE_ACCOUNT (uma conta de
+  # serviço do projeto orbi-app-auth). Sem o secret, o job é pulado e o site
+  # continua podendo ser publicado com `firebase deploy` na sua máquina.
+  hosting:
+    name: Firebase Hosting
+    needs: [web, release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: dist
+
+      - id: auth
+        name: Conferir credencial do Firebase
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Secret FIREBASE_SERVICE_ACCOUNT ausente — deploy do Hosting pulado."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          fi
+
+      - name: Deploy no Hosting
+        if: steps.auth.outputs.available == 'true'
+        run: npx --yes firebase-tools@latest deploy --only hosting --project orbi-app-auth --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json

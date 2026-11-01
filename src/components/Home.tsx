@@ -1,15 +1,20 @@
-import NovaChat from "./NovaChat";
+import { useEffect, useState } from "react";
+import OrbiChat from "./OrbiChat";
 import AppMock from "./AppMock";
-import { Button, Eyebrow, Icon, Reveal } from "./ui";
+import AppShowcase from "./AppShowcase";
+import { Button, Eyebrow, Icon, Keycap, Reveal } from "./ui";
 import {
   CAPABILITIES,
   DOWNLOAD_STEPS,
+  FAQ,
   FEATURES,
   LOCAL_ONLY,
   LOCK_EXCEPTIONS,
   LOCK_TIMELINE,
+  RELEASE_NOTES,
+  STATS,
 } from "../data/site";
-import { BUILD } from "../lib/download";
+import { BUILD, fetchLatestRelease, humanSize, shortChecksum, type Release } from "../lib/download";
 import { scrollToSection } from "../lib/router";
 import type { Account } from "../lib/accounts";
 
@@ -21,38 +26,138 @@ type HomeProps = {
   onAccount: () => void;
 };
 
+/* ------------------------------------------------------------------ */
+function useRelease() {
+  const [release, setRelease] = useState<Release | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void fetchLatestRelease().then((value) => {
+      if (!alive) return;
+      setRelease(value);
+      setLoaded(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return { release, loaded };
+}
+
+/* ------------------------------------------------------------------ */
+function CapabilityMarquee() {
+  const items = [...CAPABILITIES, "Windows 11", "Sem Python", "Grátis", "Firebase Auth", "Gemini"];
+  return (
+    <div className="relative overflow-hidden border-y border-rule bg-paper-2/40 py-3">
+      <div className="marquee-track">
+        {[0, 1].map((copy) => (
+          <ul key={copy} className="flex shrink-0 items-center gap-8 pr-8" aria-hidden={copy === 1}>
+            {items.map((item) => (
+              <li key={`${copy}-${item}`} className="label flex items-center gap-2 whitespace-nowrap text-ink-2">
+                <span className="h-1.5 w-1.5 bg-signal" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+function Faq() {
+  const [open, setOpen] = useState<number | null>(0);
+  return (
+    <div className="border-t border-rule">
+      {FAQ.map((item, index) => {
+        const expanded = open === index;
+        return (
+          <div key={item.q} className="border-b border-rule">
+            <button
+              type="button"
+              onClick={() => setOpen(expanded ? null : index)}
+              aria-expanded={expanded}
+              className="flex w-full items-center justify-between gap-6 py-4 text-left"
+            >
+              <span className="flex items-baseline gap-3">
+                <span className="label tnum text-signal">{String(index + 1).padStart(2, "0")}</span>
+                <span className="text-[14.5px] font-medium text-ink">{item.q}</span>
+              </span>
+              <Icon
+                name="chevron-down"
+                className={`h-4 w-4 shrink-0 text-warm transition-transform duration-300 ${
+                  expanded ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            <div
+              className={`grid transition-[grid-template-rows,opacity] duration-300 ${
+                expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+              }`}
+            >
+              <div className="overflow-hidden">
+                <p className="max-w-[70ch] pb-5 pl-[38px] text-[13.5px] leading-[1.65] text-ink-2">{item.a}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 export default function Home({ account, onDownload, onLogin, onSignup, onAccount }: HomeProps) {
+  const { release, loaded } = useRelease();
+  const version = release?.version ?? BUILD.version;
+  const size = release?.installer ? humanSize(release.installer.size) : BUILD.sizeHint;
+
   return (
     <main id="inicio">
       {/* ------------------------------ HERO ------------------------------ */}
       <section className="relative overflow-hidden border-b border-rule">
-        <div className="hairline-grid pointer-events-none absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" aria-hidden />
-        <div className="relative mx-auto grid max-w-[1180px] items-center gap-12 px-5 pb-16 pt-28 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-14 lg:pb-20 lg:pt-32">
+        <div
+          className="hairline-grid pointer-events-none absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent_88%)]"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -right-40 -top-40 h-[520px] w-[520px] rounded-full bg-signal/[0.07] blur-3xl"
+          aria-hidden
+        />
+        <div className="relative mx-auto grid max-w-[1200px] items-center gap-12 px-5 pb-16 pt-28 sm:px-8 lg:grid-cols-[0.94fr_1.06fr] lg:gap-14 lg:pb-20 lg:pt-32">
           <div className="animate-fade-up">
             <div className="flex flex-wrap items-center gap-3">
               <Eyebrow>Assistente para Windows 11</Eyebrow>
-              <span className="label border border-rule px-2 py-1 text-warm">v{BUILD.version}</span>
+              <span className="label border border-rule bg-paper/60 px-2 py-1 text-warm">v{version}</span>
+              <span className="label inline-flex items-center gap-1.5 border border-moss/30 bg-moss/[0.07] px-2 py-1 text-moss">
+                <span className="relative grid h-1.5 w-1.5 place-items-center rounded-full bg-moss">
+                  <span className="pulse-ring absolute inset-0" />
+                </span>
+                grátis
+              </span>
             </div>
 
-            <h1 className="display mt-5 text-[clamp(2.9rem,6.6vw,5.8rem)] text-ink">
+            <h1 className="display mt-5 text-[clamp(2.9rem,6.6vw,5.6rem)] text-ink">
               Seu PC,
               <br />
-              <span className="display-serif">em português.</span>
+              <span className="display-serif text-signal">em português.</span>
             </h1>
 
-            <p className="mt-6 max-w-[44ch] text-[16px] leading-[1.7] text-ink-2 sm:text-[17px]">
-              Abre apps, ajusta o volume, cria lembretes e protege sua sessão. Você escreve do seu
-              jeito — a NOVA resolve.
+            <p className="mt-6 max-w-[46ch] text-[16px] leading-[1.7] text-ink-2 sm:text-[17px]">
+              O Orbi abre seus apps, ajusta o PC, cria lembretes e protege sua sessão. Você fala do
+              seu jeito; ele resolve — com Gemini quando precisa, sem internet quando não tem.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button size="lg" onClick={onDownload}>
-                <Icon name="arrow-down" className="h-4 w-4" />
+                <Icon name="download" className="h-4 w-4" />
                 Baixar para Windows
               </Button>
               {account ? (
                 <Button size="lg" variant="secondary" onClick={onAccount}>
                   Minha conta
+                  <Icon name="arrow-right" className="h-4 w-4" />
                 </Button>
               ) : (
                 <Button size="lg" variant="secondary" onClick={onSignup}>
@@ -61,55 +166,84 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
               )}
             </div>
 
-            <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[11px] text-warm">
+            <p className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-warm">
               <span className="inline-flex items-center gap-1.5">
                 <Icon name="windows" className="h-3.5 w-3.5" />
                 Windows 11 · 64 bits
               </span>
-              <span>Gratuito</span>
-              <span>Sem cartão</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="download" className="h-3.5 w-3.5" />
+                {size}
+              </span>
+              <span>{loaded && release?.installer ? "instalador publicado" : "sem cartão"}</span>
             </p>
+
+            <dl className="mt-9 grid grid-cols-2 gap-x-6 gap-y-5 border-t border-rule pt-6 sm:grid-cols-4">
+              {STATS.map((stat) => (
+                <div key={stat.label}>
+                  <dt className="sr-only">{stat.label}</dt>
+                  <dd>
+                    <span className="block font-cond text-[26px] font-bold leading-none text-ink">
+                      {stat.value}
+                    </span>
+                    <span className="mt-1 block text-[11.5px] font-medium text-ink-2">{stat.label}</span>
+                    <span className="mt-0.5 block font-mono text-[9.5px] leading-tight text-warm">
+                      {stat.hint}
+                    </span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </div>
 
           <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
-            <NovaChat onDownload={onDownload} onLogin={onLogin} />
+            <OrbiChat onDownload={onDownload} onLogin={onLogin} />
           </div>
         </div>
       </section>
 
-      {/* ----------------------------- CAPACIDADES ----------------------------- */}
-      <div className="border-b border-rule bg-paper-2/50">
-        <ul className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-x-8 gap-y-2.5 px-5 py-4 sm:px-8">
-          {CAPABILITIES.map((item) => (
-            <li key={item} className="label flex items-center gap-2 text-ink-2">
-              <span className="h-1.5 w-1.5 bg-signal" aria-hidden />
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
+      <CapabilityMarquee />
 
       {/* ------------------------------ RECURSOS ------------------------------ */}
       <section id="recursos" className="scroll-mt-16 py-20 lg:py-24">
-        <div className="mx-auto max-w-[1180px] px-5 sm:px-8">
+        <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
           <Reveal>
-            <div className="max-w-[560px]">
-              <Eyebrow>O que ela faz</Eyebrow>
-              <h2 className="display mt-4 text-[clamp(2.4rem,5vw,3.8rem)] text-ink">
-                Menos cliques.
-                <br />
-                <span className="display-serif">Mais dia.</span>
-              </h2>
+            <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+              <div className="max-w-[560px]">
+                <Eyebrow>O que ele faz</Eyebrow>
+                <h2 className="display mt-4 text-[clamp(2.4rem,5vw,3.7rem)] text-ink">
+                  Menos cliques.
+                  <br />
+                  <span className="display-serif">Mais dia.</span>
+                </h2>
+              </div>
+              <p className="max-w-[38ch] text-[13.5px] leading-[1.65] text-warm md:text-right">
+                Cinco famílias de comandos resolvidas no seu PC e uma IA que entra só quando o
+                assunto foge do script.
+              </p>
             </div>
           </Reveal>
 
           <div className="mt-10 grid border-l border-t border-rule sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((feature, index) => (
               <Reveal key={feature.title} delay={index * 40}>
-                <article className="group h-full border-b border-r border-rule px-6 py-7 transition-colors hover:bg-paper-2/60">
-                  <span className="grid h-10 w-10 place-items-center border border-rule text-ink-2 transition-colors group-hover:border-ink group-hover:text-signal">
-                    <Icon name={feature.icon} className="h-[18px] w-[18px]" />
-                  </span>
+                <article className="group card-lift h-full border-b border-r border-rule px-6 py-7">
+                  <div className="flex items-start justify-between">
+                    <span className="grid h-10 w-10 place-items-center border border-rule text-ink-2 transition-colors group-hover:border-ink group-hover:text-signal">
+                      <Icon name={feature.icon} className="h-[18px] w-[18px]" />
+                    </span>
+                    <span
+                      className={`label border px-1.5 py-0.5 text-[9px] ${
+                        feature.tag === "IA"
+                          ? "border-signal/40 bg-signal-soft/60 text-signal-dark"
+                          : feature.tag === "privado"
+                            ? "border-moss/30 text-moss"
+                            : "border-rule text-warm"
+                      }`}
+                    >
+                      {feature.tag}
+                    </span>
+                  </div>
                   <h3 className="mt-6 font-cond text-[21px] font-semibold uppercase leading-tight tracking-[0.01em] text-ink">
                     {feature.title}
                   </h3>
@@ -121,29 +255,121 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
         </div>
       </section>
 
+      {/* -------------------------------- O APP -------------------------------- */}
+      <section id="app" className="scroll-mt-16 border-y border-rule bg-paper-2/30 py-20 lg:py-24">
+        <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
+          <Reveal>
+            <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+              <div className="max-w-[560px]">
+                <Eyebrow>Por dentro</Eyebrow>
+                <h2 className="display mt-4 text-[clamp(2.4rem,5vw,3.7rem)] text-ink">
+                  Um app de
+                  <br />
+                  <span className="display-serif">verdade.</span>
+                </h2>
+              </div>
+              <p className="max-w-[40ch] text-[13.5px] leading-[1.65] text-warm md:text-right">
+                Nativo, sem Electron, sem Python. Instalador Inno Setup, atalho no Menu Iniciar,
+                ícone na bandeja e atualização pela release do GitHub.
+              </p>
+            </div>
+          </Reveal>
+
+          <div className="mt-10">
+            <AppShowcase />
+          </div>
+
+          <div className="mt-12 grid gap-6 border-t border-rule pt-8 md:grid-cols-3">
+            <Reveal>
+              <h3 className="font-cond text-[19px] font-semibold uppercase tracking-[0.02em] text-ink">
+                O que vem na caixa
+              </h3>
+              <ul className="mt-3 space-y-2">
+                {[
+                  "OrbiSetup.exe assinado pelo build de CI",
+                  "Atalho no Menu Iniciar e na bandeja",
+                  "Barra de comando global com Alt+Space",
+                  "Banco local para notas e lembretes",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2.5 text-[13px] leading-snug text-ink-2">
+                    <Icon name="check" className="mt-[2px] h-3.5 w-3.5 shrink-0 text-signal" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+
+            <Reveal delay={60}>
+              <h3 className="font-cond text-[19px] font-semibold uppercase tracking-[0.02em] text-ink">
+                Nesta versão
+              </h3>
+              <ul className="mt-3 space-y-1.5">
+                {RELEASE_NOTES.map((note) => (
+                  <li key={note} className="flex items-start gap-2.5 text-[12.5px] leading-snug text-warm">
+                    <span className="mt-[7px] h-1 w-1 shrink-0 bg-rule" />
+                    {note}
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+
+            <Reveal delay={120}>
+              <div className="border border-rule bg-[#fbf9f3] p-4">
+                <p className="label text-warm">Atalhos que valem decorar</p>
+                <ul className="mt-3 space-y-2.5">
+                  {[
+                    { keys: ["Alt", "Space"], label: "abre a barra" },
+                    { keys: ["Esc"], label: "fecha sem executar" },
+                    { keys: ["Ctrl", "Shift", "O"], label: "abre os ajustes" },
+                    { keys: ["Alt", "Space", "↑"], label: "repete o último comando" },
+                  ].map((item) => (
+                    <li key={item.label} className="flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-1">
+                        {item.keys.map((key, keyIndex) => (
+                          <span key={key} className="flex items-center gap-1">
+                            {keyIndex > 0 && <span className="font-mono text-[10px] text-warm">+</span>}
+                            <Keycap>{key}</Keycap>
+                          </span>
+                        ))}
+                      </span>
+                      <span className="shrink-0 font-mono text-[10.5px] text-warm">{item.label}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 border-t border-rule pt-2.5 font-mono text-[9.5px] leading-snug text-warm">
+                  Todos configuráveis em Ajustes ▸ Atalhos.
+                </p>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
       {/* ----------------------------- CONTA E APP ----------------------------- */}
-      <section id="conta" className="scroll-mt-16 bg-film text-bone">
-        <div className="mx-auto grid max-w-[1180px] items-center gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16 lg:py-24">
+      <section id="conta" className="relative overflow-hidden bg-film text-bone">
+        <div className="hairline-grid-dark pointer-events-none absolute inset-0" aria-hidden />
+        <div className="relative mx-auto grid max-w-[1200px] items-center gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16 lg:py-24">
           <Reveal>
             <Eyebrow tone="paper">Uma conta, dois lugares</Eyebrow>
-            <h2 className="display mt-4 text-[clamp(2.5rem,5vw,4rem)] text-bone">
+            <h2 className="display mt-4 text-[clamp(2.5rem,5vw,3.9rem)] text-bone">
               Site e app,
               <br />
               <span className="text-signal">a mesma conta.</span>
             </h2>
             <p className="mt-5 max-w-[46ch] text-[15px] leading-[1.7] text-bone/60">
-              Crie a conta no site, instale a NOVA e vincule com um código. O que importa para o seu
-              dia a dia acompanha você; o que é sensível nunca sai do PC.
+              Login com Firebase Authentication: e-mail e senha com hash no servidor, verificação de
+              e-mail, redefinição por link e entrada com Google. Crie a conta aqui, instale o Orbi e
+              vincule com um código.
             </p>
 
             <ol className="mt-8 space-y-4 border-t border-white/15 pt-6">
               {[
-                ["Abra Configurações ▸ Conta", "O app mostra um código NOVA-XXXX-XXXX."],
+                ["Abra Configurações ▸ Conta", "O app mostra um código ORBI-XXXX-XXXX."],
                 ["Digite no site", "Conta ▸ Dispositivos, com um nome para o seu PC."],
-                ["Pronto", "Preferências, apelidos e rotinas ficam em dia."],
+                ["Pronto", "Preferências, apelidos e rotinas ficam em dia nos dois."],
               ].map(([title, body], index) => (
                 <li key={title} className="flex gap-4">
-                  <span className="label tnum mt-[3px] text-[#e9846a]">0{index + 1}</span>
+                  <span className="label tnum mt-[3px] text-ember">0{index + 1}</span>
                   <div>
                     <p className="text-[14.5px] font-medium text-bone">{title}</p>
                     <p className="mt-0.5 text-[13px] leading-snug text-bone/50">{body}</p>
@@ -177,20 +403,23 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
           </Reveal>
 
           <Reveal delay={100}>
-            <AppMock
-              name={account?.name ?? "Ana Souza"}
-              email={account?.email ?? "ana@exemplo.com"}
-              color={account?.color}
-            />
+            <div className="relative">
+              <div className="glow-signal pointer-events-none absolute -inset-10 -z-10" aria-hidden />
+              <AppMock
+                name={account?.name ?? "Ana Souza"}
+                email={account?.email ?? "ana@exemplo.com"}
+                color={account?.color}
+              />
+            </div>
           </Reveal>
         </div>
       </section>
 
       {/* ------------------------------ SEGURANÇA ------------------------------ */}
       <section id="seguranca" className="scroll-mt-16 border-b border-rule py-20 lg:py-24">
-        <div className="mx-auto grid max-w-[1180px] items-center gap-12 px-5 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+        <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-5 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
           <Reveal className="order-2 lg:order-1">
-            <div className="border border-rule bg-[#fbf9f3]">
+            <div className="border border-rule bg-[#fbf9f3] shadow-panel">
               <div className="flex items-center justify-between border-b border-rule px-5 py-3.5">
                 <p className="text-[14px] font-semibold text-ink">Bloqueio por inatividade</p>
                 <span className="label inline-flex items-center gap-1.5 bg-ink px-2.5 py-1 text-paper">
@@ -217,34 +446,34 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                         <span className="font-mono text-[11px] text-signal">{step.time}</span>
                         <span className="text-[14.5px] font-medium text-ink">{step.title}</span>
                       </p>
-                      <p className="mt-1 text-[13px] leading-snug text-warm">{step.body}</p>
+                      <p className="mt-0.5 text-[12.5px] leading-snug text-warm">{step.body}</p>
                     </div>
                   </li>
                 ))}
               </ol>
 
-              <div className="border-t border-rule bg-paper-2/50 px-5 py-4">
-                <p className="label text-warm">Não bloqueia durante</p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
+              <div className="border-t border-rule px-5 py-4">
+                <p className="label text-warm">O app entende quando não é hora</p>
+                <ul className="mt-2.5 flex flex-wrap gap-1.5">
                   {LOCK_EXCEPTIONS.map((item) => (
-                    <span key={item} className="border border-rule bg-[#fbf9f3] px-2.5 py-1 font-mono text-[11px] text-ink-2">
+                    <li key={item} className="label border border-rule bg-paper px-2 py-1 text-[9.5px] text-ink-2">
                       {item}
-                    </span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             </div>
           </Reveal>
 
-          <Reveal delay={100} className="order-1 lg:order-2">
-            <Eyebrow>Segurança de verdade</Eyebrow>
-            <h2 className="display mt-4 text-[clamp(2.5rem,5vw,3.9rem)] text-ink">
-              Você sai.
+          <Reveal delay={80} className="order-1 lg:order-2">
+            <Eyebrow>Segurança</Eyebrow>
+            <h2 className="display mt-4 text-[clamp(2.3rem,4.6vw,3.4rem)] text-ink">
+              Nada sensível
               <br />
-              <span className="display-serif">O PC se fecha.</span>
+              <span className="display-serif">sai do PC.</span>
             </h2>
-            <p className="mt-5 max-w-[46ch] text-[15px] leading-[1.7] text-ink-2">
-              Depois do tempo que você escolher, a NOVA bloqueia o Windows. Avisa antes e respeita o
+            <p className="mt-5 max-w-[46ch] text-[14.5px] leading-[1.7] text-ink-2">
+              Depois do tempo que você escolher, o Orbi bloqueia o Windows. Avisa antes e respeita o
               que está acontecendo na tela.
             </p>
             <p className="serif mt-7 border-l-2 border-signal pl-4 text-[18px] italic leading-[1.5] text-ink">
@@ -255,8 +484,9 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                 "Senhas e área de transferência nunca vão para a nuvem.",
                 "A presença por webcam é opcional e não grava imagem.",
                 "A chave da IA fica no Cofre de Credenciais do Windows.",
+                "No Firestore ficam só perfil, aparelhos e preferências — cada documento visível apenas para o dono.",
               ].map((item) => (
-                <li key={item} className="flex items-start gap-3 text-[14px] leading-snug text-ink-2">
+                <li key={item} className="flex items-start gap-3 text-[13.5px] leading-snug text-ink-2">
                   <Icon name="check" className="mt-[2px] h-4 w-4 shrink-0 text-signal" />
                   {item}
                 </li>
@@ -268,12 +498,12 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
 
       {/* ------------------------------ DOWNLOAD ------------------------------ */}
       <section id="download" className="scroll-mt-16 py-20 lg:py-24">
-        <div className="mx-auto max-w-[1180px] px-5 sm:px-8">
+        <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
           <Reveal>
-            <div className="grid border border-ink/25 bg-[#fbf9f3] lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="grid border border-ink/25 bg-[#fbf9f3] lg:grid-cols-[1.08fr_0.92fr]">
               <div className="p-6 sm:p-9 lg:p-11">
                 <Eyebrow>Download</Eyebrow>
-                <h2 className="display mt-4 text-[clamp(2.5rem,5vw,3.9rem)] text-ink">
+                <h2 className="display mt-4 text-[clamp(2.4rem,5vw,3.7rem)] text-ink">
                   Instale em
                   <br />
                   <span className="display-serif">três passos.</span>
@@ -294,7 +524,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                 <div className="mt-8 flex flex-wrap items-center gap-3">
                   <Button size="lg" onClick={onDownload}>
                     <Icon name="download" className="h-4 w-4" />
-                    Baixar NOVA {BUILD.version}
+                    Baixar Orbi {version}
                   </Button>
                   {!account && (
                     <button
@@ -307,14 +537,27 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                     </button>
                   )}
                 </div>
+
+                <p className="mt-4 font-mono text-[10px] leading-relaxed text-warm">
+                  {loaded && release?.installer
+                    ? `release ${release.tag} · ${release.installer.name} · ${size}`
+                    : "o build automático publica o instalador na aba de releases do GitHub"}
+                </p>
               </div>
 
               <aside className="border-t border-ink/25 bg-film p-6 text-bone sm:p-9 lg:border-l lg:border-t-0 lg:p-11">
-                <p className="label text-bone/50">Versão {BUILD.version}</p>
+                <div className="flex items-center justify-between">
+                  <p className="label text-bone/50">Versão {version}</p>
+                  <span className="label border border-white/15 px-2 py-1 text-[9px] text-bone/50">
+                    {BUILD.channel}
+                  </span>
+                </div>
+
                 <dl className="mt-5 divide-y divide-white/10 border-y border-white/10">
                   {[
-                    ["Sistema", "Windows 11 (23H2 ou superior)"],
+                    ["Sistema", "Windows 11 (22H2+) · Windows 10 1809+"],
                     ["Arquitetura", "64 bits (x64)"],
+                    ["Tamanho", size],
                     ["Instalação", "Automática, sem terminal"],
                     ["Administrador", "Não é necessário"],
                     ["Conta", "Opcional"],
@@ -325,17 +568,78 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                     </div>
                   ))}
                 </dl>
+
+                <div className="mt-5 border border-white/10 bg-white/[0.03] p-3">
+                  <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-bone/40">SHA-256</p>
+                  <p className="mt-1 break-all font-mono text-[11px] text-bone/80">
+                    {release?.installer
+                      ? `disponível em ${release.tag}/SHA256SUMS.txt`
+                      : shortChecksum("aguardando a primeira release")}
+                  </p>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => scrollToSection("seguranca")}
-                  className="label mt-6 inline-flex items-center gap-2 text-bone/60 transition-colors hover:text-bone"
+                  className="label mt-5 inline-flex items-center gap-2 text-bone/60 transition-colors hover:text-bone"
                 >
-                  Como a NOVA protege seus dados
+                  Como o Orbi protege seus dados
                   <Icon name="arrow-right" className="h-3 w-3" />
                 </button>
               </aside>
             </div>
           </Reveal>
+        </div>
+      </section>
+
+      {/* -------------------------------- FAQ -------------------------------- */}
+      <section className="border-t border-rule bg-paper-2/25 py-20 lg:py-24">
+        <div className="mx-auto grid max-w-[1200px] gap-12 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+          <Reveal>
+            <Eyebrow>Perguntas</Eyebrow>
+            <h2 className="display mt-4 text-[clamp(2.2rem,4.4vw,3.2rem)] text-ink">
+              Antes de
+              <br />
+              <span className="display-serif">baixar.</span>
+            </h2>
+            <p className="mt-5 max-w-[34ch] text-[13.5px] leading-[1.7] text-warm">
+              Se ficou alguma dúvida, o assistente no topo da página responde — ele é o mesmo motor,
+              rodando aqui.
+            </p>
+          </Reveal>
+          <Reveal delay={60}>
+            <Faq />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ------------------------------ CTA FINAL ------------------------------ */}
+      <section className="relative overflow-hidden bg-film py-16 text-bone sm:py-20">
+        <div className="hairline-grid-dark pointer-events-none absolute inset-0" aria-hidden />
+        <div className="relative mx-auto flex max-w-[1200px] flex-col items-start justify-between gap-8 px-5 sm:px-8 md:flex-row md:items-center">
+          <div>
+            <p className="label text-bone/40">Comece agora</p>
+            <h2 className="display mt-3 text-[clamp(2.2rem,4.6vw,3.4rem)] text-bone">
+              Um comando hoje,
+              <br />
+              <span className="text-signal">o PC na mão.</span>
+            </h2>
+            <p className="mt-4 max-w-[44ch] text-[13.5px] leading-relaxed text-bone/55">
+              Baixe o instalador, aperte Alt+Space e escreva do seu jeito. Sem assinatura, sem
+              cartão e sem conta obrigatória.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button size="lg" variant="inverse" onClick={onDownload}>
+              <Icon name="download" className="h-4 w-4" />
+              Baixar Orbi {version}
+            </Button>
+            {!account && (
+              <Button size="lg" variant="outline" onClick={onSignup}>
+                Criar conta
+              </Button>
+            )}
+          </div>
         </div>
       </section>
     </main>

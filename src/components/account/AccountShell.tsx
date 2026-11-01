@@ -173,7 +173,7 @@ export default function AccountShell({
             </div>
             <Button className="w-full" size="sm" onClick={onDownload}>
               <Icon name="download" className="h-3.5 w-3.5" />
-              Baixar NOVA
+              Baixar Orbi
             </Button>
           </div>
         </aside>

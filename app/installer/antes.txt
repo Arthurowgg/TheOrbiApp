@@ -1,0 +1,14 @@
+Antes de instalar, três coisas rápidas:
+
+1. O Orbi é gratuito e não pede cartão.
+2. A conta é opcional. Ela serve para sincronizar preferências, apelidos e
+   rotinas entre computadores e para reencontrar seus downloads no site.
+3. O app abre com Alt+Space em qualquer programa. Esc fecha.
+
+A instalação é por usuário: não pede senha de administrador e não altera
+nada do Windows além dos seus próprios atalhos.
+
+Depois de instalar:
+  • Alt+Space  → abre a barra de comando
+  • Ajustes ▸ IA → cole sua chave gratuita do Google AI Studio (opcional)
+  • Ajustes ▸ Conta → código ORBI-XXXX-XXXX para vincular ao site

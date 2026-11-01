@@ -8,7 +8,7 @@ type Props = {
   className?: string;
 };
 
-/* A tela Configurações ▸ Conta do app NOVA, desenhada em HTML.
+/* A tela Configurações ▸ Conta do app Orbi, desenhada em HTML.
  * Na página de login ela reage ao que a pessoa digita. */
 export default function AppMock({ name, email, color = "#c7452a", className = "" }: Props) {
   const shownName = name.trim() || "Seu nome";
@@ -17,7 +17,7 @@ export default function AppMock({ name, email, color = "#c7452a", className = ""
   return (
     <div
       role="img"
-      aria-label={`Tela Conta do aplicativo NOVA, conectada como ${shownName}`}
+      aria-label={`Tela Conta do aplicativo Orbi, conectada como ${shownName}`}
       className={`overflow-hidden border border-white/10 bg-[#1a1511] text-bone shadow-[0_30px_70px_-30px_rgba(0,0,0,0.75)] ${className}`}
     >
       {/* barra de título */}
@@ -26,7 +26,7 @@ export default function AppMock({ name, email, color = "#c7452a", className = ""
           <span className="grid h-4 w-4 place-items-center bg-signal text-white">
             <Mark className="h-2.5 w-2.5" />
           </span>
-          <span className="font-mono text-[10.5px] text-bone/65">NOVA · Configurações</span>
+          <span className="font-mono text-[10.5px] text-bone/65">Orbi · Configurações</span>
         </div>
         <div className="flex text-bone/45">
           {(["minus", "square", "close"] as const).map((icon) => (

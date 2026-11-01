@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 import Home from "./components/Home";
 import Login from "./components/Login";
 import DownloadModal from "./components/DownloadModal";
@@ -8,15 +9,11 @@ import Profile from "./components/account/Profile";
 import Devices from "./components/account/Devices";
 import Downloads from "./components/account/Downloads";
 import Security from "./components/account/Security";
-import { Avatar, Brand, Button, Icon, Mark } from "./components/ui";
+import { Avatar, Brand, Button, Icon, Mark, OrbitArt } from "./components/ui";
 import { NAV } from "./data/site";
-import {
-  addDownload,
-  endSession,
-  firstName,
-  getCurrentAccount,
-  type Account,
-} from "./lib/accounts";
+import { addDownload, ensureProfile, firstName, signOut, type Account } from "./lib/accounts";
+import { auth } from "./lib/firebaseClient";
+import { initAnalytics } from "./lib/firebaseClient";
 import { BUILD } from "./lib/download";
 import {
   modePath,
@@ -37,6 +34,7 @@ type Toast = { id: number; text: string };
 function SiteHeader({
   account,
   mobileOpen,
+  scrolled,
   onToggleMobile,
   onHome,
   onSection,
@@ -47,6 +45,7 @@ function SiteHeader({
 }: {
   account: Account | null;
   mobileOpen: boolean;
+  scrolled: boolean;
   onToggleMobile: () => void;
   onHome: () => void;
   onSection: (id: string) => void;
@@ -56,8 +55,14 @@ function SiteHeader({
   onDownload: () => void;
 }) {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-rule bg-paper/90 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between gap-4 px-5 sm:px-8">
+    <header
+      className={`fixed inset-x-0 top-0 z-50 border-b transition-[background-color,border-color,box-shadow] duration-300 ${
+        scrolled
+          ? "border-rule bg-paper/92 shadow-[0_10px_30px_-24px_rgba(20,16,12,0.5)] backdrop-blur-md"
+          : "border-transparent bg-paper/70 backdrop-blur-sm"
+      }`}
+    >
+      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-5 sm:px-8">
         <div className="flex items-center gap-10">
           <Brand onClick={onHome} />
           <nav aria-label="Navegação principal" className="hidden items-center gap-7 lg:flex">
@@ -66,7 +71,7 @@ function SiteHeader({
                 key={item.section}
                 type="button"
                 onClick={() => onSection(item.section)}
-                className="font-mono text-[10.5px] uppercase tracking-[0.13em] text-ink-2 transition-colors hover:text-signal"
+                className="link-underline font-mono text-[10.5px] uppercase tracking-[0.13em] text-ink-2 transition-colors hover:text-signal"
               >
                 {item.label}
               </button>
@@ -127,7 +132,7 @@ function SiteHeader({
             onClick={onToggleMobile}
             aria-label="Fechar menu"
           />
-          <div className="relative z-50 border-b border-rule bg-paper px-5 pb-5 pt-2 shadow-[0_18px_40px_-24px_rgba(23,18,14,0.4)] sm:px-8">
+          <div className="relative z-50 border-b border-rule bg-paper px-5 pb-5 pt-2 shadow-[0_18px_40px_-24px_rgba(20,16,12,0.4)] sm:px-8">
             <nav aria-label="Navegação mobile">
               {NAV.map((item) => (
                 <button
@@ -182,18 +187,22 @@ function SiteFooter({
 }) {
   const link = "text-[13px] text-bone/60 transition-colors hover:text-bone";
   return (
-    <footer className="bg-film text-bone">
-      <div className="mx-auto max-w-[1180px] px-5 py-12 sm:px-8">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_0.7fr_0.7fr]">
+    <footer className="relative overflow-hidden bg-film text-bone">
+      <OrbitArt className="pointer-events-none absolute -right-32 -top-40 h-[540px] w-[540px] text-white/[0.07]" />
+      <div className="relative mx-auto max-w-[1200px] px-5 py-14 sm:px-8">
+        <div className="grid gap-10 md:grid-cols-[1.6fr_0.7fr_0.7fr_0.7fr]">
           <div>
-            <button type="button" onClick={onHome} className="flex items-center gap-2.5" aria-label="NOVA — início">
+            <button type="button" onClick={onHome} className="flex items-center gap-2.5" aria-label="Orbi — início">
               <span className="grid h-8 w-8 place-items-center bg-signal text-white">
-                <Mark className="h-4 w-4" />
+                <Mark className="h-[18px] w-[18px]" />
               </span>
-              <span className="font-cond text-[24px] font-bold uppercase leading-none tracking-[0.01em]">Nova</span>
+              <span className="font-cond text-[24px] font-bold uppercase leading-none tracking-[0.02em]">Orbi</span>
             </button>
-            <p className="serif mt-4 max-w-[30ch] text-[17px] italic leading-[1.5] text-bone/55">
-              Seu Windows, em português.
+            <p className="serif mt-4 max-w-[32ch] text-[17px] italic leading-[1.5] text-bone/55">
+              Seu Windows, em português — e com a sua voz no comando.
+            </p>
+            <p className="mt-5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-bone/35">
+              Windows 11 · gratuito · sem cartão
             </p>
           </div>
 
@@ -223,12 +232,49 @@ function SiteFooter({
                   Download
                 </button>
               </li>
+              <li>
+                <button type="button" onClick={() => onSection("seguranca")} className={link}>
+                  Privacidade
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="label text-bone/35">Código</p>
+            <ul className="mt-3 space-y-2">
+              <li>
+                <a
+                  href="https://github.com/Arthurowgg/TheOrbiApp"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`${link} inline-flex items-center gap-1.5`}
+                >
+                  <Icon name="github" className="h-3.5 w-3.5" />
+                  GitHub
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/Arthurowgg/TheOrbiApp/releases"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={link}
+                >
+                  Releases
+                </a>
+              </li>
+              <li>
+                <span className="font-mono text-[11px] text-bone/35">Firebase · Firestore</span>
+              </li>
             </ul>
           </div>
         </div>
 
         <div className="mt-10 flex flex-col justify-between gap-2 border-t border-paper/15 pt-4 sm:flex-row sm:items-center">
-          <p className="label text-bone/35">© {new Date().getFullYear()} NOVA · v{BUILD.version}</p>
+          <p className="label text-bone/35">
+            © {new Date().getFullYear()} Orbi · v{BUILD.version} · {BUILD.channel}
+          </p>
           <p className="label text-bone/35">Windows 11 é uma marca da Microsoft.</p>
         </div>
       </div>
@@ -241,9 +287,11 @@ function SiteFooter({
 /* ------------------------------------------------------------------ */
 export default function App() {
   const [route, setRoute] = useState<Route>(() => parseRoute(window.location.hash));
-  const [account, setAccount] = useState<Account | null>(() => getCurrentAccount());
+  const [account, setAccount] = useState<Account | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [pendingSection, setPendingSection] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
 
@@ -252,7 +300,7 @@ export default function App() {
 
   // Quem não tem conta é levado ao login ao tentar abrir a área da conta.
   const effective: Route =
-    route.name === "account" && !account ? { name: "login", mode: "signin" } : route;
+    route.name === "account" && authReady && !account ? { name: "login", mode: "signin" } : route;
   const key = routeKey(effective);
 
   const notify = useCallback((text: string) => {
@@ -261,7 +309,26 @@ export default function App() {
     toastTimer.current = window.setTimeout(() => setToast(null), 3800);
   }, []);
 
-  const reload = useCallback(() => setAccount(getCurrentAccount()), []);
+  /* ------------------------- sessão do Firebase ------------------------- */
+  useEffect(() => {
+    initAnalytics();
+    const stop = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setAccount(null);
+        setAuthReady(true);
+        return;
+      }
+      try {
+        const next = await ensureProfile(user);
+        setAccount(next);
+      } catch {
+        setAccount(null);
+      } finally {
+        setAuthReady(true);
+      }
+    });
+    return stop;
+  }, []);
 
   useEffect(() => {
     const onHash = () => setRoute(parseRoute(window.location.hash));
@@ -271,35 +338,30 @@ export default function App() {
 
   useEffect(() => {
     scrollToTop();
-    setMobileOpen(false);
-    const titles: Record<string, string> = {
-      home: "NOVA — Seu Windows, em português",
-      "login:signin": "Entrar — NOVA",
-      "login:signup": "Criar conta — NOVA",
-      "login:recover": "Recuperar acesso — NOVA",
-      "account:painel": "Painel — Minha conta NOVA",
-      "account:perfil": "Perfil — Minha conta NOVA",
-      "account:dispositivos": "Dispositivos — Minha conta NOVA",
-      "account:downloads": "Downloads — Minha conta NOVA",
-      "account:seguranca": "Segurança — Minha conta NOVA",
-    };
-    document.title = titles[key] ?? "NOVA";
   }, [key]);
 
-  useEffect(
-    () => () => {
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    },
-    [],
-  );
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
-    if (effective.name !== "home" || !pendingSection) return;
-    const id = pendingSection;
-    setPendingSection(null);
-    const timer = window.setTimeout(() => scrollToSection(id), 60);
-    return () => window.clearTimeout(timer);
+    if (effective.name === "home" && pendingSection) {
+      const timer = window.setTimeout(() => scrollToSection(pendingSection), 60);
+      setPendingSection(null);
+      return () => window.clearTimeout(timer);
+    }
   }, [effective.name, pendingSection]);
+
+  // Trava o scroll do body quando o menu mobile está aberto.
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
 
   /* ----------------------------- ações ----------------------------- */
   const goHome = () => {
@@ -333,26 +395,36 @@ export default function App() {
     navigate("/criar");
   };
 
-  const handleSession = (next: Account) => {
-    let current = next;
+  const handleSession = async (next: Account) => {
+    setAccount(next);
     const pending = guestDownload.current;
     if (pending) {
-      current = addDownload(next.id, pending);
       guestDownload.current = null;
+      await addDownload(pending).catch(() => undefined);
     }
-    setAccount(current);
   };
 
-  const handleLogout = () => {
-    endSession();
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch {
+      // mesmo que falhe, limpamos a interface
+    }
     setAccount(null);
     navigate("/");
     notify("Você saiu da conta.");
   };
 
+  const refresh = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const next = await ensureProfile(user);
+    setAccount(next);
+  }, []);
+
   const handleDownloaded = (record: { version: string; checksum: string; filename: string }) => {
     if (account) {
-      setAccount(addDownload(account.id, record));
+      void addDownload(record).then(() => refresh());
     } else {
       guestDownload.current = record;
     }
@@ -360,7 +432,7 @@ export default function App() {
 
   const pageProps = (current: Account): PageProps => ({
     account: current,
-    reload,
+    reload: refresh,
     notify,
     go: navigate,
     onDownload: openDownload,
@@ -369,7 +441,18 @@ export default function App() {
 
   /* ----------------------------- render ----------------------------- */
   let screen;
-  if (effective.name === "login") {
+  if (!authReady) {
+    screen = (
+      <div className="grid min-h-screen place-items-center bg-paper">
+        <div className="flex flex-col items-center gap-4">
+          <span className="grid h-12 w-12 place-items-center bg-ink text-paper">
+            <Mark className="h-6 w-6" />
+          </span>
+          <p className="label text-warm">conectando à conta</p>
+        </div>
+      </div>
+    );
+  } else if (effective.name === "login") {
     const mode: LoginMode = effective.mode;
     screen = (
       <Login
@@ -411,6 +494,7 @@ export default function App() {
         <SiteHeader
           account={account}
           mobileOpen={mobileOpen}
+          scrolled={scrolled}
           onToggleMobile={() => setMobileOpen((open) => !open)}
           onHome={goHome}
           onSection={goSection}
@@ -438,7 +522,7 @@ export default function App() {
   }
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative z-[1]">
       {screen}
 
       <DownloadModal
@@ -447,27 +531,18 @@ export default function App() {
         user={account}
         onDownloaded={handleDownloaded}
         onLogin={openLogin}
+        onSignup={openSignup}
       />
 
       {toast && (
         <div
           role="status"
-          className="animate-fade-up fixed bottom-5 left-1/2 z-[90] flex w-[calc(100%-2rem)] max-w-[380px] -translate-x-1/2 items-center justify-between gap-3 border border-paper/15 bg-film px-4 py-3 text-bone shadow-[0_20px_50px_-20px_rgba(23,18,14,0.7)]"
+          className="animate-fade-up fixed bottom-5 left-1/2 z-[90] w-[min(92vw,420px)] -translate-x-1/2 border border-white/10 bg-film px-4 py-3 text-[13px] text-bone shadow-[0_24px_60px_-24px_rgba(0,0,0,0.7)]"
         >
-          <span className="flex items-center gap-2.5 text-[12.5px] leading-snug">
-            <span className="grid h-5 w-5 shrink-0 place-items-center bg-signal text-white">
-              <Icon name="check" className="h-3 w-3" strokeWidth={2.4} />
-            </span>
+          <span className="flex items-start gap-2.5">
+            <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-signal" />
             {toast.text}
           </span>
-          <button
-            type="button"
-            onClick={() => setToast(null)}
-            aria-label="Fechar aviso"
-            className="shrink-0 text-bone/50 transition-colors hover:text-bone"
-          >
-            <Icon name="close" className="h-3.5 w-3.5" />
-          </button>
         </div>
       )}
     </div>

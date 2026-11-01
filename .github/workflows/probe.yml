@@ -1,7 +1,0 @@
-name: probe
-on: [workflow_dispatch, push]
-jobs:
-  hello:
-    runs-on: windows-latest
-    steps:
-      - run: echo "windows ok"; dotnet --version

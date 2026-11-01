@@ -41,7 +41,7 @@ export default function Overview({ account, go, onDownload }: PageProps) {
     <>
       <PageHeader
         title={`Olá, ${firstName(account.name)}`}
-        description="Seu resumo da NOVA: instalação, aparelhos e atividade recente."
+        description="Seu resumo do Orbi: instalação, aparelhos e atividade recente."
         actions={
           <>
             <Badge tone="ok">Conta ativa</Badge>
@@ -75,7 +75,7 @@ export default function Overview({ account, go, onDownload }: PageProps) {
         <div className="space-y-5">
           <Panel
             title="Primeiros passos"
-            description={next ? "Faltam poucos passos para usar a NOVA com a sua conta." : "Tudo pronto. A NOVA já está ligada à sua conta."}
+            description={next ? "Faltam poucos passos para usar o Orbi com a sua conta." : "Tudo pronto. O Orbi já está ligada à sua conta."}
             action={<span className="font-mono text-[11px] text-warm">{done} de 3</span>}
           >
             <div className="h-1.5 w-full bg-rule" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={3} aria-label="Progresso da configuração">

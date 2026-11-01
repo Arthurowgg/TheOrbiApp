@@ -1,0 +1,35 @@
+Orbi — Licença de uso
+Versão 1.0.0
+
+Copyright (c) 2026 Orbi. Todos os direitos reservados.
+
+1. CONCESSÃO
+   A Orbi concede a você uma licença pessoal, gratuita, não exclusiva e
+   intransferível para instalar e usar este aplicativo em computadores
+   Windows sob seu uso.
+
+2. DADOS
+   O aplicativo guarda notas, lembretes, histórico da área de transferência
+   e a chave da API do Gemini apenas neste computador, cifrada com a
+   proteção de dados do Windows (DPAPI).
+
+   A conta (Firebase Authentication / Cloud Firestore) guarda nome, e-mail,
+   aparelhos vinculados, preferências de sincronização e histórico de
+   downloads. Nada disso é compartilhado com terceiros além do Google
+   Firebase, que hospeda esses serviços.
+
+3. INTELIGÊNCIA ARTIFICIAL
+   Quando você configura uma chave do Google AI Studio, o texto do comando é
+   enviado ao Google Gemini. Nenhum outro dado do seu PC é enviado. O uso
+   está sujeito aos termos do Google.
+
+4. ISENÇÃO
+   O SOFTWARE É FORNECIDO "COMO ESTÁ". A Orbi não se responsabiliza por
+   perda de dados ou interrupções decorrentes de comandos executados por
+   você — inclusive desligar, reiniciar ou bloquear o computador.
+
+5. COMANDOS DESTRUTIVOS
+   Desligar, reiniciar e fechar aplicativos exigem confirmação explícita na
+   interface.
+
+Ao instalar, você concorda com estes termos.
