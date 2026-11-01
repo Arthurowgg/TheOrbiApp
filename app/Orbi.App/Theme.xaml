@@ -1,7 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <!-- ============================ Paleta ============================ -->
+  <!-- Paleta -->
   <Color x:Key="PaperColor">#FFF2EDE3</Color>
   <Color x:Key="InkColor">#FF14100C</Color>
   <Color x:Key="SignalColor">#FFC7452A</Color>
@@ -23,7 +23,7 @@
   <FontFamily x:Key="Display">Bahnschrift SemiBold, Segoe UI Semibold, Segoe UI</FontFamily>
   <FontFamily x:Key="Mono">Cascadia Mono, Consolas, Courier New</FontFamily>
 
-  <!-- ============================ Texto ============================ -->
+  <!-- Texto -->
   <Style x:Key="H1" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource Display}"/>
     <Setter Property="FontSize" Value="30"/>
@@ -63,7 +63,7 @@
     <Setter Property="TextWrapping" Value="Wrap"/>
   </Style>
 
-  <!-- ============================ Botões ============================ -->
+  <!-- Botões -->
   <Style x:Key="ButtonBase" TargetType="Button">
     <Setter Property="FontFamily" Value="{StaticResource Sans}"/>
     <Setter Property="FontSize" Value="13"/>
@@ -123,7 +123,7 @@
     <Setter Property="BorderThickness" Value="0"/>
   </Style>
 
-  <!-- ============================ Campo ============================ -->
+  <!-- Campo -->
   <Style x:Key="Field" TargetType="TextBox">
     <Setter Property="FontFamily" Value="{StaticResource Sans}"/>
     <Setter Property="FontSize" Value="13"/>
@@ -173,7 +173,7 @@
     </Setter>
   </Style>
 
-  <!-- ============================ Interruptor ============================ -->
+  <!-- Interruptor -->
   <Style x:Key="ToggleSwitch" TargetType="ToggleButton">
     <Setter Property="Cursor" Value="Hand"/>
     <Setter Property="Template">
@@ -195,7 +195,7 @@
     </Setter>
   </Style>
 
-  <!-- ============================ Card ============================ -->
+  <!-- Card -->
   <Style x:Key="Card" TargetType="Border">
     <Setter Property="Background" Value="#FFFBF9F3"/>
     <Setter Property="BorderBrush" Value="{StaticResource Rule}"/>
@@ -210,7 +210,7 @@
     <Setter Property="Margin" Value="0,12"/>
   </Style>
 
-  <!-- ============================ Nav da janela ============================ -->
+  <!-- Nav da janela -->
   <Style x:Key="NavButton" TargetType="ListBoxItem">
     <Setter Property="FontFamily" Value="{StaticResource Sans}"/>
     <Setter Property="FontSize" Value="13"/>
@@ -237,7 +237,7 @@
     </Setter>
   </Style>
 
-  <!-- ============================ Lista de resultados ============================ -->
+  <!-- Lista de resultados -->
   <Style x:Key="ResultItem" TargetType="ListBoxItem">
     <Setter Property="Padding" Value="0"/>
     <Setter Property="Template">

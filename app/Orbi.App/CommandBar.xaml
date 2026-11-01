@@ -26,7 +26,7 @@
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
 
-      <!-- ======================= entrada ======================= -->
+      <!-- entrada -->
       <Border Grid.Row="0" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="14,12">
         <Grid>
           <Grid.ColumnDefinitions>
@@ -62,7 +62,7 @@
         </Grid>
       </Border>
 
-      <!-- ======================= resultados ======================= -->
+      <!-- resultados -->
       <ListBox x:Name="Results" Grid.Row="1"
                Background="Transparent" BorderThickness="0"
                ItemContainerStyle="{StaticResource ResultItem}"
@@ -99,7 +99,7 @@
         </ListBox.ItemTemplate>
       </ListBox>
 
-      <!-- ======================= rodapé ======================= -->
+      <!-- rodapé -->
       <Border Grid.Row="2" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="14,8">
         <Grid>
           <Grid.ColumnDefinitions>

@@ -16,7 +16,7 @@
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <!-- ============================ cabeçalho ============================ -->
+    <!-- cabeçalho -->
     <Border Grid.Row="0" Background="{StaticResource Paper}" BorderBrush="{StaticResource Rule}"
             BorderThickness="0,0,0,1" Padding="20,14">
       <Grid>
@@ -45,7 +45,7 @@
       </Grid>
     </Border>
 
-    <!-- ============================ corpo ============================ -->
+    <!-- corpo -->
     <Grid Grid.Row="1">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="208"/>
@@ -72,7 +72,7 @@
       <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="24,20">
         <Grid x:Name="Pages">
 
-          <!-- ---------------------------- GERAL ---------------------------- -->
+          <!-- GERAL -->
           <StackPanel x:Name="PageGeral">
             <TextBlock Text="Geral" Style="{StaticResource H1}"/>
             <TextBlock Text="Como o Orbi se comporta no seu Windows." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
@@ -109,7 +109,7 @@
                     Margin="0,16,0,0" Click="SaveGeneral_Click"/>
           </StackPanel>
 
-          <!-- ---------------------------- IA ---------------------------- -->
+          <!-- IA -->
           <StackPanel x:Name="PageIa" Visibility="Collapsed">
             <TextBlock Text="IA (Gemini)" Style="{StaticResource H1}"/>
             <TextBlock Text="A chave do Google AI Studio é gratuita e fica cifrada neste PC." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
@@ -156,7 +156,7 @@
             </Border>
           </StackPanel>
 
-          <!-- ---------------------------- CONTA ---------------------------- -->
+          <!-- CONTA -->
           <StackPanel x:Name="PageConta" Visibility="Collapsed">
             <TextBlock Text="Conta" Style="{StaticResource H1}"/>
             <TextBlock Text="A mesma conta do site (Firebase Authentication)." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
@@ -189,7 +189,7 @@
             </Border>
           </StackPanel>
 
-          <!-- ---------------------------- LEMBRETES ---------------------------- -->
+          <!-- LEMBRETES -->
           <StackPanel x:Name="PageLembretes" Visibility="Collapsed">
             <TextBlock Text="Lembretes" Style="{StaticResource H1}"/>
             <TextBlock Text="Avisos que continuam valendo mesmo depois de reiniciar o PC." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
@@ -198,7 +198,7 @@
             </Border>
           </StackPanel>
 
-          <!-- ---------------------------- NOTAS ---------------------------- -->
+          <!-- NOTAS -->
           <StackPanel x:Name="PageNotas" Visibility="Collapsed">
             <TextBlock Text="Notas" Style="{StaticResource H1}"/>
             <TextBlock Text="Ficam neste PC. Nunca vão para a nuvem." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
@@ -214,7 +214,7 @@
             </Border>
           </StackPanel>
 
-          <!-- ---------------------------- ATALHOS ---------------------------- -->
+          <!-- ATALHOS -->
           <StackPanel x:Name="PageAtalhos" Visibility="Collapsed">
             <TextBlock Text="Atalhos de texto" Style="{StaticResource H1}"/>
             <TextBlock Text="Frase que se expande no comando: “expande assinatura”." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
@@ -233,7 +233,7 @@
             </Border>
           </StackPanel>
 
-          <!-- ---------------------------- APELIDOS ---------------------------- -->
+          <!-- APELIDOS -->
           <StackPanel x:Name="PageApelidos" Visibility="Collapsed">
             <TextBlock Text="Apelidos de apps" Style="{StaticResource H1}"/>
             <TextBlock Text="“zap” = WhatsApp. O apelido vale para o comando “abre …”." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
@@ -251,7 +251,7 @@
             </Border>
           </StackPanel>
 
-          <!-- ---------------------------- SEGURANÇA ---------------------------- -->
+          <!-- SEGURANÇA -->
           <StackPanel x:Name="PageSeguranca" Visibility="Collapsed">
             <TextBlock Text="Segurança" Style="{StaticResource H1}"/>
             <TextBlock Text="O que fica no PC, o que vai para a conta e o bloqueio automático." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
@@ -299,7 +299,7 @@
                     Margin="0,16,0,0" Click="SaveSecurity_Click"/>
           </StackPanel>
 
-          <!-- ---------------------------- SOBRE ---------------------------- -->
+          <!-- SOBRE -->
           <StackPanel x:Name="PageSobre" Visibility="Collapsed">
             <TextBlock Text="Sobre" Style="{StaticResource H1}"/>
             <TextBlock Text="Orbi 1.0.0 · Windows 11 x64" Style="{StaticResource Muted}" Margin="0,4,0,18"/>
@@ -323,7 +323,7 @@
       </ScrollViewer>
     </Grid>
 
-    <!-- ============================ rodapé ============================ -->
+    <!-- rodapé -->
     <Border Grid.Row="2" Background="#FFF7F2E8" BorderBrush="{StaticResource Rule}"
             BorderThickness="0,1,0,0" Padding="16,8">
       <TextBlock Text="Orbi · dados locais em %APPDATA%\Orbi · conta no Firebase" Style="{StaticResource Label}"/>
