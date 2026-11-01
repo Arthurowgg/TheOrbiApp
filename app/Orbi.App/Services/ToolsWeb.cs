@@ -40,26 +40,6 @@ public static class ToolsWeb
         }
 
 
-        string Abrir(string alvo)
-        {
-            try
-            {
-                if (Directory.Exists(alvo) || File.Exists(alvo))
-                {
-                    Process.Start(new ProcessStartInfo(alvo) { UseShellExecute = true });
-                }
-                else
-                {
-                    var url = alvo.Contains("://") ? alvo : "https://" + alvo;
-                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-                }
-                return "Aberto.";
-            }
-            catch (Exception error)
-            {
-                return "Não abri: " + error.Message;
-            }
-        }
 
         string App(string nome)
         {
@@ -156,20 +136,20 @@ public static class ToolsWeb
         Add("colocar-em-lista", "Colocar em lista", "Texto", "lista,marcadores", () => Copia(string.Join("\n", Texto(Args.Current).Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).Select(l => "• " + l))), "o texto");
         Add("tirar-os-espacos-duplos", "Tirar os espaços duplos", "Texto", "espacos,texto", () => Copia(System.Text.RegularExpressions.Regex.Replace(Texto(Args.Current), @"[ \t]{2,}", " ")), "o texto");
         Add("copiar-em-base64", "Copiar em Base64", "Texto", "base64,codificar", () => Copia(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(Texto(Args.Current)))), "o texto");
-        Add("embaralhar-as-linhas", "Embaralhar as linhas", "Texto", "embaralhar,linhas", () => Copia(string.Join("\n", Texto(Args.Current).Split('\n').OrderBy(_ => Guid.NewGuiArgs.Current))), "o texto");
+        Add("embaralhar-as-linhas", "Embaralhar as linhas", "Texto", "embaralhar,linhas", () => Copia(string.Join("\n", Texto(Args.Current).Split('\n').OrderBy(_ => Guid.NewGuid()))), "o texto");
         Add("sortear-uma-linha", "Sortear uma linha", "Texto", "sortear,escolher,linha", () => Sortear(Texto(Args.Current)), "o texto");
         Add("trocar-uma-palavra", "Trocar uma palavra", "Texto", "trocar,substituir,palavra", () => Trocar(Args.Current), "antiga → nova");
         Add("focar-uma-janela", "Focar uma janela", "Janelas e mouse", "focar,janela,trazer", () => Pc.Focus(Args.Current) ? $"Trouxe {Args.Current} para a frente." : $"Não achei uma janela de {Args.Current}.", "o nome da janela");
         Add("maximizar-uma-janela", "Maximizar uma janela", "Janelas e mouse", "maximizar,janela", () => Pc.Maximize(Args.Current) ? $"Maximizei {Args.Current}." : $"Não achei {Args.Current}.", "o nome da janela");
         Add("minimizar-uma-janela", "Minimizar uma janela", "Janelas e mouse", "minimizar,janela", () => Pc.Minimize(Args.Current) ? $"Minimizei {Args.Current}." : $"Não achei {Args.Current}.", "o nome da janela");
         Add("fechar-uma-janela", "Fechar uma janela", "Janelas e mouse", "fechar,janela", () => Pc.Close(Args.Current) ? $"Fechei {Args.Current}." : $"Não achei {Args.Current}.", "o nome da janela");
-        Add("mover-o-mouse", "Mover o mouse", "Janelas e mouse", "mover,mouse,cursor", () => Pc.ParsePoint(Args.Current) is { } p ? (Pc.Move(p.X, p.Y), $"Mouse em {p.X},{p.Y}.").Item2 : "Diga a posição como 640,400.", "x,y");
-        Add("clicar-em-uma-posicao", "Clicar em uma posição", "Janelas e mouse", "clicar,posicao,mouse", () => Pc.ParsePoint(Args.Current) is { } p ? (Pc.Click(p.X, p.Y), $"Cliquei em {p.X},{p.Y}.").Item2 : "Diga a posição como 640,400.", "x,y");
-        Add("clicar-com-o-botao-direito", "Clicar com o botão direito", "Janelas e mouse", "clique,direito", () => Pc.ParsePoint(Args.Current) is { } p ? (Pc.Click(p.X, p.Y, "right"), $"Clique direito em {p.X},{p.Y}.").Item2 : "Diga a posição como 640,400.", "x,y");
-        Add("clique-duplo", "Clique duplo", "Janelas e mouse", "clique,duplo", () => Pc.ParsePoint(Args.Current) is { } p ? (Pc.DoubleClick(p.X, p.Y), $"Clique duplo em {p.X},{p.Y}.").Item2 : "Diga a posição como 640,400.", "x,y");
+        Add("mover-o-mouse", "Mover o mouse", "Janelas e mouse", "mover,mouse,cursor", () => { if (Pc.ParsePoint(Args.Current) is not { } p) return "Diga a posição como 640,400."; Pc.Move(p.X, p.Y); return $"Mouse em {p.X},{p.Y}."; }, "x,y");
+        Add("clicar-em-uma-posicao", "Clicar em uma posição", "Janelas e mouse", "clicar,posicao,mouse", () => { if (Pc.ParsePoint(Args.Current) is not { } p) return "Diga a posição como 640,400."; Pc.Click(p.X, p.Y); return $"Cliquei em {p.X},{p.Y}."; }, "x,y");
+        Add("clicar-com-o-botao-direito", "Clicar com o botão direito", "Janelas e mouse", "clique,direito", () => { if (Pc.ParsePoint(Args.Current) is not { } p) return "Diga a posição como 640,400."; Pc.Click(p.X, p.Y, "right"); return $"Clique direito em {p.X},{p.Y}."; }, "x,y");
+        Add("clique-duplo", "Clique duplo", "Janelas e mouse", "clique,duplo", () => { if (Pc.ParsePoint(Args.Current) is not { } p) return "Diga a posição como 640,400."; Pc.DoubleClick(p.X, p.Y); return $"Clique duplo em {p.X},{p.Y}."; }, "x,y");
         Add("digitar-um-texto", "Digitar um texto", "Janelas e mouse", "digitar,escrever", () => { Pc.Type(Args.Current); return "Digitei."; }, "o texto");
         Add("apertar-um-atalho", "Apertar um atalho", "Janelas e mouse", "atalho,tecla,aperte", () => { Pc.Hotkey(Args.Current); return $"Atalho {Args.Current} enviado."; }, "ctrl+t");
-        Add("rolar-a-tela", "Rolar a tela", "Janelas e mouse", "rolar,scroll", () => int.TryParse(Args.Current, out var n) ? (Pc.Scroll(n), $"Rolei {n}.").Item2 : (Pc.Scroll(3), "Rolei 3.").Item2, "quantos cliques");
+        Add("rolar-a-tela", "Rolar a tela", "Janelas e mouse", "rolar,scroll", () => { var n = int.TryParse(Args.Current, out var valor) ? valor : 3; Pc.Scroll(n); return $"Rolei {n}."; }, "quantos cliques");
         Add("capturar-a-tela", "Capturar a tela", "Tela", "capturar,tela,foto", () => { Copia(Pc.Capture()); return "Captura salva."; });
         Add("capturar-e-guardar-o-caminho", "Capturar e guardar o caminho", "Tela", "capturar,caminho", () => "Captura salva em " + Pc.Capture());
         Add("ver-o-tamanho-da-tela", "Ver o tamanho da tela", "Tela", "tamanho,tela,resolucao", () => $"{Pc.ScreenSize().Width}x{Pc.ScreenSize().Height}.");
@@ -288,6 +268,28 @@ public static class ToolsWeb
         Add("ver-quem-esta-na-rede", "Ver quem está na rede", "Rede e internet", "rede,dispositivos", () => Rede("ver-quem-esta-na-rede"));
         Add("abrir-o-adaptador-de-rede", "Abrir o adaptador de rede", "Rede e internet", "adaptador,rede", () => Rede("abrir-o-adaptador-de-rede"));
         Add("desligar-o-wi-fi", "Desligar o Wi-Fi", "Rede e internet", "desligar,wifi", () => Rede("desligar-o-wi-fi"));
+    }
+
+    /// <summary>Abre um endereço, arquivo ou pasta (usado fora do Register também).</summary>
+    private static string Abrir(string alvo)
+    {
+        try
+        {
+            if (Directory.Exists(alvo) || File.Exists(alvo))
+            {
+                Process.Start(new ProcessStartInfo(alvo) { UseShellExecute = true });
+            }
+            else
+            {
+                var url = alvo.Contains("://") ? alvo : "https://" + alvo;
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            return "Aberto.";
+        }
+        catch (Exception error)
+        {
+            return "Não abri: " + error.Message;
+        }
     }
 
     /* ------------------------------ arquivos ------------------------------ */
