@@ -411,9 +411,8 @@ public class SetupWindow : Window
         var instalador = Environment.ProcessPath is { } exe && File.Exists(exe)
             ? new FileInfo(exe).Length / 1024.0 / 1024.0
             : 0;
-        var pacote = Payload.ApproximateSize / 1024.0 / 1024.0;
-        var cache = Payload.Cached ? " · já baixado neste PC" : "";
-        return $"{instalador:0.0} MB agora + {pacote:0} MB baixados na hora{cache}";
+        var cache = Payload.Cached ? " · app já baixado neste PC" : "";
+        return $"{instalador:0.0} MB · baixa o Orbi na hora{cache}";
     }
 
     /* ------------------------------ desinstalar ------------------------------ */

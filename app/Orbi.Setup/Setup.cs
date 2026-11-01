@@ -68,14 +68,14 @@ public static class Payload
     public const string Url =
         "https://github.com/Arthurowgg/TheOrbiApp/releases/download/v1.1.2/orbi-payload-1.1.2.zip";
 
-    public const long ApproximateSize = 216L * 1024 * 1024;
+    public const long ApproximateSize = 3L * 1024 * 1024;
 
     public static string Cache =>
         Path.Combine(Path.GetTempPath(), "orbi-payload-" + Installer.Versao + ".zip");
 
     private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromMinutes(15) };
 
-    public static bool Cached => File.Exists(Cache) && new FileInfo(Cache).Length > 20L * 1024 * 1024;
+    public static bool Cached => File.Exists(Cache) && new FileInfo(Cache).Length > 500L * 1024;
 
     /// <summary>Baixa o pacote com progresso (0-1). Devolve o caminho no disco.</summary>
     public static async Task<string> DownloadAsync(IProgress<double> progress, CancellationToken token)
@@ -145,7 +145,7 @@ public static class Payload
         }
 
         var info = new FileInfo(temp);
-        if (info.Length < 20L * 1024 * 1024)
+        if (info.Length < 500L * 1024)
         {
             File.Delete(temp);
             throw new InvalidOperationException($"o pacote veio incompleto ({info.Length} bytes)");

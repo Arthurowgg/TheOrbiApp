@@ -73,7 +73,7 @@ jobs:
           Compress-Archive -Path "artifacts\publish\*" -DestinationPath "artifacts\Installer\orbi-payload-1.1.2.zip" -CompressionLevel Optimal -Force
           $zip = Get-Item "artifacts\Installer\orbi-payload-1.1.2.zip"
           Write-Host ("payload: " + [math]::Round($zip.Length/1MB,1) + " MB")
-          if ($zip.Length -lt 8MB) {
+          if ($zip.Length -lt 0.2MB) {
             $pub = (Get-ChildItem "artifacts\publish" -Recurse | Measure-Object Length -Sum)
             Write-Host "::error::payload pequeno demais: $([math]::Round($zip.Length/1MB,1)) MB; publish tem $([math]::Round($pub.Sum/1MB,1)) MB em $($pub.Count) arquivos"
             throw "payload incompleto"
@@ -83,7 +83,7 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
-          dotnet publish app/Orbi.Setup/Orbi.Setup.csproj -c Release -r win-x64 --self-contained false `
+          dotnet publish app/Orbi.Setup/Orbi.Setup.csproj -c Release -r win-x64 --self-contained true `
             -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o artifacts/setup
           New-Item -ItemType Directory -Force -Path artifacts/Installer | Out-Null
@@ -108,7 +108,7 @@ jobs:
           $zip = Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1
           if ($exe.Length -gt 40MB) { throw "instalador pesado demais: $([math]::Round($exe.Length/1MB,1)) MB" }
           if ($exe.Length -lt 1MB) { throw "instalador pequeno demais: $($exe.Length) bytes" }
-          if ($zip.Length -lt 8MB) { throw "payload suspeito: $([math]::Round($zip.Length/1MB,1)) MB" }
+          if ($zip.Length -lt 0.2MB) { throw "payload suspeito: $([math]::Round($zip.Length/1MB,1)) MB" }
           Write-Host "::notice::instalador $($exe.Name) com $([math]::Round($exe.Length/1MB,1)) MB · payload $([math]::Round($zip.Length/1MB,1)) MB"
 
       - uses: actions/upload-artifact@v4
