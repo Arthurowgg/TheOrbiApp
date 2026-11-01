@@ -36,6 +36,6 @@
   <Target Name="ExigirPayload" BeforeTargets="PrepareForBuild">
     <Error Condition="!Exists('assets\payload.zip')"
            Text="assets\payload.zip não existe: rode 'dotnet publish' do Orbi.App e empacote antes de compilar o instalador." />
-  </ItemGroup>
+  </Target>
 
 </Project>
