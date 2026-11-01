@@ -45,10 +45,19 @@ jobs:
       - name: Deploy (hosting + regras)
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        shell: bash
         run: |
+          set -o pipefail
           npx --yes firebase-tools@latest deploy \
             --only hosting,firestore:rules \
-            --project orbi-app-auth --non-interactive
+            --project orbi-app-auth --non-interactive 2>&1 | tee deploy.log | tail -40
+          STATUS=${PIPESTATUS[0]}
+          if [ "$STATUS" != "0" ]; then
+            grep -iE "error|forbidden|permission|invalid|failed|not found|quota" deploy.log | tail -8 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            exit "$STATUS"
+          fi
 
       - name: Conferir o site publicado
         run: |
