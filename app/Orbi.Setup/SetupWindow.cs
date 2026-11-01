@@ -384,8 +384,9 @@ public class SetupWindow : Window
 
         _conteudo.Children.Add(new TextBlock
         {
-            Text = "O Orbi abre como uma barra de comando no topo da tela. " +
-                   "O atalho do Menu Iniciar leva direto às ferramentas e aos ajustes.",
+            Text = "O instalador é leve: o app em si é baixado aqui, durante a instalação. " +
+                   "Depois o Orbi abre como uma barra de comando, e o atalho do Menu Iniciar " +
+                   "leva direto às ferramentas e aos ajustes.",
             FontSize = 12.5,
             Margin = new Thickness(0, 6, 0, 0),
             TextWrapping = TextWrapping.Wrap,
@@ -407,17 +408,12 @@ public class SetupWindow : Window
 
     private static string Tamanho()
     {
-        try
-        {
-            using var stream = Payload.Open();
-            if (stream is null) return "—";
-            var mb = stream.Length / 1024.0 / 1024.0;
-            return $"{mb:0.0} MB comprimido · {Payload.FileCount()} arquivos";
-        }
-        catch
-        {
-            return "—";
-        }
+        var instalador = Environment.ProcessPath is { } exe && File.Exists(exe)
+            ? new FileInfo(exe).Length / 1024.0 / 1024.0
+            : 0;
+        var pacote = Payload.ApproximateSize / 1024.0 / 1024.0;
+        var cache = Payload.Cached ? " · já baixado neste PC" : "";
+        return $"{instalador:0.0} MB agora + {pacote:0} MB baixados na hora{cache}";
     }
 
     /* ------------------------------ desinstalar ------------------------------ */

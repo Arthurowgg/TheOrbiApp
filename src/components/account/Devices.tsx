@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Badge, Button, Icon, Modal, Panel, Switch } from "../ui";
+import { Badge, Button, Icon, Modal, Panel } from "../ui";
 import { PageHeader, type PageProps } from "./AccountShell";
-import { formatDate, removeDevice, renameDevice, setSync, type Device, type SyncPrefs } from "../../lib/accounts";
-import { LOCAL_ONLY, SYNC_ITEMS } from "../../data/site";
+import { formatDate, removeDevice, renameDevice, type Device } from "../../lib/accounts";
 
 /**
  * Computadores que entraram na conta. Não existe código de pareamento nem
@@ -36,20 +35,11 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
     setRemoving(null);
   };
 
-  const toggleSync = async (key: keyof SyncPrefs, value: boolean) => {
-    try {
-      await setSync({ ...account.sync, [key]: value });
-      await reload();
-    } catch (error) {
-      notify(error instanceof Error ? error.message : "Não foi possível salvar.");
-    }
-  };
-
   return (
     <>
       <PageHeader
         title="Computadores"
-        description="Cada PC onde você entra com esta conta aparece aqui. É a mesma conta do site — sem código, sem vínculo."
+        description="Os computadores onde o Orbi está aberto com a sua conta."
         actions={
           <Button size="sm" variant="secondary" onClick={onDownload}>
             <Icon name="download" className="h-3.5 w-3.5" />
@@ -60,35 +50,6 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
 
       <div className="grid gap-5 xl:grid-cols-[1.15fr_1fr]">
         <div className="space-y-5">
-          <Panel title="Como um PC entra" padded={false}>
-            <ol className="divide-y divide-rule">
-              {[
-                {
-                  title: "Instale o Orbi naquele computador",
-                  body: "O mesmo instalador, sem administrador. A barra abre e o app fica na bandeja.",
-                },
-                {
-                  title: "Entre com este e-mail e senha",
-                  body: "No app: Ajustes ▸ Conta ▸ Entrar. Nada de código para copiar de uma tela para outra.",
-                },
-                {
-                  title: "A conta se atualiza sozinha",
-                  body: "O computador entra nesta lista na primeira sincronização — e os seus dados chegam junto.",
-                },
-              ].map((step, index) => (
-                <li key={step.title} className="flex items-start gap-4 px-5 py-4">
-                  <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center bg-ink font-mono text-[10.5px] text-paper">
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[14px] font-medium text-ink">{step.title}</p>
-                    <p className="mt-0.5 text-[12.5px] leading-snug text-warm">{step.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </Panel>
-
           <Panel title="Na sua conta" padded={false}>
             {account.devices.length === 0 ? (
               <div className="px-5 py-9 text-center">
@@ -181,33 +142,11 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
         </div>
 
         <div className="space-y-5">
-          <Panel title="O que sincroniza" description="Vale para todos os computadores da conta.">
-            <ul className="divide-y divide-rule">
-              {SYNC_ITEMS.map((item) => (
-                <li key={item.key} className="py-3.5 first:pt-0">
-                  <Switch
-                    checked={account.sync[item.key]}
-                    onChange={(value) => toggleSync(item.key, value)}
-                    label={item.label}
-                    description={item.hint}
-                  />
-                </li>
-              ))}
-            </ul>
-          </Panel>
-
-          <Panel title="O que fica só no PC">
-            <p className="text-[12.5px] leading-snug text-warm">
-              Estes itens nunca saem do computador, nem com a conta aberta:
+          <Panel title="Trocar de PC">
+            <p className="text-[13px] leading-relaxed text-ink-2">
+              Instale o Orbi no outro computador, entre com a mesma conta e tudo o que é seu já
+              estará lá. Não precisa copiar arquivo nenhum.
             </p>
-            <ul className="mt-3 space-y-2">
-              {LOCAL_ONLY.map((item) => (
-                <li key={item} className="flex items-center gap-2.5 text-[13.5px] text-ink">
-                  <Icon name="lock" className="h-3.5 w-3.5 text-warm" />
-                  {item}
-                </li>
-              ))}
-            </ul>
           </Panel>
         </div>
       </div>

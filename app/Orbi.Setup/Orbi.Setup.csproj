@@ -10,13 +10,12 @@
     <AssemblyName>OrbiSetup</AssemblyName>
     <RootNamespace>Orbi.Setup</RootNamespace>
     <ApplicationIcon>..\Orbi.App\Assets\orbi.ico</ApplicationIcon>
-    <Version>1.1.1</Version>
-    <FileVersion>1.1.1.0</FileVersion>
+    <Version>1.1.2</Version>
+    <FileVersion>1.1.2.0</FileVersion>
     <Company>Orbi</Company>
     <Product>Orbi</Product>
     <Description>Instalador do Orbi</Description>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>false</SelfContained>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
@@ -29,13 +28,6 @@
   <ItemGroup>
     <Compile Remove="assets\**" />
     <EmbeddedResource Include="assets\orbi.png" Condition="Exists('assets\orbi.png')" />
-    <!-- Obrigatório: sem isto o setup é compilado sem o app dentro. -->
-    <EmbeddedResource Include="assets\payload.zip" />
   </ItemGroup>
-
-  <Target Name="ExigirPayload" BeforeTargets="PrepareForBuild">
-    <Error Condition="!Exists('assets\payload.zip')"
-           Text="assets\payload.zip não existe: rode 'dotnet publish' do Orbi.App e empacote antes de compilar o instalador." />
-  </Target>
 
 </Project>

@@ -3,8 +3,8 @@ import OrbiChat from "./OrbiChat";
 import NativeApp from "./NativeApp";
 import ToolCatalog from "./ToolCatalog";
 import { Button, Eyebrow, Icon, Keycap, Reveal } from "./ui";
-import { EXAMPLES, FAQ, LOCAL_ONLY, STEPS, SYNC_ITEMS } from "../data/site";
-import { GROUP_COUNT, TOOL_COUNT } from "../data/tools";
+import { EXAMPLES, FAQ, STEPS, SYNC_ITEMS } from "../data/site";
+import { TOOL_COUNT } from "../data/tools";
 import { fetchLatestRelease, type Release } from "../lib/download";
 import Versions, { formatDate, useReleases } from "./Versions";
 import type { Account } from "../lib/accounts";
@@ -87,10 +87,9 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
               <span className="display-serif text-signal">O PC inteiro.</span>
             </h1>
 
-            <p className="mt-6 max-w-[46ch] text-[16.5px] leading-[1.65] text-ink-2">
-              O Orbi é uma barra de comando que abre no meio do que você está fazendo. Você escreve
-              do seu jeito e ele faz: som, brilho, janelas, painéis do Windows, lembretes, notas.
-              São {TOOL_COUNT} ações prontas, todas no seu computador.
+            <p className="mt-6 max-w-[42ch] text-[16.5px] leading-[1.65] text-ink-2">
+              Uma barra que abre sobre qualquer programa. Você escreve e ele faz: som, brilho,
+              janelas, painéis do Windows. {TOOL_COUNT} ações prontas.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -138,18 +137,12 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
               <h2 className="display mt-4 text-[clamp(2rem,4.2vw,3rem)] text-ink">
                 Coisas que você faz <span className="display-serif">todo dia.</span>
               </h2>
-              <p className="mt-5 max-w-[34ch] text-[14.5px] leading-[1.7] text-ink-2">
-                Não é uma lista de recursos abstratos. É o que a barra resolve quando você não quer
-                largar o teclado para caçar um menu.
-              </p>
-              <p className="serif mt-8 border-l-2 border-signal pl-4 text-[17px] italic leading-[1.55] text-ink">
-                “Ninguém deveria decorar atalho para usar o próprio computador.”
-              </p>
+
             </Reveal>
 
             <Reveal delay={80}>
               <ul className="border-t border-rule">
-                {EXAMPLES.map((example) => (
+                {EXAMPLES.slice(0, 4).map((example) => (
                   <li key={example.saida} className="border-b border-rule py-3.5">
                     <p className="font-mono text-[13px] leading-snug text-ink">
                       <span className="mr-2 select-none text-signal">›</span>
@@ -175,9 +168,8 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                   O catálogo <span className="display-serif">completo.</span>
                 </h2>
               </div>
-              <p className="max-w-[38ch] text-[13.5px] leading-[1.7] text-warm md:text-right">
-                Escolha um grupo e veja tudo o que existe hoje. Nada aqui depende da internet, de
-                conta ou de permissão de administrador.
+              <p className="max-w-[34ch] text-[13.5px] leading-[1.7] text-warm md:text-right">
+                Escolha um grupo e veja o comando exato de cada uma.
               </p>
             </div>
           </Reveal>
@@ -199,24 +191,22 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
               Uma barra fina. <span className="display-serif">Nada em volta.</span>
             </h2>
             <p className="mt-5 max-w-[42ch] text-[14.5px] leading-[1.7] text-ink-2">
-              Ela ocupa uma linha e volta a sumir quando você termina. Fora dela existe um painel
-              só, com o catálogo, os ajustes, as notas, os lembretes e a conta — sem abas, sem
-              janelas espalhadas.
+              Uma linha quando você chama, e some quando termina. Fora dela existe um painel só.
             </p>
 
-            <dl className="mt-8 divide-y divide-rule border-y border-rule">
+            <ul className="mt-7 divide-y divide-rule border-y border-rule">
               {[
-                ["Sem instalar nada além dele", "um .exe, sem Python, sem runtime extra, sem administrador"],
-                ["Fica na bandeja", "fecha a barra e o Orbi continua vivo, esperando a tecla"],
-                ["Funciona offline", "o catálogo é local; só a conversa livre precisa de rede e de chave"],
-                ["Leve na memória", "sem navegador embutido, sem servidor local"],
-              ].map(([title, body]) => (
-                <div key={title} className="flex flex-col gap-1 py-3 sm:flex-row sm:gap-5">
-                  <dt className="w-[190px] shrink-0 text-[13.5px] font-medium text-ink">{title}</dt>
-                  <dd className="text-[13px] leading-relaxed text-warm">{body}</dd>
-                </div>
+                "Um .exe. Sem Python, sem administrador",
+                "Fica na bandeja, esperando a tecla",
+                "O catálogo funciona sem internet",
+                "IA com a sua chave do Gemini",
+              ].map((item) => (
+                <li key={item} className="flex items-center gap-2.5 py-2.5 text-[13.5px] text-ink">
+                  <Icon name="check" className="h-3.5 w-3.5 shrink-0 text-signal" />
+                  {item}
+                </li>
               ))}
-            </dl>
+            </ul>
           </Reveal>
 
           <Reveal delay={80}>
@@ -227,28 +217,17 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
 
       {/* ------------------------------ CONTA ------------------------------ */}
       <section id="conta" className="scroll-mt-16 border-y border-rule bg-film text-bone">
-        <div className="mx-auto grid max-w-[1120px] items-center gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1fr_0.85fr] lg:gap-16 lg:py-20">
+        <div className="mx-auto grid max-w-[1120px] items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1fr_0.8fr] lg:gap-16 lg:py-20">
           <Reveal>
-            <Eyebrow tone="paper">Uma conta, dois lugares</Eyebrow>
+            <Eyebrow tone="paper">Sua conta</Eyebrow>
             <h2 className="display mt-4 text-[clamp(2rem,4.2vw,3rem)] text-bone">
               O que você cria aqui
               <br />
               <span className="text-signal">existe no app.</span>
             </h2>
-            <p className="mt-5 max-w-[46ch] text-[14.5px] leading-[1.7] text-bone/60">
-              Não existe “vincular o app”: é a mesma conta. Lembretes, notas, rotinas, preferências
-              e a memória ficam nela — abertos no site, eles aparecem no PC, e o que você faz no PC
-              aparece no site.
+            <p className="mt-5 max-w-[44ch] text-[14.5px] leading-[1.7] text-bone/60">
+              Uma conta só. Entre com ela no app e continue de onde parou — em qualquer PC.
             </p>
-
-            <ul className="mt-8 divide-y divide-white/10 border-t border-white/10">
-              {SYNC_ITEMS.map((item) => (
-                <li key={item.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-3">
-                  <span className="text-[14px] font-medium text-bone">{item.label}</span>
-                  <span className="text-[12.5px] leading-snug text-bone/50">{item.hint}</span>
-                </li>
-              ))}
-            </ul>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               {account ? (
@@ -270,27 +249,14 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
           </Reveal>
 
           <Reveal delay={80}>
-            <div className="border border-white/10 bg-white/[0.02] p-6">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-bone/40">
-                no app, com a sua conta
-              </p>
-              <ul className="mt-4 space-y-3">
-                {[
-                  ["lembretes", "“conta de luz · amanhã 9h” — avisa na bandeja"],
-                  ["notas", "a mesma lista, sem passar por e-mail"],
-                  ["rotinas", "“modo estudo” criado no site, executado no PC"],
-                  ["memória", "“o que eu tava fazendo ontem à tarde?”"],
-                ].map(([kind, line]) => (
-                  <li key={kind} className="border-l border-signal/50 pl-3">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-bone/35">{kind}</p>
-                    <p className="text-[13px] leading-snug text-bone/75">{line}</p>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-5 border-t border-white/10 pt-3 text-[12.5px] leading-snug text-bone/45">
-                Só neste PC: {LOCAL_ONLY.join(", ").toLowerCase()}.
-              </p>
-            </div>
+            <ul className="divide-y divide-white/10 border-y border-white/10">
+              {SYNC_ITEMS.map((item) => (
+                <li key={item.key} className="flex items-center gap-3 py-3 text-[14px] text-bone/85">
+                  <Icon name="check" className="h-3.5 w-3.5 shrink-0 text-signal" />
+                  {item.label}
+                </li>
+              ))}
+            </ul>
           </Reveal>
         </div>
       </section>
@@ -331,10 +297,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                 </span>
               </div>
 
-              <p className="mt-4 max-w-[52ch] text-[12.5px] leading-snug text-warm">
-                A conta não é obrigatória para instalar. Ela serve para o Orbi lembrar de você em
-                qualquer PC.
-              </p>
+
             </div>
 
             <div>
@@ -347,10 +310,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                   onSelect={() => onDownload()}
                 />
               </div>
-              <p className="mt-2.5 font-mono text-[10px] leading-relaxed text-warm">
-                A mais recente vem selecionada. Os arquivos são os mesmos instaladores publicados
-                no GitHub, com SHA-256 em cada versão.
-              </p>
+
             </div>
           </div>
 
@@ -370,10 +330,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
             <h2 className="display mt-4 text-[clamp(1.9rem,4vw,2.7rem)] text-ink">
               Antes de <span className="display-serif">instalar.</span>
             </h2>
-            <p className="mt-4 max-w-[30ch] text-[13.5px] leading-[1.7] text-warm">
-              São {GROUP_COUNT} grupos de ferramentas e {TOOL_COUNT} ações. Se faltar alguma coisa
-              do seu dia, é só pedir: a barra também responde texto livre.
-            </p>
+
           </Reveal>
           <Reveal delay={60}>
             <Faq />
@@ -388,9 +345,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
             <h2 className="display text-[clamp(1.9rem,4vw,2.7rem)] text-ink">
               Instale e peça a primeira coisa.
             </h2>
-            <p className="mt-3 max-w-[46ch] text-[14px] leading-relaxed text-warm">
-              Se não gostar, desinstalar leva dois cliques. O que você criou continua na sua conta.
-            </p>
+
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button size="lg" onClick={onDownload}>

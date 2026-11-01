@@ -1,5 +1,5 @@
 import { Avatar, Icon, Mark } from "./ui";
-import { LOCAL_ONLY, SYNC_ITEMS } from "../data/site";
+import { SYNC_ITEMS } from "../data/site";
 
 type Props = {
   name: string;
@@ -69,7 +69,7 @@ export default function AppMock({ name, email, color = "#c7452a", className = ""
           </div>
 
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-bone/45">
-            Sincroniza com o site
+            Na sua conta
           </p>
           <ul className="mt-2 divide-y divide-white/10 border-y border-white/10">
             {SYNC_ITEMS.map((item) => (
@@ -82,12 +82,6 @@ export default function AppMock({ name, email, color = "#c7452a", className = ""
             ))}
           </ul>
 
-          <div className="mt-3 flex items-start gap-2 text-bone/45">
-            <Icon name="lock" className="mt-[2px] h-3 w-3 shrink-0" />
-            <p className="font-mono text-[10px] leading-snug">
-              Só neste PC: {LOCAL_ONLY.join(", ").toLowerCase()}.
-            </p>
-          </div>
         </div>
       </div>
     </div>

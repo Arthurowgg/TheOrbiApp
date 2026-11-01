@@ -100,14 +100,14 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
     <>
       <PageHeader
         title="Segurança"
-        description="Senha, verificação de e-mail e os dados da sua conta — tudo no Firebase."
+        description="Senha, e-mail e os dados da sua conta."
       />
 
       <div className="grid gap-5 xl:grid-cols-[1.1fr_1fr]">
         <div className="space-y-5">
           <Panel
             title="Alterar senha"
-            description="Pedimos a senha atual antes de qualquer troca. O Firebase exige login recente."
+            description="Pedimos a senha atual antes de qualquer troca."
           >
             <form onSubmit={submitPassword} className="space-y-4" noValidate>
               <PasswordField
@@ -158,7 +158,7 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
 
           <Panel
             title="Redefinição de senha por e-mail"
-            description="Sem códigos para guardar: o Firebase envia um link seguro, válido por uma hora."
+            description="Enviamos um link por e-mail, válido por uma hora. Sem códigos para guardar."
           >
             <p className="text-[13px] leading-[1.6] text-ink-2">
               Se você esquecer a senha, o link resolve. É mais seguro que um código de recuperação
@@ -202,7 +202,7 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
 
           <Panel title="Seus dados" description="Leve uma cópia do que o Orbi guarda sobre a sua conta.">
             <p className="text-[13px] leading-[1.6] text-ink-2">
-              O arquivo inclui perfil, aparelhos, downloads e atividade do Firestore. Senha e tokens
+              O arquivo inclui perfil, computadores, downloads e atividade. Senha e tokens
               nunca são incluídos — eles nem passam por este site.
             </p>
             <Button variant="secondary" className="mt-4" onClick={exportData}>
@@ -214,8 +214,8 @@ export default function Security({ account, reload, notify, onLogout, go }: Page
           <section className="border border-signal/40 bg-signal-soft/30 p-5">
             <h2 className="text-[14px] font-semibold text-signal-dark">Excluir conta</h2>
             <p className="mt-1.5 text-[13px] leading-[1.6] text-ink-2">
-              Remove a conta no Firebase Authentication, o documento no Firestore, os aparelhos
-              vinculados e o histórico. O app instalado no PC continua funcionando, sem sincronização.
+              Remove a conta, os computadores e os downloads. O app instalado no PC continua
+              funcionando normalmente.
             </p>
             <Button variant="danger" className="mt-4" onClick={() => setDeleteOpen(true)}>
               <Icon name="trash" className="h-3.5 w-3.5" />

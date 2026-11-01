@@ -1,10 +1,4 @@
-export type AccountPage =
-  | "painel"
-  | "perfil"
-  | "dispositivos"
-  | "sincronizacao"
-  | "downloads"
-  | "seguranca";
+export type AccountPage = "painel" | "perfil" | "computadores" | "memoria" | "downloads" | "seguranca";
 export type LoginMode = "signin" | "signup" | "recover";
 
 export type Route =
@@ -14,8 +8,9 @@ export type Route =
 
 const ACCOUNT_PAGES: Record<string, AccountPage> = {
   perfil: "perfil",
-  dispositivos: "dispositivos",
-  sincronizacao: "sincronizacao",
+  computadores: "computadores",
+  dispositivos: "computadores",
+  memoria: "memoria",
   downloads: "downloads",
   seguranca: "seguranca",
 };

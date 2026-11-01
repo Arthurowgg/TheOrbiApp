@@ -22,13 +22,12 @@ public partial class SettingsWindow : Window
         var settings = Store.Current;
         NameBox.Text = settings.UserName;
         StartupToggle.IsChecked = settings.StartWithWindows;
-        GeminiToggle.IsChecked = settings.CloudMode;
         LockToggle.IsChecked = settings.LockEnabled;
         LockMinutes.Text = settings.LockAfterMinutes.ToString();
         ApiKeyBox.Password = Store.LoadApiKey() ?? "";
         GeminiState.Text = Store.HasApiKey()
-            ? "Chave configurada e cifrada neste PC — " + Gemini.Mode
-            : "Sem chave: as ferramentas funcionam; perguntas livres ficam no modo local.";
+            ? "Chave configurada e cifrada neste PC."
+            : "Nenhuma chave ainda: o Orbi não responde perguntas livres sem ela.";
         RefreshAccount();
         LoadHotkeys();
         DataPath.Text = Store.Root;
@@ -211,7 +210,6 @@ public partial class SettingsWindow : Window
         {
             SystemActions.StartWithWindows(wantsStartup);
         }
-        Store.Current.CloudMode = GeminiToggle.IsChecked == true;
         Store.Save();
         _ = Sync.PushFieldsAsync(new System.Text.Json.Nodes.JsonObject
         {
@@ -237,10 +235,8 @@ public partial class SettingsWindow : Window
             return;
         }
         Store.SaveApiKey(key);
-        Store.Current.CloudMode = true;
         Store.Save();
         KeyStatus.Text = "Chave salva e cifrada com DPAPI.";
-        GeminiToggle.IsChecked = true;
     }
 
     private async void TestKey_Click(object sender, RoutedEventArgs e)
@@ -262,7 +258,7 @@ public partial class SettingsWindow : Window
         Store.SaveApiKey("");
         ApiKeyBox.Password = "";
         KeyStatus.Text = "Chave removida deste PC.";
-        GeminiState.Text = "Chave removida. O Orbi segue no modo local, com todas as ferramentas.";
+        GeminiState.Text = "Chave removida. Cole outra para o Orbi voltar a responder.";
     }
 
     private void SaveSecurity_Click(object sender, RoutedEventArgs e)

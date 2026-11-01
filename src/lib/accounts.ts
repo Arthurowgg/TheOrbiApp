@@ -39,12 +39,9 @@ import { auth, db, configured } from "./firebaseClient";
 
 export type ActivityType = "conta" | "login" | "download" | "dispositivo" | "perfil" | "seguranca";
 
-export type SyncPrefs = {
-  preferencias: boolean;
-  memoria: boolean;
-  rotinas: boolean;
-  atalhos: boolean;
-};
+/** Memória do Orbi: ligada ou desligada. Nada além disso. */
+export type MemoryPrefs = { enabled: boolean };
+export type SyncPrefs = { memoria: boolean };
 
 export type Device = {
   id: string;
@@ -91,6 +88,7 @@ export type Account = {
   emailVerified: boolean;
   provider: string;
   sync: SyncPrefs;
+  memoryPrefs: MemoryPrefs;
   aliases: Alias[];
   shortcuts: Shortcut[];
   routines: Routine[];
@@ -102,12 +100,8 @@ export type Account = {
 
 export const AVATAR_COLORS = ["#17120e", "#c7452a", "#2f5d62", "#6b4e9b", "#9a6a1c", "#3b6e3f"] as const;
 
-export const DEFAULT_SYNC: SyncPrefs = {
-  preferencias: true,
-  memoria: true,
-  rotinas: true,
-  atalhos: true,
-};
+export const DEFAULT_SYNC: SyncPrefs = { memoria: true };
+export const DEFAULT_MEMORY: MemoryPrefs = { enabled: true };
 
 export const DEFAULT_PREFS: AppPrefs = {
   startWithWindows: true,
@@ -243,6 +237,7 @@ function toAccount(user: User, data: DocumentData | undefined): Account {
     emailVerified: user.emailVerified,
     provider: user.providerData[0]?.providerId ?? "password",
     sync: { ...DEFAULT_SYNC, ...(raw.sync ?? {}) },
+    memoryPrefs: { ...DEFAULT_MEMORY, ...(raw.memoryPrefs ?? {}) },
     aliases: Array.isArray(raw.aliases) ? (raw.aliases as Alias[]) : [],
     shortcuts: Array.isArray(raw.shortcuts) ? (raw.shortcuts as Shortcut[]) : [],
     routines: Array.isArray(raw.routines) ? (raw.routines as Routine[]) : [],
@@ -304,6 +299,7 @@ async function ensureProfileDocument(user: User, name?: string): Promise<Account
       color: randomColor(),
       plan: "gratis",
       sync: { ...DEFAULT_SYNC },
+      memoryPrefs: { ...DEFAULT_MEMORY },
       aliases: [],
       shortcuts: [],
       routines: [],
@@ -585,8 +581,9 @@ export async function saveAppPrefs(prefs: AppPrefs): Promise<void> {
   });
 }
 
-export function setSync(sync: SyncPrefs): Promise<void> {
-  return patchUser({ sync }).catch((error) => {
+/** Liga/desliga a memória do Orbi. */
+export function saveMemory(prefs: MemoryPrefs): Promise<void> {
+  return patchUser({ memoryPrefs: prefs, sync: { memoria: prefs.enabled } }).catch((error) => {
     throw toAuthError(error);
   });
 }
@@ -641,7 +638,7 @@ export function exportAccount(account: Account): string {
         email: account.email,
         criadaEm: account.createdAt,
       },
-      sincronizacao: account.sync,
+      memoria: account.memoryPrefs,
       aparelhos: account.devices.map(({ name, os, linkedAt }) => ({ name, os, linkedAt })),
       downloads: account.downloads,
       atividade: account.activity,

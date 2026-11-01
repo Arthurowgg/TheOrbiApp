@@ -56,41 +56,35 @@ export const ACCOUNT_ITEMS = [
   { label: "Preferências", body: "atalho global, bloqueio por inatividade, modo Cloud." },
 ];
 
-export const LOCAL_ONLY = ["Senhas", "Área de transferência", "Chave da IA", "Histórico de teclado"];
-
 export const FAQ = [
   {
-    q: "Preciso pagar para usar?",
-    a: "Não. O app, as ferramentas e a conta são gratuitos. Se você quiser conversa livre com IA, cole uma chave gratuita do Google AI Studio — ela fica cifrada no seu PC.",
+    q: "Preciso pagar?",
+    a: "Não. O app e a conta são gratuitos.",
   },
   {
     q: "Preciso de conta para instalar?",
-    a: "Para instalar, não. Todas as ferramentas rodam sem conta. A conta existe para levar lembretes, notas, rotinas e memória de um PC para outro.",
+    a: "Não. Todas as ferramentas funcionam sem conta. A conta serve para levar o que é seu de um PC para outro.",
   },
   {
-    q: "O Orbi mexe no sistema sem eu mandar?",
-    a: "Não. Nada acontece por conta própria: cada ação parte de um comando seu. A única exceção é o bloqueio por inatividade, que você liga no ajuste e avisa 15 segundos antes.",
+    q: "O Orbi mexe no PC sozinho?",
+    a: "Não. Cada ação parte de um comando seu. A única exceção é o bloqueio por inatividade, que você liga nos ajustes.",
   },
   {
-    q: "Funciona sem internet?",
-    a: "Sim. O catálogo de ferramentas, os lembretes, as notas e as rotinas funcionam offline. Só a conversa livre com a IA precisa de rede.",
-  },
-  {
-    q: "Meus dados vão para onde?",
-    a: "Notas, histórico de cópia, o log do app e a chave da IA ficam só no seu PC. A conta guarda o que precisa estar nos dois lugares: lembretes, notas, rotinas, preferências e memória.",
+    q: "E a inteligência artificial?",
+    a: "O Orbi usa o Gemini com uma chave sua, gratuita no Google AI Studio. Sem chave ele continua obedecendo as ferramentas.",
   },
   {
     q: "Qual Windows eu preciso?",
-    a: "Windows 11 (ou Windows 10 1809+), 64 bits. A instalação é por usuário e não pede privilégio de administrador.",
+    a: "Windows 10 (1809+) ou Windows 11, 64 bits. A instalação é por usuário e não pede administrador.",
   },
 ];
 
-/** Usado pela área da conta e pelo espelho do app: o que sincroniza. */
+/** O que a conta guarda. São quatro coisas — e é só isso que o site diz. */
 export const SYNC_ITEMS = [
-  { key: "preferencias" as const, label: "Preferências", hint: "atalho, tema e o que sincronizar" },
-  { key: "memoria" as const, label: "Memória", hint: "o seu dia, para perguntar depois" },
-  { key: "rotinas" as const, label: "Rotinas", hint: "modo estudo, cinema…" },
-  { key: "atalhos" as const, label: "Atalhos de texto", hint: "snippets que você criou" },
+  { key: "memoria" as const, label: "Memória" },
+  { key: "lembretes" as const, label: "Lembretes e notas" },
+  { key: "rotinas" as const, label: "Rotinas" },
+  { key: "preferencias" as const, label: "Preferências" },
 ];
 
 /** Notas da versão mostradas na área da conta. */

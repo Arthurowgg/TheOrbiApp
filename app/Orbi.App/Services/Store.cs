@@ -19,7 +19,6 @@ public sealed class OrbiSettings
     public string? Uid { get; set; }
     public long TokenExpiresAt { get; set; }
     public bool StartWithWindows { get; set; } = true;
-    public bool CloudMode { get; set; } = true;
     public string GeminiModel { get; set; } = "gemini-2.0-flash";
     public int Volume { get; set; } = 50;
     public int LockAfterMinutes { get; set; } = 5;

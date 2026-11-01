@@ -49,7 +49,7 @@ const COPY: Record<LoginMode, { title: string; accent: string; lead: string }> =
   recover: {
     title: "Recuperar",
     accent: "o acesso.",
-    lead: "Enviamos um link do Firebase para o seu e-mail. A senha nunca passa por aqui.",
+    lead: "Enviamos um link para o seu e-mail. A senha nunca passa por aqui.",
   },
 };
 
@@ -206,7 +206,7 @@ export default function Login({
                 Link enviado para {email}.
               </p>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#3d5a3f]">
-                Abra o e-mail do Firebase e escolha uma nova senha. Se não chegar em alguns minutos,
+                Abra o e-mail e escolha uma nova senha. Se não chegar em alguns minutos,
                 confira a caixa de spam ou tente outro endereço.
               </p>
               <div className="mt-4 flex gap-2">
@@ -338,7 +338,7 @@ export default function Login({
 
           <p className="mt-6 flex items-start gap-2 border-t border-rule pt-4 font-mono text-[10px] leading-relaxed text-warm">
             <Icon name="shield" className="mt-[1px] h-3.5 w-3.5 shrink-0" />
-            Autenticação e banco de dados pelo Firebase (Google). Sua senha é guardada com hash no
+            Login seguro com o Google. Sua senha é guardada com hash no
             servidor — este site nunca a vê.
           </p>
         </div>
@@ -377,9 +377,9 @@ export default function Login({
 
           <ul className="space-y-2.5 border-t border-white/12 pt-6">
             {[
-              "E-mail e senha com hash no servidor do Firebase",
+              "E-mail e senha nunca ficam visíveis,",
               "Verificação de e-mail e link de redefinição",
-              "Cada documento do Firestore visível só para o dono",
+              "Só você acessa os seus dados",
             ].map((item) => (
               <li key={item} className="flex items-start gap-2.5 text-[12.5px] leading-snug text-bone/60">
                 <Icon name="check" className="mt-[2px] h-3.5 w-3.5 shrink-0 text-signal" />

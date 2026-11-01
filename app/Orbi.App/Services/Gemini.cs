@@ -30,14 +30,13 @@ public static class Gemini
     public static bool HasKey => !string.IsNullOrWhiteSpace(Store.LoadApiKey());
 
     /// <summary>
-    /// Modo Cloud = chave gratuita do Google AI Studio, cifrada neste PC.
-    /// Sem chave (ou com o modo desligado) o app fica local: as 120 ferramentas
-    /// continuam funcionando, sem internet e sem gastar chamada nenhuma.
+    /// O Orbi é IA-first: sem chave ele não adivinha. O catálogo de ferramentas
+    /// continua na barra (é sistema, não IA), mas qualquer pedido em texto livre
+    /// passa a pedir a chave.
     /// </summary>
-    public static bool Available => Store.Current.CloudMode && HasKey;
+    public static bool Available => HasKey;
 
-    public static string Mode =>
-        !Store.Current.CloudMode ? "modo local" : HasKey ? "cloud" : "local · sem chave";
+    public static string Mode => HasKey ? "Gemini" : "sem chave";
 
     public static async Task<string?> AskAsync(string prompt, IEnumerable<(string Role, string Text)>? history = null,
         string? memory = null)
@@ -144,7 +143,6 @@ public static class Gemini
             {
                 Store.SaveApiKey(key.Trim());
                 Store.Current.GeminiModel = model;
-                Store.Current.CloudMode = true;
                 Store.Save();
                 return (true, $"Chave válida. Modo Cloud ativo com {model}.");
             }

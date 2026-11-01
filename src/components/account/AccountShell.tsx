@@ -16,8 +16,8 @@ export type PageProps = {
 export const ACCOUNT_NAV: { page: AccountPage; path: string; label: string; icon: IconName }[] = [
   { page: "painel", path: "/conta", label: "Painel", icon: "grid" },
   { page: "perfil", path: "/conta/perfil", label: "Perfil", icon: "user" },
-  { page: "dispositivos", path: "/conta/dispositivos", label: "Dispositivos", icon: "laptop" },
-  { page: "sincronizacao", path: "/conta/sincronizacao", label: "Sincronização", icon: "bolt" },
+  { page: "computadores", path: "/conta/computadores", label: "Computadores", icon: "laptop" },
+  { page: "memoria", path: "/conta/memoria", label: "Memória", icon: "sparkle" },
   { page: "downloads", path: "/conta/downloads", label: "Downloads", icon: "download" },
   { page: "seguranca", path: "/conta/seguranca", label: "Segurança", icon: "shield" },
 ];
@@ -58,8 +58,7 @@ function StorageWarning({ message }: { message: string }) {
     <div className="mb-5 flex items-start gap-3 border border-signal/30 bg-signal-soft/60 px-4 py-3">
       <span className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.08em] text-signal">aviso</span>
       <p className="text-[12.5px] leading-relaxed text-ink-2">
-        Você entrou na conta, mas o banco (Firestore) não respondeu — os dados desta página não
-        serão salvos até ele voltar. <span className="text-warm">{message}</span>
+        Você entrou na conta, mas não conseguimos salvar agora. <span className="text-warm">{message}</span>
       </p>
     </div>
   );

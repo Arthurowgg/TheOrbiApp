@@ -311,6 +311,7 @@ public partial class App : System.Windows.Application
         if (ok == true)
         {
             _bar?.RefreshGreeting();
+            _bar?.RefreshAccountChip();
             _settings?.Refresh();
         }
     }

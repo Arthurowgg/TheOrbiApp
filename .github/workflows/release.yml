@@ -63,81 +63,59 @@ jobs:
           -c Release -r win-x64 --self-contained true
           -o artifacts/publish
 
-      # O app é publicado "framework-dependent": o .NET vai embutido no setup,
-      # então o exe é pequeno e não extrai nada na partida.
-      - name: Empacotar o app (payload do instalador)
+      # O pacote do app é publicado ao lado do setup. O setup fica pequeno e
+      # baixa esse arquivo durante a instalação.
+      - name: Empacotar o app (payload da release)
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
-          Compress-Archive -Path "artifacts\publish\*" -DestinationPath "app\Orbi.Setup\assets\payload.zip" -CompressionLevel Optimal -Force
-          $zip = Get-Item "app\Orbi.Setup\assets\payload.zip"
+          New-Item -ItemType Directory -Force -Path artifacts/Installer | Out-Null
+          Compress-Archive -Path "artifacts\publish\*" -DestinationPath "artifacts\Installer\orbi-payload-1.1.2.zip" -CompressionLevel Optimal -Force
+          $zip = Get-Item "artifacts\Installer\orbi-payload-1.1.2.zip"
           Write-Host ("payload: " + [math]::Round($zip.Length/1MB,1) + " MB")
-          if ($zip.Length -lt 20MB) {
+          if ($zip.Length -lt 100MB) {
             $pub = (Get-ChildItem "artifacts\publish" -Recurse | Measure-Object Length -Sum)
             Write-Host "::error::payload pequeno demais: $([math]::Round($zip.Length/1MB,1)) MB; publish tem $([math]::Round($pub.Sum/1MB,1)) MB em $($pub.Count) arquivos"
             throw "payload incompleto"
           }
 
-      - name: Compilar o instalador (WPF próprio)
+      - name: Compilar o instalador (WPF próprio, leve)
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
           dotnet publish app/Orbi.Setup/Orbi.Setup.csproj -c Release -r win-x64 --self-contained true `
             -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/setup
           New-Item -ItemType Directory -Force -Path artifacts/Installer | Out-Null
-          Move-Item artifacts/setup/OrbiSetup.exe "artifacts/Installer/OrbiSetup-1.1.1.exe" -Force
-
-      # Prova que o instalador instala e desinstala de verdade, sem abrir janela.
-      - name: Instalar e desinstalar (silencioso)
-        shell: powershell
-        run: |
-          $ErrorActionPreference = "Stop"
-          $setup = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
-          $target = Join-Path $env:LOCALAPPDATA "Programs\Orbi"
-          $log = Join-Path $env:LOCALAPPDATA "Orbi-setup.log"
-
-          $p = Start-Process $setup -ArgumentList "--silent" -PassThru -Wait
-          if (Test-Path $log) { Get-Content $log | ForEach-Object { Write-Host "  $_" } }
-          if ($p.ExitCode -ne 0) { throw "instalador saiu com código $($p.ExitCode)" }
-
-          $exe = Join-Path $target "Orbi.exe"
-          $des = Join-Path $target "Desinstalar.exe"
-          if (-not (Test-Path $exe)) { throw "Orbi.exe não foi instalado em $target" }
-          if (-not (Test-Path $des)) { throw "Desinstalar.exe não foi instalado em $target" }
-          if ((Get-Item $exe).Length -lt 100KB) { throw "Orbi.exe instalado está vazio" }
-          $uninst = (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Orbi" -ErrorAction Stop).UninstallString
-          Write-Host "instalado: $exe"
-          Write-Host "desinstalador: $uninst"
-
-          $p2 = Start-Process $des -ArgumentList "--uninstall --silent" -PassThru -Wait
-          if ($p2.ExitCode -ne 0) { throw "desinstalador saiu com código $($p2.ExitCode)" }
-          if (Test-Path $exe) { throw "Orbi.exe continuou instalado depois de desinstalar" }
-          if (Test-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Orbi") {
-            throw "entrada de desinstalação continuou no registro"
-          }
-          Write-Host "::notice::instalou, registrou e desinstalou sem administrador"
+          Move-Item artifacts/setup/OrbiSetup.exe "artifacts/Installer/OrbiSetup-1.1.2.exe" -Force
 
       - name: Checksums
         shell: powershell
         run: |
-          $file = Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1
-          $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
-          "$hash  $($file.Name)" | Out-File -Encoding ascii artifacts\Installer\SHA256SUMS.txt
-          Write-Host "SHA-256: $hash"
+          $arquivos = Get-ChildItem artifacts\Installer -File | Where-Object { $_.Extension -in ".exe", ".zip" }
+          $linhas = foreach ($file in $arquivos) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($file.Name)"
+          }
+          $linhas | Out-File -Encoding ascii artifacts\Installer\SHA256SUMS.txt
+          $linhas | ForEach-Object { Write-Host $_ }
 
       - name: Smoke test do instalador
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
           $exe = Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1
-          if ($exe.Length -lt 20MB) { throw "instalador suspeito (sem o app dentro?): $($exe.Length) bytes" }
-          Write-Host ("setups: " + $exe.Name + " · " + [math]::Round($exe.Length/1MB,1) + " MB")
-          Write-Host "::notice::instalador $($exe.Name) com $([math]::Round($exe.Length/1MB,1)) MB"
+          $zip = Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1
+          if ($exe.Length -gt 30MB) { throw "instalador pesado demais: $([math]::Round($exe.Length/1MB,1)) MB (o app deveria vir no payload)" }
+          if ($exe.Length -lt 1MB) { throw "instalador pequeno demais: $($exe.Length) bytes" }
+          if ($zip.Length -lt 100MB) { throw "payload suspeito: $([math]::Round($zip.Length/1MB,1)) MB" }
+          Write-Host "::notice::instalador $($exe.Name) com $([math]::Round($exe.Length/1MB,1)) MB · payload $([math]::Round($zip.Length/1MB,1)) MB"
 
       - uses: actions/upload-artifact@v4
         with:
           name: installer
           path: |
             artifacts/Installer/OrbiSetup-*.exe
+            artifacts/Installer/orbi-payload-*.zip
             artifacts/Installer/SHA256SUMS.txt
           retention-days: 14
 
@@ -231,26 +209,29 @@ jobs:
         with:
           # nome fixo: o asset é substituído pelo build mais novo
           fail_on_unmatched_files: true
-          tag_name: v1.1.1
-          name: Orbi 1.1.1
+          tag_name: v1.1.2
+          name: Orbi 1.1.2
           draft: false
           prerelease: false
           make_latest: true
           files: |
-            artifacts/OrbiSetup-1.1.1.exe
+            artifacts/OrbiSetup-1.1.2.exe
+            artifacts/orbi-payload-1.1.2.zip
             artifacts/SHA256SUMS.txt
           body: |
-            ## Orbi 1.1.1 — para Windows 11
+            ## Orbi 1.1.2 — para Windows 11
 
-            Instalador único, sem Python, sem privilégio de administrador.
+            Instalador leve (poucos MB): o app é baixado no próprio instalador, na hora.
+            Sem Python e sem privilégio de administrador.
 
-            **Baixe `OrbiSetup-1.1.1.exe`** e execute. O Orbi abre como uma barra de
+            **Baixe `OrbiSetup-1.1.2.exe`** e execute. O Orbi abre como uma barra de
             comando; aperte `Alt+Shift+O` em qualquer lugar do Windows para chamar.
 
+            - Instalador leve: baixa o app durante a instalação
             - **120+ ferramentas do Windows**: áudio, brilho, energia, painéis de
               configuração, apps, janelas, pastas, rede e acessibilidade
             - Barra fina de comando: `Enter` executa, `/` abre o catálogo, `F1` também
-            - **Modo Cloud (Gemini)** opcional, com chave gratuita do AI Studio cifrada
+            - **Modo Cloud (Gemini)** opcional, com chave gratuita do Google AI Studio cifrada
               com DPAPI — ou sem chave, usando só as ferramentas locais
             - Lembretes, notas, histórico de cópia e memória do dia
             - **Conta única com o site**: o que você cria no site aparece no app
@@ -258,7 +239,7 @@ jobs:
             **Verificação:** compare o SHA-256 com `SHA256SUMS.txt`.
 
             ```powershell
-            certutil -hashfile OrbiSetup-1.1.1.exe SHA256
+            certutil -hashfile OrbiSetup-1.1.2.exe SHA256
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

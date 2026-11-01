@@ -152,24 +152,13 @@
           </StackPanel>
 
           <StackPanel x:Name="PageIa" Visibility="Collapsed">
-            <TextBlock Text="Modo Cloud (Gemini)" Style="{StaticResource H1}"/>
-            <TextBlock Text="Sem chave o Orbi já funciona: as ferramentas rodam no PC. Com uma chave gratuita do Google AI Studio, ele também conversa e entende pedidos livres."
+            <TextBlock Text="IA (Gemini)" Style="{StaticResource H1}"/>
+            <TextBlock Text="O Orbi pensa com o Gemini. Cole a sua chave gratuita do Google AI Studio — ela fica cifrada neste PC e é usada só por você."
                        Style="{StaticResource Muted}" Margin="0,4,0,18" TextWrapping="Wrap"/>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <Grid>
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                  </Grid.ColumnDefinitions>
-                  <StackPanel Grid.Column="0">
-                    <TextBlock Text="Modo Cloud ligado" Style="{StaticResource Body}" FontWeight="SemiBold"/>
-                    <TextBlock x:Name="GeminiState" Style="{StaticResource Muted}"/>
-                  </StackPanel>
-                  <ToggleButton x:Name="GeminiToggle" Grid.Column="1" Style="{StaticResource ToggleSwitch}"
-                                VerticalAlignment="Center"/>
-                </Grid>
+                <TextBlock x:Name="GeminiState" Style="{StaticResource Body}" FontWeight="SemiBold"/>
 
                 <Border Style="{StaticResource Divider}"/>
 
@@ -179,7 +168,7 @@
                            Style="{StaticResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 <Button x:Name="OpenKeyPage" Content="Abrir a página da chave" Style="{StaticResource GhostButton}"
                         HorizontalAlignment="Left" Margin="0,8,0,0" Click="OpenKeyPage_Click"/>
-                <TextBlock Text="A conta não é necessária aqui: a chave fica neste PC, e cada pessoa usa a sua — assim o uso é gratuito e separado."
+                <TextBlock Text="A chave não entra na conta nem é enviada para o Orbi: fica só neste computador."
                            Style="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap"/>
 
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">

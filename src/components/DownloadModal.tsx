@@ -124,7 +124,7 @@ export default function DownloadModal({
       onClose={onClose}
       wide
       title="Baixar o Orbi"
-      description={`Instalador para Windows · ${size} · sem Python, sem administrador.`}
+      description={`Instalador para Windows · ${size} · o app baixa na hora.`}
     >
       <div className="space-y-5">
         {/* versão escolhida */}

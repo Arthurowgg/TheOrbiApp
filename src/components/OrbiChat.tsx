@@ -551,7 +551,7 @@ export default function OrbiChat({ onDownload, onLogin }: OrbiChatProps) {
           from: "orbi",
           text: answer,
           signal: "ia",
-          detail: "Respondido pelo Gemini via Firebase AI Logic.",
+          detail: "Respondido pelo Gemini.",
         });
       } else {
         push({
@@ -663,7 +663,7 @@ export default function OrbiChat({ onDownload, onLogin }: OrbiChatProps) {
                   ? "border-signal/60 bg-signal/10 text-[#f0a38e]"
                   : "border-white/15 text-bone/75"
               }`}
-              title="Se o Gemini já estiver habilitado no console do Firebase, o assistente conversa de verdade."
+              title="O assistente conversa de verdade quando a IA está ativa."
             >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${ai === "online" ? "bg-signal" : "bg-[#d9d1c1]"}`}

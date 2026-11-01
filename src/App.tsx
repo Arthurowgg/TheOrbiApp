@@ -7,7 +7,7 @@ import AccountShell, { type PageProps } from "./components/account/AccountShell"
 import Overview from "./components/account/Overview";
 import Profile from "./components/account/Profile";
 import Devices from "./components/account/Devices";
-import Sync from "./components/account/Sync";
+import Memory from "./components/account/Memory";
 import Downloads from "./components/account/Downloads";
 import Security from "./components/account/Security";
 import { Avatar, Brand, Button, Icon, Mark, OrbitArt } from "./components/ui";
@@ -264,7 +264,7 @@ function SiteFooter({
                 </a>
               </li>
               <li>
-                <span className="font-mono text-[11px] text-bone/35">Firebase · Firestore</span>
+                <span className="font-mono text-[11px] text-bone/35">Orbi</span>
               </li>
             </ul>
           </div>
@@ -491,8 +491,8 @@ export default function App() {
       >
         {page === "painel" && <Overview {...props} />}
         {page === "perfil" && <Profile {...props} />}
-        {page === "dispositivos" && <Devices {...props} />}
-        {page === "sincronizacao" && <Sync {...props} />}
+        {page === "computadores" && <Devices {...props} />}
+        {page === "memoria" && <Memory {...props} />}
         {page === "downloads" && <Downloads {...props} />}
         {page === "seguranca" && <Security {...props} />}
       </AccountShell>

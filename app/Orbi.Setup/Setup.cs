@@ -1,7 +1,8 @@
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
-using System.Reflection;
+using System.Net.Http;
+using System.Text.Json;
 using System.Windows;
 using Microsoft.Win32;
 
@@ -53,34 +54,107 @@ public static class Paths
     public static bool Installed => File.Exists(Exe);
 }
 
-/// <summary>O pacote do app vai embutido no setup (assets\payload.zip).</summary>
+/// <summary>
+/// O app não viaja dentro do setup: o instalador tem poucos MB e baixa o pacote
+/// (~200 MB) na hora de instalar. Fica em cache, então uma reinstalação é rápida.
+/// </summary>
 public static class Payload
 {
-    public static Stream? Open()
-    {
-        var assembly = Assembly.GetExecutingAssembly();
-        var nome = assembly.GetManifestResourceNames()
-            .FirstOrDefault(item => item.EndsWith("payload.zip", StringComparison.OrdinalIgnoreCase));
-        return nome is null ? null : assembly.GetManifestResourceStream(nome);
-    }
+    /// <summary>Pacote publicado junto com o instalador na mesma release.</summary>
+    public const string Url =
+        "https://github.com/Arthurowgg/TheOrbiApp/releases/download/v1.1.2/orbi-payload-1.1.2.zip";
 
-    public static bool Exists => Open() is not null;
+    public const long ApproximateSize = 216L * 1024 * 1024;
 
-    /// <summary>Quantos arquivos tem o pacote (mostrado antes de instalar).</summary>
-    public static int FileCount()
+    public static string Cache =>
+        Path.Combine(Path.GetTempPath(), "orbi-payload-" + Installer.Versao + ".zip");
+
+    private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromMinutes(15) };
+
+    public static bool Cached => File.Exists(Cache) && new FileInfo(Cache).Length > 20L * 1024 * 1024;
+
+    /// <summary>Baixa o pacote com progresso (0-1). Devolve o caminho no disco.</summary>
+    public static async Task<string> DownloadAsync(IProgress<double> progress, CancellationToken token)
     {
+        if (Cached)
+        {
+            progress.Report(1);
+            return Cache;
+        }
+
+        // 1. direto do endereço oficial
         try
         {
-            using var stream = Open();
-            if (stream is null) return 0;
-            using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
-            return zip.Entries.Count(entry => !string.IsNullOrEmpty(entry.Name));
+            return await DownloadFrom(Url, progress, token);
         }
-        catch
+        catch (Exception error)
         {
-            return 0;
+            Installer.Write("Download direto falhou: " + error.Message);
         }
+
+        // 2. pela API da release (funciona quando o link direto é redirecionado)
+        var api = "https://api.github.com/repos/Arthurowgg/TheOrbiApp/releases/tags/" + Installer.Tag;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, api);
+            request.Headers.TryAddWithoutValidation("User-Agent", "OrbiSetup");
+            using var response = await Client.SendAsync(request, token);
+            response.EnsureSuccessStatusCode();
+            using var document = await JsonDocument.ParseAsync(
+                await response.Content.ReadAsStreamAsync(token), cancellationToken: token);
+            foreach (var asset in document.RootElement.GetProperty("assets").EnumerateArray())
+            {
+                var name = asset.GetProperty("name").GetString() ?? "";
+                if (!name.StartsWith("orbi-payload", StringComparison.OrdinalIgnoreCase)) continue;
+                var url = asset.GetProperty("browser_download_url").GetString();
+                if (url is not null) return await DownloadFrom(url, progress, token);
+            }
+        }
+        catch (Exception error)
+        {
+            Installer.Write("Busca pela API falhou: " + error.Message);
+        }
+
+        throw new InvalidOperationException(
+            "Não foi possível baixar o Orbi. Verifique a internet e tente de novo.");
     }
+
+    private static async Task<string> DownloadFrom(string url, IProgress<double> progress, CancellationToken token)
+    {
+        using var response = await Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
+        response.EnsureSuccessStatusCode();
+        var total = response.Content.Headers.ContentLength ?? ApproximateSize;
+
+        var temp = Cache + ".part";
+        await using (var output = File.Create(temp))
+        await using (var input = await response.Content.ReadAsStreamAsync(token))
+        {
+            var buffer = new byte[81920];
+            long received = 0;
+            int read;
+            while ((read = await input.ReadAsync(buffer, token)) > 0)
+            {
+                await output.WriteAsync(buffer.AsMemory(0, read), token);
+                received += read;
+                if (total > 0) progress.Report(Math.Min(1, (double)received / total));
+            }
+        }
+
+        var info = new FileInfo(temp);
+        if (info.Length < 20L * 1024 * 1024)
+        {
+            File.Delete(temp);
+            throw new InvalidOperationException($"o pacote veio incompleto ({info.Length} bytes)");
+        }
+
+        if (File.Exists(Cache)) File.Delete(Cache);
+        File.Move(temp, Cache);
+        return Cache;
+    }
+
+    /// <summary>Lê o zip do cache sem carregar tudo na memória.</summary>
+    public static ZipArchive OpenDownloaded(string path) =>
+        ZipFile.OpenRead(path);
 }
 
 /// <summary>
@@ -122,13 +196,18 @@ public static class Installer
 
             token.ThrowIfCancellationRequested();
 
-            // 3. extrai o app
-            Write("Copiando o Orbi…");
-            progress.Report(0.16);
+            // 3. baixa o pacote do app e extrai
+            Write("Baixando o Orbi…");
+            var zipPath = Payload
+                .DownloadAsync(new Progress<double>(value => progress.Report(0.16 + 0.60 * value)), token)
+                .GetAwaiter().GetResult();
+            Write($"Pacote pronto ({new FileInfo(zipPath).Length / 1024 / 1024} MB)");
+            progress.Report(0.78);
+
+            Write("Instalando os arquivos…");
             Directory.CreateDirectory(Paths.Target);
 
-            using (var stream = Payload.Open() ?? throw new InvalidOperationException("pacote do app ausente"))
-            using (var zip = new ZipArchive(stream, ZipArchiveMode.Read))
+            using (var zip = ZipFile.OpenRead(zipPath))
             {
                 var total = zip.Entries.Count(entry => !string.IsNullOrEmpty(entry.Name));
                 var done = 0;
@@ -146,7 +225,7 @@ public static class Installer
                     Directory.CreateDirectory(Path.GetDirectoryName(destino)!);
                     entry.ExtractToFile(destino, overwrite: true);
                     done++;
-                    progress.Report(0.16 + 0.66 * done / Math.Max(1, total));
+                    progress.Report(0.78 + 0.14 * done / Math.Max(1, total));
                 }
                 Write($"{done} arquivos instalados");
             }
@@ -245,7 +324,10 @@ public static class Installer
     }
 
     public static string Versao =>
-        Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
+        System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
+
+    /// <summary>Tag da release que combina com esta versão (v1.1.2).</summary>
+    public static string Tag => "v" + Versao;
 
     /// <summary>Desinstalação: encerra o app, apaga atalhos, registro e arquivos.</summary>
     public static void Uninstall()

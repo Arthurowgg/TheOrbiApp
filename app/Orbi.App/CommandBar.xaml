@@ -51,10 +51,26 @@
                      VerticalAlignment="Center" IsHitTestVisible="False"/>
         </Grid>
 
-        <Border x:Name="EscBadge" Grid.Column="2" Background="#22FFFFFF" CornerRadius="3"
-                VerticalAlignment="Center" IsHitTestVisible="False">
-          <TextBlock Text="Esc" Foreground="#99F1EBDF" FontFamily="{StaticResource MonoFont}" FontSize="10"/>
-        </Border>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+          <!-- Conta: abre um menu com conta, ajustes e ferramentas -->
+          <Button x:Name="AccountButton" Click="AccountButton_Click"
+                  Background="Transparent" BorderThickness="0" Cursor="Hand"
+                  ToolTip="Conta, ajustes e ferramentas">
+            <StackPanel Orientation="Horizontal">
+              <Border x:Name="Avatar" Width="22" Height="22" CornerRadius="11"
+                      Background="{StaticResource SignalBrush}" VerticalAlignment="Center">
+                <TextBlock x:Name="AvatarInitial" Text="O" Foreground="White" FontSize="10.5"
+                           FontFamily="{StaticResource Sans}" HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+              </Border>
+            </StackPanel>
+          </Button>
+
+          <Border x:Name="EscBadge" Background="#22FFFFFF" CornerRadius="3"
+                  Margin="8,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+            <TextBlock Text="Esc" Foreground="#99F1EBDF" FontFamily="{StaticResource MonoFont}" FontSize="10"/>
+          </Border>
+        </StackPanel>
       </Grid>
     </Border>
 

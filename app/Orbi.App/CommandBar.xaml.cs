@@ -67,6 +67,7 @@ public partial class CommandBar : Window
     {
         InitializeComponent();
         ApplySpacing();
+        RefreshAccountChip();
         Results.ItemsSource = _rows;
         _debounce.Tick += async (_, _) =>
         {
@@ -96,6 +97,78 @@ public partial class CommandBar : Window
         EscBadge.Padding = new Thickness(7, 4, 7, 4);
         Results.Padding = new Thickness(6, 4, 6, 4);
         Results.ItemContainerStyle = (Style)FindResource("ResultItem");
+    }
+
+    /* ----------------------------- conta ----------------------------- */
+    /// <summary>O avatar mostra quem está logado (ou "O" quando não há conta).</summary>
+    public void RefreshAccountChip()
+    {
+        var nome = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "" : Store.Current.UserName.Trim();
+        var primeiro = string.IsNullOrWhiteSpace(nome) ? "O" : nome[..1].ToUpperInvariant();
+        AvatarInitial.Text = primeiro;
+        Avatar.Background = Firebase.SignedIn
+            ? new SolidColorBrush(Color.FromRgb(0x3B, 0x6E, 0x3F))
+            : (Brush)new SolidColorBrush(Color.FromRgb(0xC7, 0x45, 0x2A));
+        AccountButton.ToolTip = Firebase.SignedIn
+            ? $"{nome} · {(Firebase.Email ?? "")}"
+            : "Sem conta — clique para entrar";
+    }
+
+    /// <summary>Menu de conta: perfil, ajustes, ferramentas, atalhos e sair.</summary>
+    private void AccountButton_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu
+        {
+            PlacementTarget = AccountButton,
+            Placement = PlacementMode.Bottom,
+            FontFamily = FontFamily,
+        };
+
+        void Item(string texto, Action acao, bool negrito = false)
+        {
+            var item = new MenuItem { Header = texto };
+            if (negrito) item.FontWeight = FontWeights.SemiBold;
+            item.Click += (_, _) => acao();
+            menu.Items.Add(item);
+        }
+
+        if (Firebase.SignedIn)
+        {
+            var nome = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "Sua conta" : Store.Current.UserName;
+            var cabecalho = new MenuItem { Header = nome, IsEnabled = false };
+            menu.Items.Add(cabecalho);
+            if (!string.IsNullOrWhiteSpace(Firebase.Email))
+            {
+                menu.Items.Add(new MenuItem { Header = Firebase.Email, IsEnabled = false });
+            }
+            menu.Items.Add(new Separator());
+            Item("Conta e sincronização…", () => App.Instance.ShowSettings("conta"));
+        }
+        else
+        {
+            Item("Entrar na conta…", () => App.Instance.ShowLogin(), negrito: true);
+            Item("Criar conta no site", () => SystemActions.Open("https://orbi-app.web.app/criar"));
+            menu.Items.Add(new Separator());
+        }
+
+        Item("IA e chave do Gemini…", () => App.Instance.ShowSettings("ia"));
+        Item("Ajustes…", () => App.Instance.ShowSettings());
+        Item("Ferramentas do Windows…", () => App.Instance.ShowSettings("ferramentas"));
+        Item("Lembretes e notas…", () => App.Instance.ShowSettings("notas"));
+        menu.Items.Add(new Separator());
+        if (Firebase.SignedIn)
+        {
+            Item("Sair da conta", () =>
+            {
+                Firebase.SignOut();
+                RefreshAccountChip();
+                App.Instance.ShowBar();
+            });
+        }
+        Item("Fechar a barra (Esc)", Hide);
+        Item("Encerrar o Orbi", () => App.Instance.ExitApp());
+
+        menu.IsOpen = true;
     }
 
     /* ----------------------------- abrir / fechar ----------------------------- */
@@ -143,14 +216,14 @@ public partial class CommandBar : Window
         Collapse();
         UpdateFooter();
 
+        RefreshAccountChip();
         Topmost = true;
         Activate();
         Focus();
         Input.Focus();
         Keyboard.Focus(Input);
 
-        // Primeira vez sem chave: uma linha explicando onde ligar a conversa,
-        // sem abrir janela nem bloquear nada.
+        // Primeira vez sem chave: a barra já explica, sem abrir janela.
         if (!Store.Current.ToldAboutCloud && !Gemini.HasKey)
         {
             Store.Current.ToldAboutCloud = true;
@@ -159,8 +232,12 @@ public partial class CommandBar : Window
             Add(new ResultRow
             {
                 Glyph = "\u2022",
-                Text = "Tudo já funciona por aqui: digite / para ver as ferramentas.",
-                Detail = "Para perguntas livres, cole uma chave gratuita em Ajustes ▸ Modo Cloud. É opcional.",
+                Text = "Cole a sua chave do Gemini para o Orbi pensar.",
+                Detail = "Ajustes ▸ Modo Cloud. A chave é gratuita e fica cifrada neste PC.",
+                Command = "conta",
+                Badge = "configurar",
+                BadgeBrush = "#FFC7452A",
+                BadgeTextBrush = "#FFFFFFFF",
             });
         }
     }
@@ -327,9 +404,12 @@ public partial class CommandBar : Window
             Add(new ResultRow
             {
                 Glyph = "?",
-                Text = "Isso eu respondo com o Gemini.",
-                Detail = "Adicione sua chave gratuita em Ajustes ▸ IA — ela fica cifrada neste PC. Sem ela, os comandos locais continuam funcionando.",
-                Badge = "ajustes",
+                Text = "Preciso da chave do Gemini para responder isso.",
+                Detail = "Ajustes ▸ Modo Cloud. A chave é gratuita e fica cifrada neste PC.",
+                Command = "conta",
+                Badge = "configurar",
+                BadgeBrush = "#FFC7452A",
+                BadgeTextBrush = "#FFFFFFFF",
             });
             return;
         }
@@ -502,6 +582,14 @@ public partial class CommandBar : Window
     private void ExecuteSelected(string text)
     {
         Store.PushCommand(text);
+
+        // "conta" abre o menu do botão de conta (sem digitar nada além disso).
+        if (string.Equals(text.Trim(), "conta", StringComparison.OrdinalIgnoreCase))
+        {
+            Input.Text = "";
+            AccountButton_Click(AccountButton, new RoutedEventArgs());
+            return;
+        }
         var reply = Interpreter.Execute(text);
         Remember(text, reply);
 
