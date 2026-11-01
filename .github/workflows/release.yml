@@ -174,8 +174,11 @@ jobs:
             printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           fi
 
-      - name: Deploy no Hosting
+      - name: Deploy no Hosting + regras do Firestore
         if: steps.auth.outputs.available == 'true'
-        run: npx --yes firebase-tools@latest deploy --only hosting --project orbi-app-auth --non-interactive
+        run: |
+          npx --yes firebase-tools@latest deploy \
+            --only hosting,firestore:rules \
+            --project orbi-app-auth --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json

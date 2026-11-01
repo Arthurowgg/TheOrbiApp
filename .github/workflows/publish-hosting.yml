@@ -1,0 +1,58 @@
+name: Publicar site no Firebase Hosting
+
+# Publica dist/ + firestore.rules em orbi-app-auth.
+# Requer o secret FIREBASE_SERVICE_ACCOUNT (Settings > Secrets and variables > Actions).
+# Sem o secret, o job falha com instrução — nunca tenta credencial embutida.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conferir secret
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::error::Falta o secret FIREBASE_SERVICE_ACCOUNT (JSON da conta de serviço)."
+            echo "Settings > Secrets and variables > Actions > New repository secret"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Preparar credencial
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+
+      - name: Deploy (hosting + regras)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          npx --yes firebase-tools@latest deploy \
+            --only hosting,firestore:rules \
+            --project orbi-app-auth --non-interactive
+
+      - name: Conferir o site publicado
+        run: |
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' https://orbi-app-auth.web.app/)
+            echo "tentativa $i: HTTP $CODE"
+            [ "$CODE" = "200" ] && break
+            sleep 10
+          done
+          curl -s https://orbi-app-auth.web.app/ | grep -o '<title>[^<]*</title>' || true
