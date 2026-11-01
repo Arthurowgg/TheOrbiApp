@@ -16,10 +16,10 @@ jobs:
     steps:
       - name: Conferir secret
         env:
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
         run: |
           if [ -z "$SA" ]; then
-            echo "::error::Falta o secret FIREBASE_SERVICE_ACCOUNT (JSON da conta de serviço)."
+            echo "::error::Falta o secret com o JSON da conta de serviço (AUTH_KEY ou FIREBASE_SERVICE_ACCOUNT)."
             echo "Settings > Secrets and variables > Actions > New repository secret"
             exit 1
           fi
@@ -36,8 +36,11 @@ jobs:
 
       - name: Preparar credencial
         env:
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
+        shell: bash
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json"
 
       - name: Deploy (hosting + regras)
         env:

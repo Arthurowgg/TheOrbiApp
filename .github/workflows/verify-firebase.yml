@@ -182,11 +182,11 @@ jobs:
       - name: Conferir secret
         id: check
         env:
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
         run: |
           if [ -z "$SA" ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Secret FIREBASE_SERVICE_ACCOUNT ausente — deploy pulado."
+            echo "::notice::Secret da conta de serviço ausente — deploy pulado."
           else
             echo "available=true" >> "$GITHUB_OUTPUT"
           fi
@@ -206,8 +206,10 @@ jobs:
       - if: steps.check.outputs.available == 'true'
         name: Preparar credencial
         env:
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json" || echo "::warning::credencial do Firebase com problema"
 
       - if: steps.check.outputs.available == 'true'
         name: Deploy (hosting + regras)

@@ -167,7 +167,7 @@ jobs:
       - id: auth
         name: Conferir credencial do Firebase
         env:
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
         run: |
           if [ -z "$SA" ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"
@@ -175,6 +175,7 @@ jobs:
           else
             echo "available=true" >> "$GITHUB_OUTPUT"
             printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+            python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json" || echo "::warning::credencial do Firebase com problema"
           fi
 
       - name: Deploy no Hosting + regras do Firestore
