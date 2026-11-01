@@ -52,7 +52,7 @@ type ShellProps = {
   children: ReactNode;
 };
 
-/** Aviso honesto quando o banco não responde (regras/console pendentes). */
+/** Aviso honesto quando não dá para salvar na conta agora. */
 function StorageWarning({ message }: { message: string }) {
   return (
     <div className="mb-5 flex items-start gap-3 border border-signal/30 bg-signal-soft/60 px-4 py-3">
