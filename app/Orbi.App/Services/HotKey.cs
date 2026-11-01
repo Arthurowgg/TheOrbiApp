@@ -166,6 +166,7 @@ public static class SingleInstance
     private const string Name = "Orbi.App.SingleInstance";
     private const string ShowBarEvent = "Orbi.App.ShowBar";
     private const string ShowSettingsEvent = "Orbi.App.ShowSettings";
+    private const string ShowDiagEvent = "Orbi.App.ShowDiag";
 
     public static bool TryAcquire()
     {
@@ -174,10 +175,11 @@ public static class SingleInstance
     }
 
     /// <summary>Fica ouvindo pedidos das próximas instâncias.</summary>
-    public static void Listen(Action showBar, Action showSettings)
+    public static void Listen(Action showBar, Action showSettings, Action? showDiag = null)
     {
         ListenOn(ShowBarEvent, showBar);
         ListenOn(ShowSettingsEvent, showSettings);
+        if (showDiag is not null) ListenOn(ShowDiagEvent, showDiag);
     }
 
     private static void ListenOn(string name, Action action)
@@ -205,11 +207,12 @@ public static class SingleInstance
         thread.Start();
     }
 
-    public static void SignalExisting(bool settings)
+    public static void SignalExisting(bool settings, bool diag = false)
     {
         try
         {
-            using var handle = EventWaitHandle.OpenExisting(settings ? ShowSettingsEvent : ShowBarEvent);
+            var nome = diag ? ShowDiagEvent : settings ? ShowSettingsEvent : ShowBarEvent;
+            using var handle = EventWaitHandle.OpenExisting(nome);
             handle.Set();
         }
         catch

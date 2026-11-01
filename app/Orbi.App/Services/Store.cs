@@ -34,6 +34,9 @@ public sealed class OrbiSettings
     public List<string> LinkedPcs { get; set; } = new();
     public bool AskedAccount { get; set; }
 
+    // Já mostramos a janela de boas-vindas ("O Orbi está aberto")?
+    public bool BoasVindas { get; set; }
+
     // Atalho global preferido ("Alt+Shift+O", "Ctrl+Shift+O", ...). Vazio = padrão.
     public string Hotkey { get; set; } = "Alt+Shift+O";
 

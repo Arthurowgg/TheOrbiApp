@@ -6,7 +6,7 @@
 ; ---------------------------------------------------------------------------
 
 #define AppName "Orbi"
-#define AppVersion "1.0.5"
+#define AppVersion "1.0.6"
 #define AppPublisher "Orbi"
 #define AppURL "https://orbi-app-auth.web.app"
 #define AppExe "Orbi.exe"
@@ -48,26 +48,51 @@ AllowNoIcons=yes
 [Code]
 var
   LimpezaOk: Boolean;
+  LimpezaTexto: String;
 
-{ Roda limpar-antigas.ps1 antes de instalar: encerra processos, desinstala
-  versões encontradas, apaga pastas e atalhos antigos. }
+{ Lê o log deixado pelo limpar-antigas.ps1 e guarda para mostrar no final. }
+procedure LerLogLimpeza;
+var
+  Linhas: TArrayOfString;
+  i: Integer;
+  Arquivo: String;
+begin
+  LimpezaTexto := '';
+  Arquivo := ExpandConstant('{tmp}\orbi-limpeza.txt');
+  if not FileExists(Arquivo) then
+    Arquivo := GetEnv('TEMP') + '\orbi-limpeza.txt';
+  if FileExists(Arquivo) and LoadStringsFromFile(Arquivo, Linhas) then
+  begin
+    for i := 0 to GetArrayLength(Linhas) - 1 do
+      LimpezaTexto := LimpezaTexto + Linhas[i] + #13#10;
+  end;
+end;
+
+{ Roda limpar-antigas.ps1 ANTES de instalar. O script precisa ser extraído para
+  {tmp} antes (ExtractTemporaryFile), porque a cópia da seção [Files] só acontece
+  depois desta etapa — era esse o motivo da limpeza nunca rodar. }
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  Script, Comando: String;
+  Script, Comando, Log: String;
   Codigo: Integer;
 begin
   Result := '';
   LimpezaOk := False;
+  LerLogLimpeza;
 
-  Script := ExpandConstant('{tmp}\limpar-antigas.ps1');
-  if not FileExists(Script) then
+  if not ExtractTemporaryFile('limpar-antigas.ps1') then
   begin
+    Log('Limpeza: não consegui extrair limpar-antigas.ps1.');
     LimpezaOk := True;
     Exit;
   end;
 
+  Script := ExpandConstant('{tmp}\limpar-antigas.ps1');
+  Log := ExpandConstant('{tmp}\orbi-limpeza.txt');
+
   WizardForm.StatusLabel.Caption := 'Removendo versões antigas do Orbi…';
-  Comando := '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + Script + '" -Silencioso';
+  Comando := '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + Script +
+             '" -Silencioso -Log "' + Log + '"';
 
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Comando,
               '', SW_HIDE, ewWaitUntilTerminated, Codigo) then
@@ -79,7 +104,23 @@ begin
   end;
 
   Log('Limpeza executada, código ' + IntToStr(Codigo));
+  LerLogLimpeza;
   LimpezaOk := True;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+var
+  Resumo: String;
+begin
+  if (CurPageID = wpFinished) and (LimpezaTexto <> '') then
+  begin
+    Resumo := Trim(LimpezaTexto);
+    if Length(Resumo) > 700 then
+      Resumo := Copy(Resumo, 1, 700) + '…';
+    WizardForm.FinishedLabel.Caption :=
+      WizardForm.FinishedLabel.Caption + #13#10#13#10 +
+      'Limpeza das versões antigas:' + #13#10 + Resumo;
+  end;
 end;
 
 [Languages]
@@ -91,7 +132,7 @@ Name: "startup"; Description: "Abrir o Orbi junto com o Windows"; GroupDescripti
 
 [Files]
 Source: "..\..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "limpar-antigas.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "limpar-antigas.ps1"; DestDir: "{tmp}"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\Orbi"; Filename: "{app}\{#AppExe}"
@@ -106,9 +147,11 @@ Name: "{autodesktop}\Orbi"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 Name: "{userstartup}\Orbi"; Filename: "{app}\{#AppExe}"; Parameters: "--tray"; Tasks: startup
 
 [Run]
-Filename: "{app}\{#AppExe}"; Description: "Abrir o Orbi agora"; Flags: nowait postinstall skipifsilent
-Filename: "{cmd}"; Parameters: "/k ""{app}\{#AppExe}"" --console-keep"; Description: "Abrir com terminal (mostra o log ao vivo)"; Flags: postinstall unchecked nowait skipifsilent
-Filename: "{app}\{#AppExe}"; Parameters: "--diag"; Description: "Abrir o diagnóstico (se a barra não aparecer)"; Flags: postinstall unchecked nowait skipifsilent
+; 1º: abre a barra e, junto, o diagnóstico — assim a pessoa SEMPRE vê algo.
+Filename: "{app}\{#AppExe}"; Parameters: "--diag"; Description: "Abrir o Orbi agora"; Flags: nowait postinstall skipifsilent
+; Terminal com o log ao vivo (CONOUT$ — antes o terminal abria vazio).
+Filename: "{cmd}"; Parameters: "/k ""{app}\{#AppExe}"" --console-keep"; Description: "Abrir com terminal (log ao vivo)"; Flags: postinstall unchecked nowait skipifsilent
+Filename: "{app}\{#AppExe}"; Parameters: "--selftest"; Description: "Autoteste (gera orbi-selftest.txt na Area de trabalho)"; Flags: postinstall unchecked nowait skipifsilent
 
 [UninstallRun]
 Filename: "{app}\{#AppExe}"; Parameters: "--uninstall"; Flags: runhidden

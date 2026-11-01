@@ -45,11 +45,28 @@ public partial class App : System.Windows.Application
         if (!SingleInstance.TryAcquire())
         {
             ConsoleLog.Step("Já existe uma instância — pedindo para mostrar a barra");
-            SingleInstance.SignalExisting(settings: e.Args.Contains("--settings"));
+            SingleInstance.SignalExisting(
+                settings: e.Args.Contains("--settings"),
+                diag: e.Args.Contains("--diag"));
             Shutdown();
             return;
         }
         ConsoleLog.Step("Instância única adquirida");
+
+        // Fica ouvindo pedidos de outras instâncias ANTES de qualquer modo: assim
+        // clicar em "Orbi (diagnóstico)" com o app já aberto abre a janela na
+        // instância que está rodando, em vez de não fazer nada.
+        try
+        {
+            SingleInstance.Listen(
+                () => Dispatcher.BeginInvoke(new Action(ShowBar)),
+                () => Dispatcher.BeginInvoke(new Action(() => ShowSettings())),
+                () => Dispatcher.BeginInvoke(new Action(ShowDiagnostics)));
+        }
+        catch (Exception error)
+        {
+            Diagnostics.Report(error, "IPC", fatal: false);
+        }
 
         // --safe: só a interface. Sem bandeja, sem atalho, sem sincronização,
         // sem leitura de conta — o caminho mais curto entre clicar e ver algo.
@@ -66,7 +83,6 @@ public partial class App : System.Windows.Application
             ConsoleLog.Step("Bandeja criada", TrayVisible ? "visível" : "não visível");
             RegisterHotkey();
             ConsoleLog.Step("Atalho global", string.IsNullOrEmpty(HotKey.Combination) ? "NÃO registrado" : HotKey.Combination);
-            SingleInstance.Listen(ShowBar, () => ShowSettings());
         }
         catch (Exception error)
         {
@@ -101,38 +117,6 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (e.Args.Contains("--selftest"))
-        {
-            ConsoleLog.Step("Rodando autoteste das janelas");
-            Smoke.Run(() =>
-            {
-                _bar ??= CreateBar();
-                return _bar;
-            });
-            ConsoleLog.Step("Autoteste concluído", Smoke.ReportPath);
-
-            // mantém o relatório na tela por 20s e encerra
-            var aviso = new Window
-            {
-                Title = "Orbi — autoteste",
-                Width = 760,
-                Height = 560,
-                WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                Background = new SolidColorBrush(Color.FromRgb(0xF2, 0xED, 0xE3)),
-            };
-            var texto = new TextBlock
-            {
-                Text = File.Exists(Smoke.ReportPath) ? File.ReadAllText(Smoke.ReportPath) : "sem relatório",
-                FontFamily = new FontFamily("Consolas, Cascadia Mono"),
-                FontSize = 12,
-                Margin = new Thickness(20),
-                TextWrapping = TextWrapping.Wrap,
-            };
-            aviso.Content = new ScrollViewer { Content = texto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-            aviso.Show();
-            return;
-        }
-
         if (e.Args.Contains("--diag"))
         {
             ConsoleLog.Step("Abrindo diagnóstico");
@@ -151,9 +135,24 @@ public partial class App : System.Windows.Application
         {
             // Iniciado com o Windows: fica na bandeja, com um aviso de que está vivo.
             _tray?.ShowBalloonTip(5000, "Orbi está pronto",
-                "Aperte {HotKey.Combination} para abrir. Clique com o botão direito aqui para ajustes.",
+                string.IsNullOrEmpty(HotKey.Combination)
+                    ? "Clique aqui para abrir. Botão direito para ajustes."
+                    : $"Aperte {HotKey.Combination} para abrir. Botão direito aqui para ajustes.",
                 Forms.ToolTipIcon.Info);
             return;
+        }
+
+        if (e.Args.Contains("--selftest")) RunSelfTest();
+
+        // Primeira execução: uma janela simples que diz "está aberto" e ensina o
+        // atalho. Sem ela, quem instala e não vê nada conclui que o app não abre.
+        // Vem ANTES da barra para nunca competir com ela pelo foco.
+        if (!Store.Current.BoasVindas)
+        {
+            Store.Current.BoasVindas = true;
+            Store.Save();
+            try { ProntoWindow.Show(primeiraVez: true); }
+            catch (Exception error) { Diagnostics.Report(error, "Boas-vindas", fatal: false); }
         }
 
         ShowBar();
@@ -168,6 +167,77 @@ public partial class App : System.Windows.Application
             Store.Current.AskedAccount = true;
             Store.Save();
             Dispatcher.BeginInvoke(new Action(AskAccount), DispatcherPriority.ApplicationIdle);
+        }
+    }
+
+    /// <summary>
+    /// Autoteste: mede cada janela e escreve o relatório, mas NÃO encerra o app.
+    /// Antes ele dava return e a pessoa via só o relatório — agora o Orbi segue
+    /// abrindo normalmente, com o relatório do lado.
+    /// </summary>
+    private void RunSelfTest()
+    {
+        try
+        {
+            ConsoleLog.Step("Rodando autoteste das janelas");
+            Smoke.Run(() =>
+            {
+                _bar ??= CreateBar();
+                return _bar;
+            });
+            ConsoleLog.Step("Autoteste concluído", Smoke.ReportPath);
+        }
+        catch (Exception error)
+        {
+            ConsoleLog.Fail("autoteste", error);
+            Diagnostics.Report(error, "Autoteste", fatal: false);
+        }
+
+        try
+        {
+            // Cópia fácil de achar: Área de trabalho e Downloads.
+            foreach (var pasta in new[]
+            {
+                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
+            })
+            {
+                if (string.IsNullOrEmpty(pasta) || !Directory.Exists(pasta)) continue;
+                File.Copy(Smoke.ReportPath, Path.Combine(pasta, "orbi-selftest.txt"), overwrite: true);
+            }
+        }
+        catch
+        {
+            // a cópia é conveniência; o arquivo original já existe
+        }
+
+        try
+        {
+            var aviso = new Window
+            {
+                Title = "Orbi — autoteste",
+                Width = 760,
+                Height = 560,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                Background = new SolidColorBrush(Color.FromRgb(0xF2, 0xED, 0xE3)),
+            };
+            var texto = new TextBlock
+            {
+                Text = File.Exists(Smoke.ReportPath)
+                    ? File.ReadAllText(Smoke.ReportPath) +
+                      "\n\nUma cópia está na sua Área de trabalho como orbi-selftest.txt."
+                    : "sem relatório",
+                FontFamily = new FontFamily("Consolas, Cascadia Mono"),
+                FontSize = 12,
+                Margin = new Thickness(20),
+                TextWrapping = TextWrapping.Wrap,
+            };
+            aviso.Content = new ScrollViewer { Content = texto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            aviso.Show();
+        }
+        catch (Exception error)
+        {
+            Diagnostics.Report(error, "Autoteste (janela)", fatal: false);
         }
     }
 
@@ -309,6 +379,15 @@ public partial class App : System.Windows.Application
     {
         if (_emergencyShown) return;
         _emergencyShown = true;
+        try
+        {
+            ProntoWindow.Show(primeiraVez: false);
+            return;
+        }
+        catch (Exception error)
+        {
+            ConsoleLog.Fail("janela de emergência", error);
+        }
 
         var window = new Window
         {

@@ -1,7 +1,8 @@
 # ---------------------------------------------------------------------------
 # Orbi — remove TODAS as instalações antigas antes de instalar a nova versão.
 #
-# Chamado pelo instalador (seção [Run], parâmetro --remove-antigas).
+# Chamado pelo instalador na etapa "removendo versões antigas" (PrepareToInstall),
+# que passa -Log para gravar o que foi feito em um arquivo visível no final.
 # Cobre os casos que o Inno sozinho não cobre:
 #   · instalação por usuário em %LOCALAPPDATA%\Programs\Orbi
 #   · instalação antiga em Program Files (versões com UAC)
@@ -12,15 +13,25 @@
 # ---------------------------------------------------------------------------
 param(
     [switch]$Silencioso,
-    [string]$ManterPasta = ""
+    [string]$ManterPasta = "",
+    [string]$Log = ""
 )
 
 $ErrorActionPreference = "SilentlyContinue"
-$saida = @()
+$saida = New-Object System.Collections.Generic.List[string]
+if ([string]::IsNullOrWhiteSpace($Log)) { $Log = Join-Path $env:TEMP "orbi-limpeza.txt" }
 function Log([string]$texto) {
-    $script:saida += $texto
+    $script:saida.Add($texto)
     if (-not $Silencioso) { Write-Host $texto }
+    try { $texto | Add-Content -LiteralPath $script:Log -Encoding UTF8 } catch { }
 }
+
+# zera o log desta execução (o instalador mostra este arquivo no final)
+try {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Log) | Out-Null
+    "Orbi — limpeza de versões antigas ($(Get-Date -Format 'dd/MM/yyyy HH:mm'))" |
+        Set-Content -LiteralPath $Log -Encoding UTF8
+} catch { }
 
 Log "Orbi — limpeza de versões antigas"
 Log ""
@@ -123,4 +134,5 @@ foreach ($k in $runKeys) {
 }
 
 Log ""
-Log "Limpeza concluída."
+Log "Limpeza concluída.
+         Você pode apagar este arquivo."
