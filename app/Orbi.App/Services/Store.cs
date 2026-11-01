@@ -33,6 +33,9 @@ public sealed class OrbiSettings
     public List<string> LinkedPcs { get; set; } = new();
     public bool AskedAccount { get; set; }
 
+    // Já avisamos que o catálogo funciona sem chave e como ligar a conversa?
+    public bool ToldAboutCloud { get; set; }
+
     // Já mostramos a janela de boas-vindas ("O Orbi está aberto")?
     public bool BoasVindas { get; set; }
 

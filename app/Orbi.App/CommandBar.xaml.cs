@@ -148,6 +148,21 @@ public partial class CommandBar : Window
         Focus();
         Input.Focus();
         Keyboard.Focus(Input);
+
+        // Primeira vez sem chave: uma linha explicando onde ligar a conversa,
+        // sem abrir janela nem bloquear nada.
+        if (!Store.Current.ToldAboutCloud && !Gemini.HasKey)
+        {
+            Store.Current.ToldAboutCloud = true;
+            Store.Save();
+            Expand();
+            Add(new ResultRow
+            {
+                Glyph = "\u2022",
+                Text = "Tudo já funciona por aqui: digite / para ver as ferramentas.",
+                Detail = "Para perguntas livres, cole uma chave gratuita em Ajustes ▸ Modo Cloud. É opcional.",
+            });
+        }
     }
 
     /// <summary>Mostra o atalho que está realmente funcionando.</summary>
