@@ -329,24 +329,38 @@ public static class Installer
         Write("Runtime .NET pronto");
     }
 
+    /// <summary>
+    /// O .NET Desktop 8 está disponível? Olha a pasta oficial (é onde o runtime
+    /// se instala de fato) e, por garantia, o registro.
+    /// </summary>
     private static bool RuntimeInstalled()
     {
-        foreach (var baseKey in new[] { Registry.LocalMachine, Registry.CurrentUser })
+        var raiz = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "shared", "Microsoft.WindowsDesktop.App");
+        try
+        {
+            if (Directory.Exists(raiz) &&
+                Directory.GetDirectories(raiz).Any(pasta => Path.GetFileName(pasta).StartsWith("8.", StringComparison.Ordinal)))
+            {
+                return true;
+            }
+        }
+        catch { }
+
+        foreach (var (baseKey, caminho) in new[]
+                 {
+                     (Registry.LocalMachine, @"SOFTWARE\dotnet\WindowsDesktop\v8.0"),
+                     (Registry.LocalMachine, @"SOFTWARE\WOW6432Node\dotnet\WindowsDesktop\v8.0"),
+                     (Registry.CurrentUser, @"SOFTWARE\dotnet\WindowsDesktop\v8.0"),
+                 })
         {
             try
             {
-                using var key = baseKey.OpenSubKey(
-                    @"SOFTWARE\WOW6432Node\dotnet\WindowsDesktop\v8.0");
+                using var key = baseKey.OpenSubKey(caminho);
                 if (key is not null) return true;
             }
             catch { }
         }
-        try
-        {
-            using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\dotnet\WindowsDesktop\v8.0");
-            if (key is not null) return true;
-        }
-        catch { }
         return false;
     }
 
