@@ -85,7 +85,7 @@ jobs:
           dotnet publish app/Orbi.Setup/Orbi.Setup.csproj -c Release -r win-x64 --self-contained true `
             -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/setup
           New-Item -ItemType Directory -Force -Path artifacts/Installer | Out-Null
-          Move-Item artifacts/setup/OrbiSetup.exe "artifacts/Installer/OrbiSetup-1.1.0.exe" -Force
+          Move-Item artifacts/setup/OrbiSetup.exe "artifacts/Installer/OrbiSetup-1.1.1.exe" -Force
 
       - name: Checksums
         shell: powershell
@@ -227,20 +227,22 @@ jobs:
       - name: Criar/atualizar a release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1.0
-          name: Orbi 1.1.0
+          # nome fixo: o asset é substituído pelo build mais novo
+          fail_on_unmatched_files: true
+          tag_name: v1.1.1
+          name: Orbi 1.1.1
           draft: false
           prerelease: false
           make_latest: true
           files: |
-            artifacts/Installer/OrbiSetup-1.1.0.exe
+            artifacts/Installer/OrbiSetup-1.1.1.exe
             artifacts/Installer/SHA256SUMS.txt
           body: |
-            ## Orbi 1.1.0 — para Windows 11
+            ## Orbi 1.1.1 — para Windows 11
 
             Instalador único, sem Python, sem privilégio de administrador.
 
-            **Baixe `OrbiSetup-1.1.0.exe`** e execute. Na primeira vez, o Orbi mostra uma
+            **Baixe `OrbiSetup-1.1.1.exe`** e execute. Na primeira vez, o Orbi mostra uma
             janela de boas-vindas (prova de que ele abriu) e o diagnóstico. Depois, aperte
             `Alt+Shift+O` em qualquer lugar do Windows.
 
@@ -261,7 +263,7 @@ jobs:
             **Verificação:** compare o SHA-256 com `SHA256SUMS.txt`.
 
             ```powershell
-            certutil -hashfile OrbiSetup-1.1.0.exe SHA256
+            certutil -hashfile OrbiSetup-1.1.1.exe SHA256
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
