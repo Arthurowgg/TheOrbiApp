@@ -133,11 +133,13 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Publicar
+      - name: Publicar (exatamente como o instalador publica)
         run: >
           dotnet publish app/Orbi.App/Orbi.App.csproj
           -c Release -r win-x64 --self-contained true
-          -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
           -o artifacts/publish
 
       - name: Rodar o Orbi com --selftest

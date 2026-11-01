@@ -9,7 +9,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>Orbi</AssemblyName>
     <RootNamespace>Orbi</RootNamespace>
-    <ApplicationIcon>Assets\orbi.ico</ApplicationIcon>
+    <ApplicationIcon>Assets/orbi.ico</ApplicationIcon>
     <Version>1.0.8</Version>
     <FileVersion>1.0.8.0</FileVersion>
     <AssemblyVersion>1.0.8.0</AssemblyVersion>
@@ -24,6 +24,9 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Entrada em código (App.Main): o App.xaml deixa de ser ponto de falha. -->
+    <StartupObject>Orbi.App</StartupObject>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,7 +42,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Assets\orbi.ico" />
+    <Resource Include="Assets/orbi.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Sem ApplicationDefinition: nada de App.g.cs, nada de StartupUri. -->
+    <ApplicationDefinition Remove="App.xaml" />
+    <None Include="App.xaml" />
   </ItemGroup>
 
 </Project>

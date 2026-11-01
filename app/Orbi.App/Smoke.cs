@@ -27,6 +27,17 @@ public static class Smoke
         {
             log.AppendLine(text);
             ConsoleLog.Step("[selftest] " + text);
+            // Grava a cada linha: se uma janela travar, o relatório parcial já
+            // está no disco e mostra exatamente onde parou.
+            try
+            {
+                Directory.CreateDirectory(Store.Root);
+                File.WriteAllText(ReportPath, log.ToString(), Encoding.UTF8);
+            }
+            catch
+            {
+                // sem arquivo ainda: o console registra
+            }
         }
 
         Line($"Orbi — autoteste · {typeof(Smoke).Assembly.GetName().Version}");

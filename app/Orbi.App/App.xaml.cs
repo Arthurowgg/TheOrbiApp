@@ -11,6 +11,18 @@ namespace Orbi;
 
 public partial class App : System.Windows.Application
 {
+    /// <summary>
+    /// Entrada explícita: sem App.g.cs, sem StartupUri, sem LoadComponent.
+    /// Um App.xaml quebrado derrubava o processo antes de qualquer log — era
+    /// exatamente o "app não abre, sem nada em lugar nenhum".
+    /// </summary>
+    [STAThread]
+    public static void Main()
+    {
+        var app = new App();
+        app.Run();
+    }
+
     private Forms.NotifyIcon? _tray;
     private CommandBar? _bar;
     private SettingsWindow? _settings;
@@ -61,8 +73,16 @@ public partial class App : System.Windows.Application
         // exatamente isso que deixava o app sem abrir nada. Aqui verificamos que
         // o tema carregou de verdade e, se não, seguimos sem ele (as janelas de
         // emergência não usam recursos do tema).
+        // Tema: carregado daqui, não do App.xaml. Se falhar, o app continua de pé.
         try
         {
+            if (Resources.MergedDictionaries.Count == 0)
+            {
+                Resources.MergedDictionaries.Add(new ResourceDictionary
+                {
+                    Source = new Uri("pack://application:,,,/Orbi;component/Theme.xaml", UriKind.Absolute),
+                });
+            }
             var recurso = Resources["Film2"];
             ConsoleLog.Step("Tema carregado", recurso is not null ? "ok" : "vazio");
         }
@@ -75,7 +95,7 @@ public partial class App : System.Windows.Application
                 Resources.MergedDictionaries.Clear();
                 Resources.MergedDictionaries.Add(new ResourceDictionary
                 {
-                    Source = new Uri("Theme.xaml", UriKind.Relative),
+                    Source = new Uri("pack://application:,,,/Orbi;component/Theme.xaml", UriKind.Absolute),
                 });
                 ConsoleLog.Step("Tema recarregado");
             }
