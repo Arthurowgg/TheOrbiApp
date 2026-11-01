@@ -10,9 +10,14 @@ namespace Orbi.Services;
 public sealed class OrbiSettings
 {
     public string UserName { get; set; } = "";
-    public string? PairingCode { get; set; }
     public string? AccountEmail { get; set; }
     public string? AccountName { get; set; }
+
+    // Sessão do Firebase (tokens). Fica cifrada com DPAPI, junto da chave da IA.
+    public string? IdToken { get; set; }
+    public string? RefreshToken { get; set; }
+    public string? Uid { get; set; }
+    public long TokenExpiresAt { get; set; }
     public bool StartWithWindows { get; set; } = true;
     public bool UseGemini { get; set; } = true;
     public string GeminiModel { get; set; } = "gemini-2.0-flash";
@@ -26,6 +31,11 @@ public sealed class OrbiSettings
     public List<AliasEntry> Aliases { get; set; } = new();
     public List<string> Commands { get; set; } = new();
     public List<Routine> Routines { get; set; } = new();
+    public List<string> LinkedPcs { get; set; } = new();
+    public bool AskedAccount { get; set; }
+
+    // Marcador de que users/{uid} já existe no Firestore (evita leituras extras).
+    public string RemoteCreatedAt { get; set; } = "";
 }
 
 public sealed class Reminder
@@ -158,6 +168,51 @@ public static class Store
     }
 
     public static bool HasApiKey() => !string.IsNullOrWhiteSpace(LoadApiKey());
+
+    /* ---------------------- sessão do Firebase (DPAPI) ---------------------- */
+    private static string SessionPath => Path.Combine(Root, "session.bin");
+
+    public static void SaveSession(FirebaseSession? session)
+    {
+        try
+        {
+            Directory.CreateDirectory(Root);
+            if (session is null || string.IsNullOrWhiteSpace(session.RefreshToken))
+            {
+                if (File.Exists(SessionPath)) File.Delete(SessionPath);
+                var settings = Current;
+                settings.IdToken = null;
+                settings.RefreshToken = null;
+                settings.Uid = null;
+                settings.TokenExpiresAt = 0;
+                Save();
+                return;
+            }
+
+            var json = JsonSerializer.Serialize(session, Options);
+            var cipher = ProtectedData.Protect(Encoding.UTF8.GetBytes(json), null, DataProtectionScope.CurrentUser);
+            File.WriteAllBytes(SessionPath, cipher);
+        }
+        catch
+        {
+            // sem DPAPI: a sessão simplesmente não persiste entre reinícios
+        }
+    }
+
+    public static FirebaseSession? LoadSession()
+    {
+        try
+        {
+            if (!File.Exists(SessionPath)) return null;
+            var cipher = File.ReadAllBytes(SessionPath);
+            var bytes = ProtectedData.Unprotect(cipher, null, DataProtectionScope.CurrentUser);
+            return JsonSerializer.Deserialize<FirebaseSession>(Encoding.UTF8.GetString(bytes), Options);
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     public static void PushClipboard(string text)
     {

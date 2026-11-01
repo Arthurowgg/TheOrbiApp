@@ -257,12 +257,36 @@ public static partial class Interpreter
         }
 
         /* ----------------------------- rotinas ----------------------------- */
-        var routine = Store.Current.Routines.FirstOrDefault(
-            item => text.Contains(item.Name.ToLowerInvariant(), StringComparison.Ordinal));
+        // As rotinas vêm da conta (Firestore) e são editáveis no site.
+        var routine = Store.Current.Routines.FirstOrDefault(item =>
+            !string.IsNullOrWhiteSpace(item.Name) &&
+            (text == Normalize(item.Name) || text.Contains(Normalize(item.Name), StringComparison.Ordinal)));
+
         if (routine is not null)
         {
-            var lines = routine.Commands.Select(command => Interpret(command).Text).ToList();
-            return OrbiReply.Local($"Rotina “{routine.Name}” executada:", string.Join(" ", lines));
+            var results = new List<string>();
+            foreach (var command in routine.Commands.Take(12))
+            {
+                var step = Interpret(command);
+                // Dentro de uma rotina não pedimos confirmação: pulamos ações destrutivas.
+                if (step.Kind == ReplyKind.Confirm)
+                {
+                    results.Add($"(pulado: {command})");
+                    continue;
+                }
+                results.Add(step.Text);
+            }
+            return OrbiReply.Local(
+                $"Rotina “{routine.Name}” executada.",
+                string.Join(" ", results));
+        }
+
+        if (RoutineListCmd().IsMatch(text))
+        {
+            var names = Store.Current.Routines.Select(item => item.Name).Where(name => name.Length > 0).ToList();
+            return names.Count == 0
+                ? OrbiReply.Local("Você ainda não tem rotinas. Crie uma no site, em Conta ▸ Sincronização ▸ Rotinas.")
+                : OrbiReply.Local($"Suas rotinas: {string.Join(", ", names)}.", "Diga o nome de uma para executar.");
         }
 
         /* ----------------------------- abrir / fechar apps ----------------------------- */
@@ -379,6 +403,9 @@ public static partial class Interpreter
 
     [GeneratedRegex(@"\b(lixeira)\b")]
     private static partial Regex RecycleCmd();
+
+    [GeneratedRegex(@"\b(minhas rotinas|listar rotinas|quais rotinas)\b")]
+    private static partial Regex RoutineListCmd();
 
     [GeneratedRegex(@"\b(status|como esta o pc|cpu|memoria|ram|disco|bateria|desempenho)\b")]
     private static partial Regex StatusCmd();

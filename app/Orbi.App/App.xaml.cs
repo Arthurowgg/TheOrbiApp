@@ -27,14 +27,27 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(Store.Current.PairingCode))
-        {
-            Store.Current.PairingCode = PairingCodes.Generate();
-            Store.Save();
-        }
-
         BuildTray();
         RegisterHotkey();
+        Sync.Start();
+
+        // Primeiro uso sem conta: pergunta uma vez, sem travar o app.
+        if (!Firebase.SignedIn && !Store.Current.AskedAccount)
+        {
+            Store.Current.AskedAccount = true;
+            Store.Save();
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var answer = System.Windows.MessageBox.Show(
+                    "Quer entrar na conta do Orbi neste PC?\n\n" +
+                    "Isso sincroniza apelidos, atalhos de texto, rotinas e preferências entre o site e o app. " +
+                    "Notas, área de transferência e a chave do Gemini continuam só neste computador.",
+                    "Orbi — conta",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+                if (answer == MessageBoxResult.Yes) ShowLogin();
+            }));
+        }
 
         _reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
         _reminderTimer.Tick += (_, _) => CheckReminders();
@@ -79,6 +92,7 @@ public partial class App : System.Windows.Application
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Abrir Orbi (Alt+Space)", null, (_, _) => ShowBar());
         menu.Items.Add("Ajustes…", null, (_, _) => ShowSettings());
+        menu.Items.Add(Firebase.SignedIn ? "Conta e sincronização…" : "Entrar na conta…", null, (_, _) => ShowAccount());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Bloquear o Windows", null, (_, _) => SystemActions.Lock());
         menu.Items.Add("Status do PC", null, (_, _) =>
@@ -113,6 +127,27 @@ public partial class App : System.Windows.Application
     {
         _bar ??= new CommandBar();
         _bar.ShowBar();
+    }
+
+    public void ShowLogin()
+    {
+        var login = new LoginWindow { Owner = null };
+        var ok = login.ShowDialog();
+        if (ok == true)
+        {
+            _bar?.RefreshGreeting();
+            _settings?.Refresh();
+        }
+    }
+
+    public void ShowAccount()
+    {
+        if (!Firebase.SignedIn)
+        {
+            ShowLogin();
+            return;
+        }
+        ShowSettings("conta");
     }
 
     public void ShowSettings(string? tab = null)

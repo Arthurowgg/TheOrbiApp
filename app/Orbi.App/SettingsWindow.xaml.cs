@@ -31,13 +31,7 @@ public partial class SettingsWindow : Window
         GeminiState.Text = Store.HasApiKey()
             ? "Chave configurada e cifrada neste PC."
             : "Sem chave: comandos locais funcionam, perguntas livres não.";
-        AccountLine.Text = string.IsNullOrWhiteSpace(settings.AccountEmail)
-            ? "Sem conta vinculada"
-            : settings.AccountEmail;
-        AccountBox.Text = string.IsNullOrWhiteSpace(settings.AccountEmail)
-            ? "Nenhuma conta vinculada"
-            : $"{settings.AccountName} · {settings.AccountEmail}";
-        PairingCode.Text = settings.PairingCode ?? "——";
+        RefreshAccount();
         DataPath.Text = Store.Root;
         ModelBox.SelectedIndex = Math.Max(0, new[] { "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b" }
             .ToList().IndexOf(settings.GeminiModel));
@@ -46,6 +40,59 @@ public partial class SettingsWindow : Window
         RenderNotes();
         RenderShortcuts();
         RenderAliases();
+    }
+
+    /* ----------------------------- conta e sync ----------------------------- */
+    private void RefreshAccount()
+    {
+        var signedIn = Firebase.SignedIn;
+        AccountLine.Text = signedIn ? Firebase.Email ?? "conta conectada" : "Sem conta vinculada";
+        AccountBox.Text = signedIn
+            ? $"{Store.Current.UserName} · {Firebase.Email}"
+            : "Sem conta vinculada";
+        SyncStatus.Text = signedIn
+            ? Sync.LastStatus
+            : "Os comandos funcionam sem conta. Entrar só serve para sincronizar.";
+        UidBox.Text = Firebase.Uid is { Length: > 8 } uid
+            ? $"uid {uid[..8]}…"
+            : "sem sessão";
+        LoginButton.Content = signedIn ? "Trocar de conta" : "Entrar na conta";
+        AccountHint.Text = signedIn
+            ? "Sessão salva com DPAPI: só este usuário do Windows continua conectado."
+            : "Use a mesma conta do site. Se ainda não tem, crie aqui mesmo.";
+    }
+
+    private void AccountLogin_Click(object sender, RoutedEventArgs e)
+    {
+        var app = (App)System.Windows.Application.Current;
+        if (Firebase.SignedIn) Firebase.SignOut();
+        app.ShowLogin();
+        RefreshAccount();
+    }
+
+    private async void SyncNow_Click(object sender, RoutedEventArgs e)
+    {
+        SyncStatus.Text = "Buscando no Firestore…";
+        await Sync.PullAsync(true);
+        RefreshAccount();
+        Load();
+    }
+
+    private async void PushNow_Click(object sender, RoutedEventArgs e)
+    {
+        SyncStatus.Text = "Enviando deste PC…";
+        var (ok, message) = await Sync.PushAsync();
+        SyncStatus.Text = message;
+        if (!ok) System.Windows.MessageBox.Show(message, "Orbi — sincronização");
+        RefreshAccount();
+    }
+
+    private void AccountSignOut_Click(object sender, RoutedEventArgs e)
+    {
+        Firebase.SignOut();
+        Store.SaveSession(null);
+        RefreshAccount();
+        Toast("Você saiu da conta. O app continua funcionando com os dados locais.");
     }
 
     /* ----------------------------- navegação ----------------------------- */
@@ -83,7 +130,19 @@ public partial class SettingsWindow : Window
         }
         Store.Current.UseGemini = GeminiToggle.IsChecked == true;
         Store.Save();
-        Toast("Preferências salvas.");
+        _ = Sync.PushFieldsAsync(new System.Text.Json.Nodes.JsonObject
+        {
+            ["name"] = Firebase.Str(Store.Current.UserName),
+            ["appPrefs"] = Firebase.Map(new System.Text.Json.Nodes.JsonObject
+            {
+                ["startWithWindows"] = Firebase.Bool(Store.Current.StartWithWindows),
+                ["volume"] = Firebase.Num(Store.Current.Volume),
+                ["lockEnabled"] = Firebase.Bool(Store.Current.LockEnabled),
+                ["lockAfterMinutes"] = Firebase.Num(Store.Current.LockAfterMinutes),
+                ["geminiModel"] = Firebase.Str(Store.Current.GeminiModel),
+            }),
+        });
+        Toast("Preferências salvas e enviadas para a conta.");
     }
 
     private void SaveKey_Click(object sender, RoutedEventArgs e)
@@ -131,31 +190,22 @@ public partial class SettingsWindow : Window
             Store.Current.LockAfterMinutes = Math.Clamp(minutes, 1, 120);
         }
         Store.Save();
-        Toast("Segurança atualizada.");
-    }
-
-    private void CopyCode_Click(object sender, RoutedEventArgs e)
-    {
-        try
+        _ = Sync.PushFieldsAsync(new System.Text.Json.Nodes.JsonObject
         {
-            System.Windows.Clipboard.SetText(PairingCode.Text);
-            Toast("Código copiado.");
-        }
-        catch
-        {
-            Toast("Não consegui copiar.");
-        }
+            ["appPrefs"] = Firebase.Map(new System.Text.Json.Nodes.JsonObject
+            {
+                ["startWithWindows"] = Firebase.Bool(Store.Current.StartWithWindows),
+                ["volume"] = Firebase.Num(Store.Current.Volume),
+                ["lockEnabled"] = Firebase.Bool(Store.Current.LockEnabled),
+                ["lockAfterMinutes"] = Firebase.Num(Store.Current.LockAfterMinutes),
+                ["geminiModel"] = Firebase.Str(Store.Current.GeminiModel),
+            }),
+        });
+        Toast("Segurança atualizada e enviada para a conta.");
     }
 
-    private void NewCode_Click(object sender, RoutedEventArgs e)
-    {
-        Store.Current.PairingCode = PairingCodes.Generate();
-        Store.Save();
-        PairingCode.Text = Store.Current.PairingCode;
-        Toast("Novo código gerado. O anterior não vale mais.");
-    }
+    private void OpenSite_Click(object sender, RoutedEventArgs e) => OpenUrl(Firebase.SiteUrl);
 
-    private void OpenSite_Click(object sender, RoutedEventArgs e) => OpenUrl("https://orbi-app-auth.web.app/#/conta/dispositivos");
     private void OpenReleases_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/Arthurowgg/TheOrbiApp/releases");
     private void OpenBar_Click(object sender, RoutedEventArgs e) => ((App)System.Windows.Application.Current).ShowBar();
 
@@ -186,6 +236,7 @@ public partial class SettingsWindow : Window
         ShortcutTrigger.Text = "";
         ShortcutText.Text = "";
         RenderShortcuts();
+        _ = Sync.PushAsync();
     }
 
     private void AddAlias_Click(object sender, RoutedEventArgs e)
@@ -199,6 +250,7 @@ public partial class SettingsWindow : Window
         AliasName.Text = "";
         AliasTarget.Text = "";
         RenderAliases();
+        _ = Sync.PushAsync();
     }
 
     /* ----------------------------- listas ----------------------------- */
@@ -362,4 +414,12 @@ public partial class SettingsWindow : Window
     }
 
     public void Refresh() => Load();
+
+    /// <summary>Abre os ajustes já numa aba específica ("conta", "geral", ...).</summary>
+    public void SelectTab(string tab)
+    {
+        var item = Nav.Items.OfType<ListBoxItem>()
+            .FirstOrDefault(entry => (entry.Tag as string) == tab);
+        if (item is not null) Nav.SelectedItem = item;
+    }
 }

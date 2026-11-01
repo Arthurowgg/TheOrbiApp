@@ -69,6 +69,17 @@ export type Activity = {
   text: string;
 };
 
+export type Alias = { alias: string; target: string };
+export type Shortcut = { trigger: string; expansion: string };
+export type Routine = { name: string; commands: string[] };
+export type AppPrefs = {
+  startWithWindows: boolean;
+  volume: number;
+  lockEnabled: boolean;
+  lockAfterMinutes: number;
+  geminiModel: string;
+};
+
 export type Account = {
   id: string;
   name: string;
@@ -78,6 +89,10 @@ export type Account = {
   emailVerified: boolean;
   provider: string;
   sync: SyncPrefs;
+  aliases: Alias[];
+  shortcuts: Shortcut[];
+  routines: Routine[];
+  appPrefs: AppPrefs;
   devices: Device[];
   downloads: DownloadRecord[];
   activity: Activity[];
@@ -90,6 +105,14 @@ export const DEFAULT_SYNC: SyncPrefs = {
   apelidos: true,
   rotinas: true,
   atalhos: true,
+};
+
+export const DEFAULT_PREFS: AppPrefs = {
+  startWithWindows: true,
+  volume: 50,
+  lockEnabled: false,
+  lockAfterMinutes: 5,
+  geminiModel: "gemini-2.0-flash",
 };
 
 export const MIN_PASSWORD = 8;
@@ -218,6 +241,10 @@ function toAccount(user: User, data: DocumentData | undefined): Account {
     emailVerified: user.emailVerified,
     provider: user.providerData[0]?.providerId ?? "password",
     sync: { ...DEFAULT_SYNC, ...(raw.sync ?? {}) },
+    aliases: Array.isArray(raw.aliases) ? (raw.aliases as Alias[]) : [],
+    shortcuts: Array.isArray(raw.shortcuts) ? (raw.shortcuts as Shortcut[]) : [],
+    routines: Array.isArray(raw.routines) ? (raw.routines as Routine[]) : [],
+    appPrefs: { ...DEFAULT_PREFS, ...(raw.appPrefs ?? {}) },
     devices: Array.isArray(raw.devices) ? (raw.devices as Device[]) : [],
     downloads: Array.isArray(raw.downloads) ? (raw.downloads as DownloadRecord[]) : [],
     activity: Array.isArray(raw.activity) ? (raw.activity as Activity[]) : [],
@@ -242,6 +269,10 @@ export async function ensureProfile(user: User, name?: string): Promise<Account>
       color: randomColor(),
       plan: "gratis",
       sync: { ...DEFAULT_SYNC },
+      aliases: [],
+      shortcuts: [],
+      routines: [],
+      appPrefs: { ...DEFAULT_PREFS },
       devices: [],
       downloads: [],
       activity: [
@@ -463,6 +494,68 @@ export async function updateProfile(patch: {
   } catch (error) {
     throw toAuthError(error);
   }
+}
+
+/** Salva apelidos de apps (o app Windows importa estes). */
+export async function saveAliases(aliases: Alias[]): Promise<void> {
+  const clean = aliases
+    .map((item) => ({ alias: item.alias.trim().slice(0, 40), target: item.target.trim().slice(0, 260) }))
+    .filter((item) => item.alias && item.target)
+    .slice(0, 100);
+  if (clean.length !== aliases.length) {
+    throw new AuthError("invalid_input", "Preencha apelido e app, e mantenha até 100 itens.");
+  }
+  await patchUser({ aliases: clean }).catch((error) => {
+    throw toAuthError(error);
+  });
+}
+
+/** Salva atalhos de texto (frase que se expande no app). */
+export async function saveShortcuts(shortcuts: Shortcut[]): Promise<void> {
+  const clean = shortcuts
+    .map((item) => ({
+      trigger: item.trigger.trim().slice(0, 40),
+      expansion: item.expansion.trim().slice(0, 400),
+    }))
+    .filter((item) => item.trigger && item.expansion)
+    .slice(0, 100);
+  if (clean.length !== shortcuts.length) {
+    throw new AuthError("invalid_input", "Preencha gatilho e texto, e mantenha até 100 atalhos.");
+  }
+  await patchUser({ shortcuts: clean }).catch((error) => {
+    throw toAuthError(error);
+  });
+}
+
+/** Salva rotinas (sequência de comandos do app). */
+export async function saveRoutines(routines: Routine[]): Promise<void> {
+  const clean = routines
+    .map((item) => ({
+      name: item.name.trim().slice(0, 60),
+      commands: item.commands.map((command) => command.trim().slice(0, 120)).filter(Boolean).slice(0, 12),
+    }))
+    .filter((item) => item.name && item.commands.length > 0)
+    .slice(0, 60);
+  if (clean.length !== routines.length) {
+    throw new AuthError("invalid_input", "Cada rotina precisa de nome e pelo menos um comando.");
+  }
+  await patchUser({ routines: clean }).catch((error) => {
+    throw toAuthError(error);
+  });
+}
+
+/** Preferências do app que o site consegue editar. */
+export async function saveAppPrefs(prefs: AppPrefs): Promise<void> {
+  const clean: AppPrefs = {
+    startWithWindows: Boolean(prefs.startWithWindows),
+    volume: Math.max(0, Math.min(100, Math.round(Number(prefs.volume) || 0))),
+    lockEnabled: Boolean(prefs.lockEnabled),
+    lockAfterMinutes: Math.max(1, Math.min(120, Math.round(Number(prefs.lockAfterMinutes) || 5))),
+    geminiModel: prefs.geminiModel.slice(0, 40),
+  };
+  await patchUser({ appPrefs: clean }).catch((error) => {
+    throw toAuthError(error);
+  });
 }
 
 export function setSync(sync: SyncPrefs): Promise<void> {

@@ -172,6 +172,34 @@ export default function Overview({ account, go, onDownload }: PageProps) {
             )}
           </Panel>
 
+          <Panel
+            title="Dados no Firestore"
+            description="O que já está na sua conta e o app vai usar."
+          >
+            <ul className="-my-1 divide-y divide-rule">
+              {[
+                { label: "Apelidos de apps", value: account.aliases.length },
+                { label: "Atalhos de texto", value: account.shortcuts.length },
+                { label: "Rotinas", value: account.routines.length },
+                { label: "PCs vinculados", value: account.devices.length },
+              ].map((item) => (
+                <li key={item.label} className="flex items-center justify-between gap-3 py-2.5">
+                  <span className="text-[13px] text-ink">{item.label}</span>
+                  <span className="font-mono text-[12px] text-ink-2 tnum">{item.value}</span>
+                </li>
+              ))}
+            </ul>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-3"
+              onClick={() => go("/conta/sincronizacao")}
+            >
+              Editar o que sincroniza
+              <Icon name="chevron-right" className="h-3 w-3" />
+            </Button>
+          </Panel>
+
           <Panel title="Atalhos">
             <ul className="-my-1 divide-y divide-rule">
               {[

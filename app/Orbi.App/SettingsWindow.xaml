@@ -159,32 +159,49 @@
           <!-- CONTA -->
           <StackPanel x:Name="PageConta" Visibility="Collapsed">
             <TextBlock Text="Conta" Style="{StaticResource H1}"/>
-            <TextBlock Text="A mesma conta do site (Firebase Authentication)." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
+            <TextBlock Text="A mesma conta do site, no Firebase. O app sincroniza pelo Firestore."
+                       Style="{StaticResource Muted}" Margin="0,4,0,18"/>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <TextBlock x:Name="AccountBox" Style="{StaticResource Body}" FontWeight="SemiBold"/>
-                <TextBlock Text="Abra o site, entre na sua conta e vincule este PC pelo código que o app exibe em Ajustes ▸ Conta ▸ Vincular ao site."
-                           Style="{StaticResource Muted}" Margin="0,4,0,0"/>
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <StackPanel Grid.Column="0">
+                    <TextBlock Text="Status" Style="{StaticResource Label}"/>
+                    <TextBlock x:Name="AccountBox" Style="{StaticResource Body}" FontWeight="SemiBold"
+                               Margin="0,4,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="SyncStatus" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
+                  </StackPanel>
+                  <Border Grid.Column="1" VerticalAlignment="Top" Background="#22140F0C"
+                          CornerRadius="3" Padding="8,4">
+                    <TextBlock x:Name="UidBox" Style="{StaticResource Label}"/>
+                  </Border>
+                </Grid>
 
-                <Border Style="{StaticResource Divider}"/>
-
-                <TextBlock Text="Código de vínculo" Style="{StaticResource Label}"/>
-                <TextBlock x:Name="PairingCode" Text="——" FontFamily="{StaticResource Mono}"
-                           FontSize="24" Foreground="{StaticResource Ink}" Margin="0,6,0,0"/>
-                <TextBlock Text="No site: Conta ▸ Dispositivos ▸ digite este código." Style="{StaticResource Muted}"/>
-
-                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                  <Button Content="Copiar código" Style="{StaticResource SecondaryButton}" Click="CopyCode_Click"/>
-                  <Button Content="Gerar outro" Style="{StaticResource GhostButton}" Margin="6,0,0,0" Click="NewCode_Click"/>
-                  <Button Content="Abrir site" Style="{StaticResource GhostButton}" Click="OpenSite_Click"/>
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                  <Button x:Name="LoginButton" Content="Entrar na conta" Style="{StaticResource PrimaryButton}"
+                          Click="AccountLogin_Click"/>
+                  <Button Content="Sincronizar agora" Style="{StaticResource SecondaryButton}"
+                          Margin="8,0,0,0" Click="SyncNow_Click"/>
+                  <Button Content="Enviar deste PC" Style="{StaticResource GhostButton}"
+                          Margin="4,0,0,0" Click="PushNow_Click"/>
+                  <Button Content="Sair" Style="{StaticResource GhostButton}" Click="AccountSignOut_Click"/>
                 </StackPanel>
 
+                <TextBlock x:Name="AccountHint" Style="{StaticResource Muted}" Margin="0,10,0,0" TextWrapping="Wrap"/>
+
                 <Border Style="{StaticResource Divider}"/>
 
-                <TextBlock Text="Abrir o Orbi com o Windows" Style="{StaticResource Body}"/>
-                <TextBlock Text="O app usa o mesmo e-mail da conta para reconhecer você no futuro."
-                           Style="{StaticResource Muted}" Margin="0,4,0,0"/>
+                <TextBlock Text="O que sincroniza pelo Firestore" Style="{StaticResource Label}"/>
+                <TextBlock Style="{StaticResource Body}" Margin="0,6,0,0"
+                           Text="Apelidos de apps · atalhos de texto · rotinas · preferências (abrir com o Windows, volume, bloqueio) · nome"/>
+                <Border Style="{StaticResource Divider}"/>
+                <TextBlock Text="O que fica só neste PC" Style="{StaticResource Label}"/>
+                <TextBlock Style="{StaticResource Body}" Margin="0,6,0,0"
+                           Text="Notas · área de transferência · lembretes · chave do Gemini · histórico de comandos"/>
               </StackPanel>
             </Border>
           </StackPanel>

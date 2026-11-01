@@ -16,6 +16,7 @@ export const ACCOUNT_NAV: { page: AccountPage; path: string; label: string; icon
   { page: "painel", path: "/conta", label: "Painel", icon: "grid" },
   { page: "perfil", path: "/conta/perfil", label: "Perfil", icon: "user" },
   { page: "dispositivos", path: "/conta/dispositivos", label: "Dispositivos", icon: "laptop" },
+  { page: "sincronizacao", path: "/conta/sincronizacao", label: "Sincronização", icon: "bolt" },
   { page: "downloads", path: "/conta/downloads", label: "Downloads", icon: "download" },
   { page: "seguranca", path: "/conta/seguranca", label: "Segurança", icon: "shield" },
 ];

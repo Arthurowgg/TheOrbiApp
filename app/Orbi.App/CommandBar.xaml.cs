@@ -46,6 +46,8 @@ public partial class CommandBar : Window
     }
 
     /* ----------------------------- abrir / fechar ----------------------------- */
+    public void RefreshGreeting() => ShowGreeting();
+
     public void ShowBar()
     {
         if (!IsVisible)

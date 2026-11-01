@@ -1,0 +1,64 @@
+<Window x:Class="Orbi.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Orbi — entrar na conta"
+        Width="470" Height="560"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Paper}"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Ideal">
+
+  <Grid Margin="30,26">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- marca -->
+    <StackPanel Grid.Row="0">
+      <Border Width="40" Height="40" Background="{StaticResource Ink}" HorizontalAlignment="Left" CornerRadius="3">
+        <TextBlock Text="&#x25CF;" Foreground="#E8573A" FontSize="16"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Border>
+      <TextBlock Text="ORBI" Style="{StaticResource H1}" FontSize="26" Margin="0,14,0,0"/>
+      <TextBlock x:Name="Headline" Text="Entre na sua conta."
+                 Style="{StaticResource Muted}" FontSize="13.5" Margin="0,4,0,0" TextWrapping="Wrap"/>
+    </StackPanel>
+
+    <!-- formulário -->
+    <StackPanel Grid.Row="1" VerticalAlignment="Center">
+      <TextBlock Text="E-MAIL" Style="{StaticResource Label}" Margin="0,0,0,6"/>
+      <TextBox x:Name="EmailBox" Style="{StaticResource Field}" FontSize="14"/>
+
+      <TextBlock Text="SENHA" Style="{StaticResource Label}" Margin="0,14,0,6"/>
+      <PasswordBox x:Name="PasswordBox" Style="{StaticResource PasswordField}" FontSize="14"/>
+
+      <TextBlock x:Name="ErrorText" Style="{StaticResource Muted}" Foreground="#FFC7452A"
+                 Margin="0,12,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+
+      <Button x:Name="PrimaryButton" Content="Entrar" Style="{StaticResource PrimaryButton}"
+              Margin="0,18,0,0" Padding="16,11" Click="Primary_Click"/>
+
+      <Button x:Name="SecondaryButton" Content="Criar conta no app" Style="{StaticResource SecondaryButton}"
+              Margin="0,8,0,0" Padding="16,10" Click="Secondary_Click"/>
+
+      <Button Content="Esqueci minha senha" Style="{StaticResource GhostButton}"
+              HorizontalAlignment="Left" Margin="0,6,0,0" Click="Forgot_Click"/>
+
+      <Border Height="1" Background="{StaticResource Rule}" Margin="0,18,0,14"/>
+
+      <TextBlock Style="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap"
+                 Text="A conta é a mesma do site orbi-app-auth.web.app (Firebase Authentication). O app sincroniza pelo Firestore: apelidos, atalhos, rotinas e preferências. Notas, área de transferência e a chave do Gemini ficam só neste PC."/>
+    </StackPanel>
+
+    <!-- rodapé -->
+    <StackPanel Grid.Row="2">
+      <TextBlock x:Name="StatusText" Style="{StaticResource Muted}" FontSize="11"
+                 TextWrapping="Wrap" Margin="0,0,0,6"/>
+      <Button Content="Continuar sem conta" Style="{StaticResource GhostButton}"
+              HorizontalAlignment="Left" Click="Skip_Click"/>
+    </StackPanel>
+  </Grid>
+</Window>
