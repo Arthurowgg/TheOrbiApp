@@ -299,6 +299,8 @@ public partial class App : System.Windows.Application
             Nota(ok ? "ok" : "falhou");
             Environment.ExitCode = ok ? 0 : 1;
             ExitApp();
+            // Garante o código de saída mesmo se algum handle segurar o processo.
+            Environment.Exit(ok ? 0 : 1);
         }));
     }
 
