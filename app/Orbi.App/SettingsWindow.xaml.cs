@@ -30,7 +30,6 @@ public partial class SettingsWindow : Window
         GeminiState.Text = Store.HasApiKey()
             ? "Chave configurada e cifrada neste PC."
             : "Nenhuma chave ainda: o Orbi não responde perguntas livres sem ela.";
-        RefreshAccount();
         LoadHotkeys();
         ModelBox.SelectedIndex = Math.Max(0, Gemini.Models.ToList().IndexOf(settings.GeminiModel));
 
@@ -122,58 +121,12 @@ public partial class SettingsWindow : Window
         Toast(ok ? $"Atalho: {nome}." : $"Não consegui registrar {nome}.");
     }
 
-    private void RefreshAccount()
-    {
-        var signedIn = Firebase.SignedIn;
-        AccountLine.Text = signedIn ? Firebase.Email ?? "conta" : "sem conta";
-        AccountBox.Text = signedIn
-            ? $"{Store.Current.UserName} · {Firebase.Email}"
-            : "Sem conta vinculada";
-        SyncStatus.Text = signedIn ? Sync.LastStatus : "O Orbi funciona sem conta.";
-
-        LoginButton.Content = signedIn ? "Trocar" : "Entrar";
-        AccountHint.Text = signedIn ? "" : "Use a mesma conta do site.";
-    }
-
-    private void AccountLogin_Click(object sender, RoutedEventArgs e)
-    {
-        var app = (App)System.Windows.Application.Current;
-        if (Firebase.SignedIn) Firebase.SignOut();
-        app.ShowLogin();
-        RefreshAccount();
-    }
-
-    private async void SyncNow_Click(object sender, RoutedEventArgs e)
-    {
-        SyncStatus.Text = "Sincronizando…";
-        await Sync.PullAsync(true);
-        RefreshAccount();
-        Load();
-    }
-
-    private async void PushNow_Click(object sender, RoutedEventArgs e)
-    {
-        SyncStatus.Text = "Enviando deste PC…";
-        var (ok, message) = await Sync.PushAsync();
-        SyncStatus.Text = message;
-        if (!ok) System.Windows.MessageBox.Show(message, "Orbi — sincronização");
-        RefreshAccount();
-    }
-
-    private void AccountSignOut_Click(object sender, RoutedEventArgs e)
-    {
-        Firebase.SignOut();
-        Store.SaveSession(null);
-        RefreshAccount();
-        Toast("Você saiu da conta.");
-    }
-
     /* ----------------------------- navegação ----------------------------- */
     private void Nav_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (Pages is null) return;
         var tag = (Nav.SelectedItem as ListBoxItem)?.Tag as string ?? "geral";
-        foreach (var page in new[] { PageGeral, PageFerramentas, PageIa, PageConta, PageMemoria, PageSeguranca, PageSobre })
+        foreach (var page in new[] { PageGeral, PageFerramentas, PageIa, PageMemoria, PageSeguranca, PageSobre })
         {
             page.Visibility = Visibility.Collapsed;
         }
@@ -181,7 +134,6 @@ public partial class SettingsWindow : Window
         {
             "ferramentas" => PageFerramentas,
             "ia" => PageIa,
-            "conta" => PageConta,
             "memoria" or "lembretes" or "notas" or "atalhos" => PageMemoria,
             "seguranca" => PageSeguranca,
             "sobre" => PageSobre,
@@ -200,18 +152,6 @@ public partial class SettingsWindow : Window
             SystemActions.StartWithWindows(wantsStartup);
         }
         Store.Save();
-        _ = Sync.PushFieldsAsync(new System.Text.Json.Nodes.JsonObject
-        {
-            ["name"] = Firebase.Str(Store.Current.UserName),
-            ["appPrefs"] = Firebase.Map(new System.Text.Json.Nodes.JsonObject
-            {
-                ["startWithWindows"] = Firebase.Bool(Store.Current.StartWithWindows),
-                ["volume"] = Firebase.Num(Store.Current.Volume),
-                ["lockEnabled"] = Firebase.Bool(Store.Current.LockEnabled),
-                ["lockAfterMinutes"] = Firebase.Num(Store.Current.LockAfterMinutes),
-                ["geminiModel"] = Firebase.Str(Store.Current.GeminiModel),
-            }),
-        });
         Toast("Salvo.");
     }
 
@@ -258,21 +198,10 @@ public partial class SettingsWindow : Window
             Store.Current.LockAfterMinutes = Math.Clamp(minutes, 1, 120);
         }
         Store.Save();
-        _ = Sync.PushFieldsAsync(new System.Text.Json.Nodes.JsonObject
-        {
-            ["appPrefs"] = Firebase.Map(new System.Text.Json.Nodes.JsonObject
-            {
-                ["startWithWindows"] = Firebase.Bool(Store.Current.StartWithWindows),
-                ["volume"] = Firebase.Num(Store.Current.Volume),
-                ["lockEnabled"] = Firebase.Bool(Store.Current.LockEnabled),
-                ["lockAfterMinutes"] = Firebase.Num(Store.Current.LockAfterMinutes),
-                ["geminiModel"] = Firebase.Str(Store.Current.GeminiModel),
-            }),
-        });
         Toast("Salvo.");
     }
 
-    private void OpenSite_Click(object sender, RoutedEventArgs e) => OpenUrl(Firebase.SiteUrl);
+    private void OpenSite_Click(object sender, RoutedEventArgs e) => OpenUrl("https://orbi-app.web.app");
 
     private void OpenSiteReleases_Click(object sender, RoutedEventArgs e) => OpenUrl("https://orbi-app.web.app/baixar");
     private void OpenBar_Click(object sender, RoutedEventArgs e) => ((App)System.Windows.Application.Current).ShowBar();

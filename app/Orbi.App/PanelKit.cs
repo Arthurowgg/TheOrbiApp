@@ -40,7 +40,17 @@ public static class Panel
         };
     }
 
-    /// <summary>Cabeçalho: marca, nome do painel e um botão para voltar ao menu.</summary>
+    /// <summary>Aplica no painel o mesmo papel quente, fonte e cromo da barra.</summary>
+    public static void Install(Window janela, string titulo)
+    {
+        janela.Title = titulo;
+        janela.Background = Paper;
+        janela.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        janela.UseLayoutRounding = true;
+        janela.FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI");
+    }
+
+    /// <summary>Cabeçalho: marca, nome do painel e o atalho de volta para a barra.</summary>
     public static Grid Header(string titulo, string? nota, Action onMenu, Window janela)
     {
         var grade = new Grid { Margin = new Thickness(20, 16, 16, 14) };
@@ -79,12 +89,12 @@ public static class Panel
 
         var menu = new Button
         {
-            Content = "menu",
+            Content = "‹ barra",
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
             Foreground = Warm,
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
-            FontSize = 10.5,
+            FontSize = 11,
             Padding = new Thickness(10, 6, 10, 6),
             Cursor = Cursors.Hand,
             VerticalAlignment = VerticalAlignment.Center,

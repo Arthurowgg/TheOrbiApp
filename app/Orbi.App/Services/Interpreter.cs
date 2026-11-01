@@ -180,16 +180,6 @@ public static partial class Interpreter
                 $"Próximo aviso às {reminder.DueAt:HH:mm}.");
         }
 
-        if (NotesCmd().IsMatch(text))
-        {
-            var note = NoteText().Replace(input.Trim(), "").Trim(' ', ':');
-            if (string.IsNullOrWhiteSpace(note)) return OrbiReply.Local("O que você quer anotar?");
-            Store.Current.Notes.Insert(0, new Note { Text = note });
-            Store.Save();
-            Memory.Remember(note, "nota");
-            return OrbiReply.Local($"Anotado: “{note}”.", "Fica no seu PC, em Ajustes ▸ Notas.");
-        }
-
         /* ----------------------------- notas e cópia ----------------------------- */
         if (RemindersList().IsMatch(text))
         {
@@ -295,39 +285,6 @@ public static partial class Interpreter
         {
             SystemActions.PlayPause();
             return OrbiReply.Local("Play/pause enviado para o player.");
-        }
-
-        /* ----------------------------- rotinas ----------------------------- */
-        // As rotinas vêm da conta (Firestore) e são editáveis no site.
-        var routine = Store.Current.Routines.FirstOrDefault(item =>
-            !string.IsNullOrWhiteSpace(item.Name) &&
-            (text == Normalize(item.Name) || text.Contains(Normalize(item.Name), StringComparison.Ordinal)));
-
-        if (routine is not null)
-        {
-            var results = new List<string>();
-            foreach (var command in routine.Commands.Take(12))
-            {
-                var step = Interpret(command);
-                // Dentro de uma rotina não pedimos confirmação: pulamos ações destrutivas.
-                if (step.Kind == ReplyKind.Confirm)
-                {
-                    results.Add($"(pulado: {command})");
-                    continue;
-                }
-                results.Add(step.Text);
-            }
-            return OrbiReply.Local(
-                $"Rotina “{routine.Name}” executada.",
-                string.Join(" ", results));
-        }
-
-        if (RoutineListCmd().IsMatch(text))
-        {
-            var names = Store.Current.Routines.Select(item => item.Name).Where(name => name.Length > 0).ToList();
-            return names.Count == 0
-                ? OrbiReply.Local("Você ainda não tem rotinas. Crie uma no site, em Conta ▸ Sincronização ▸ Rotinas.")
-                : OrbiReply.Local($"Suas rotinas: {string.Join(", ", names)}.", "Diga o nome de uma para executar.");
         }
 
         /* ----------------------------- abrir / fechar apps ----------------------------- */
@@ -438,12 +395,6 @@ public static partial class Interpreter
     [GeneratedRegex(@"^.*?(lembra[r]?|lembrete|me avisa[r]?|alarme)\s*", RegexOptions.IgnoreCase)]
     private static partial Regex ReminderText();
 
-    [GeneratedRegex(@"\b(anota|anote|nota|anotar)\b")]
-    private static partial Regex NotesCmd();
-
-    [GeneratedRegex(@"^.*?(anota[r]?|anote|nota)\s*", RegexOptions.IgnoreCase)]
-    private static partial Regex NoteText();
-
     [GeneratedRegex(@"\b(meus lembretes|listar lembretes|lembretes pendentes)\b")]
     private static partial Regex RemindersList();
 
@@ -485,9 +436,6 @@ public static partial class Interpreter
 
     [GeneratedRegex(@"\b(lixeira)\b")]
     private static partial Regex RecycleCmd();
-
-    [GeneratedRegex(@"\b(minhas rotinas|listar rotinas|quais rotinas)\b")]
-    private static partial Regex RoutineListCmd();
 
     [GeneratedRegex(@"\b(status|como esta o pc|cpu|memoria|ram|disco|bateria|desempenho)\b")]
     private static partial Regex StatusCmd();

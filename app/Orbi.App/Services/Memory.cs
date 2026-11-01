@@ -95,7 +95,7 @@ public static class Memory
         Save();
     }
 
-    /// <summary>Recebe a memória que veio do Firestore e junta com a local.</summary>
+    /// <summary>Junta registros guardados em outro PC com os daqui.</summary>
     public static void Adopt(IEnumerable<MemoryEntry> remotas)
     {
         Load();

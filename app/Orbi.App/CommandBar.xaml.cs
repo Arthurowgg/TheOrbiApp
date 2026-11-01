@@ -105,23 +105,18 @@ public partial class CommandBar : Window
         Results.ItemContainerStyle = (Style)FindResource("ResultItem");
     }
 
-    /* ----------------------------- conta ----------------------------- */
+    /* ----------------------------- menu ----------------------------- */
     /// <summary>
-    /// O botão da direita: três pontos. O ponto verde aparece quando você está
-    /// numa conta (ou a cor da marca quando não está).
+    /// O botão da direita: três pontos. O ponto só acende quando falta a chave
+    /// da IA — é a única coisa que precisa de atenção.
     /// </summary>
     public void RefreshAccountChip()
     {
-        var nome = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "" : Store.Current.UserName.Trim();
-        Dots.Fill = Firebase.SignedIn
-            ? new SolidColorBrush(Color.FromRgb(0xE9, 0xE3, 0xD6))
-            : new SolidColorBrush(Color.FromRgb(0x8C, 0x84, 0x74));
-        AccountDot.Fill = Firebase.SignedIn
+        Dots.Fill = new SolidColorBrush(Color.FromRgb(0x8C, 0x84, 0x74));
+        AccountDot.Fill = Gemini.HasKey
             ? new SolidColorBrush(Color.FromRgb(0x4E, 0x9A, 0x5C))
             : new SolidColorBrush(Color.FromRgb(0xC7, 0x45, 0x2A));
-        AccountButton.ToolTip = Firebase.SignedIn
-            ? $"{(string.IsNullOrWhiteSpace(nome) ? "Conta" : nome)} · {(Firebase.Email ?? "")}"
-            : "Menu — entre na conta, ajustes, IA";
+        AccountButton.ToolTip = "Menu — perfil, IA, ajustes e ferramentas";
     }
 
     private void AccountButton_Click(object sender, RoutedEventArgs e)
@@ -130,55 +125,27 @@ public partial class CommandBar : Window
         else OpenMenu();
     }
 
-    /// <summary>Três pontos: perfil, ajustes, IA, ferramentas e o resto.</summary>
+    /// <summary>Três pontos: perfil, IA, ajustes, ferramentas e o resto.</summary>
     private void OpenMenu()
     {
         Expand();
         Results.Visibility = Visibility.Collapsed;
         FooterBar.Visibility = Visibility.Collapsed;
 
-        if (Firebase.SignedIn)
-        {
-            _sheetTitle = "conta";
-            _sheetNote = Firebase.Email ?? "";
-        }
-        else
-        {
-            _sheetTitle = "conta";
-            _sheetNote = "sem conta";
-        }
+        _sheetTitle = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "menu" : Store.Current.UserName.Trim();
+        _sheetNote = Gemini.HasKey ? Gemini.Mode : "IA sem chave";
 
         SheetClose.Visibility = Visibility.Collapsed;
         SheetBody.Children.Clear();
 
-        if (Firebase.SignedIn)
-        {
-            SheetBody.Children.Add(SheetRow("Perfil e conta", Firebase.Email ?? "sua conta", () => Abrir("perfil")));
-        }
-        else
-        {
-            SheetBody.Children.Add(SheetRow("Entrar na conta", "a mesma do site", () => App.Instance.ShowLogin(), destaque: true));
-            SheetBody.Children.Add(SheetRow("Criar conta no site", "", () => Browser.Open("https://orbi-app.web.app/criar")));
-        }
-
-        SheetBody.Children.Add(SheetDivider());
-        SheetBody.Children.Add(SheetRow("IA e chave", Gemini.HasKey ? Gemini.Mode : "sem chave", () => Abrir("ia"),
+        SheetBody.Children.Add(SheetRow("Perfil", "seu nome e este PC", () => Abrir("perfil")));
+        SheetBody.Children.Add(SheetRow("IA e chave", Gemini.HasKey ? Gemini.Mode : "cole a sua chave", () => Abrir("ia"),
             aviso: !Gemini.HasKey));
         SheetBody.Children.Add(SheetRow("Ajustes", "atalho, Windows, segurança", () => Abrir("ajustes")));
         SheetBody.Children.Add(SheetRow("Ferramentas", $"{Tools.All.Count} ações", () => Abrir("ferramentas")));
-        SheetBody.Children.Add(SheetRow("Memória", "o que o Orbi lembra", () => Abrir("memoria")));
+        SheetBody.Children.Add(SheetRow("Memória", "o que o Orbi lembra", () => Abrir("ajustes")));
         SheetBody.Children.Add(SheetDivider());
-
-        if (Firebase.SignedIn)
-        {
-            SheetBody.Children.Add(SheetRow("Sair da conta", "", () =>
-            {
-                Firebase.SignOut();
-                RefreshAccountChip();
-                OpenMenu();
-            }));
-        }
-
+        SheetBody.Children.Add(SheetRow("Site do Orbi", "", () => Browser.Open("https://orbi-app.web.app")));
         SheetBody.Children.Add(SheetRow("Encerrar o Orbi", "", () => App.Instance.ExitApp()));
         ShowSheet();
     }

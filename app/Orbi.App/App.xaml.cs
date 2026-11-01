@@ -100,15 +100,6 @@ public partial class App : System.Windows.Application
             Log.Error("bandeja/atalho", error);
         }
 
-        try
-        {
-            Sync.Start();
-        }
-        catch (Exception error)
-        {
-            Log.Error("sincronização", error);
-        }
-
         _reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
         _reminderTimer.Tick += (_, _) => CheckReminders();
         _reminderTimer.Start();
@@ -169,7 +160,6 @@ public partial class App : System.Windows.Application
         };
         menu.Items.Add("Abrir o Orbi", null, (_, _) => ShowBar());
         menu.Items.Add("Ajustes…", null, (_, _) => ShowSettings());
-        menu.Items.Add(Firebase.SignedIn ? "Conta…" : "Entrar na conta…", null, (_, _) => ShowAccount());
         menu.Items.Add("Ferramentas…", null, (_, _) => ShowSettings("ferramentas"));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Bloquear o Windows", null, (_, _) => SystemActions.Lock());
@@ -412,27 +402,7 @@ public partial class App : System.Windows.Application
         window.Show();
     }
 
-    public void ShowLogin()
-    {
-        var login = new LoginWindow { Owner = null };
-        var ok = login.ShowDialog();
-        if (ok == true)
-        {
-            _bar?.RefreshGreeting();
-            _bar?.RefreshAccountChip();
-            (_panel as ProfileWindow)?.Refresh();
-        }
-    }
-
-    public void ShowAccount()
-    {
-        if (!Firebase.SignedIn)
-        {
-            ShowLogin();
-            return;
-        }
-        OpenPanel("perfil");
-    }
+    public void ShowAccount() => OpenPanel("perfil");
 
     public void ShowSettings(string? tab = null) => OpenPanel(Mapear(tab));
 

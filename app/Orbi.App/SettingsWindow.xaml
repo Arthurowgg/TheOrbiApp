@@ -34,7 +34,7 @@
 
         <StackPanel Grid.Column="1" VerticalAlignment="Center">
           <TextBlock Text="ORBI" Style="{StaticResource H2}" FontSize="17"/>
-          <TextBlock x:Name="AccountLine" Text="Sem conta vinculada" Style="{StaticResource Label}"/>
+          <TextBlock Text="ajustes deste PC" Style="{StaticResource Label}"/>
         </StackPanel>
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
@@ -59,7 +59,6 @@
                  SelectionChanged="Nav_SelectionChanged" Padding="8">
           <ListBoxItem Content="Geral" Tag="geral"/>
           <ListBoxItem Content="IA" Tag="ia"/>
-          <ListBoxItem Content="Conta" Tag="conta"/>
           <ListBoxItem Content="Ferramentas" Tag="ferramentas"/>
           <ListBoxItem Content="Memória" Tag="memoria"/>
           <ListBoxItem Content="Segurança" Tag="seguranca"/>
@@ -171,30 +170,6 @@
                   <ComboBoxItem Content="gemini-2.5-flash-lite"/>
                   <ComboBoxItem Content="gemini-2.0-flash"/>
                 </ComboBox>
-              </StackPanel>
-            </Border>
-          </StackPanel>
-
-          <!-- CONTA -->
-          <StackPanel x:Name="PageConta" Visibility="Collapsed">
-            <TextBlock Text="Conta" Style="{StaticResource H1}"/>
-            <TextBlock Text="A mesma conta do site. O que você cria lá aparece aqui."
-                       Style="{StaticResource Muted}" Margin="0,4,0,20" TextWrapping="Wrap"/>
-
-            <Border Style="{StaticResource Card}">
-              <StackPanel>
-                <TextBlock x:Name="AccountBox" Style="{StaticResource Body}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                <TextBlock x:Name="SyncStatus" Style="{StaticResource Muted}" Margin="0,4,0,0"/>
-
-                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                  <Button x:Name="LoginButton" Content="Entrar" Style="{StaticResource PrimaryButton}"
-                          Click="AccountLogin_Click"/>
-                  <Button Content="Sincronizar" Style="{StaticResource SecondaryButton}"
-                          Margin="8,0,0,0" Click="SyncNow_Click"/>
-                  <Button Content="Sair" Style="{StaticResource GhostButton}" Click="AccountSignOut_Click"/>
-                </StackPanel>
-
-                <TextBlock x:Name="AccountHint" Style="{StaticResource Muted}" Margin="0,10,0,0" TextWrapping="Wrap"/>
               </StackPanel>
             </Border>
           </StackPanel>

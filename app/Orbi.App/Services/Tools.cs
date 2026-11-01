@@ -356,24 +356,19 @@ public static class Tools
             App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.ShowSettings()));
             return "Abrindo os ajustes.";
         });
-        Add("orbi-account", "Conta Orbi", "Produtividade", "conta,entrar,login,sincronizar", () =>
+        Add("orbi-profile", "Abrir o perfil", "Produtividade", "perfil,nome,usuario,orbi", () =>
         {
             App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.ShowAccount()));
-            return Firebase.SignedIn ? "Abrindo a conta." : "Vamos entrar na sua conta.";
+            return "Abrindo o perfil.";
         });
-        Add("sync-now", "Sincronizar agora", "Produtividade", "sincronizar,sync,conta", () =>
-        {
-            Sync.Now();
-            return "Sincronizando com a sua conta.";
-        });
-        Add("orbi-site", "Abrir o site do Orbi", "Produtividade", "site,conta,navegador", () => Shell("https://orbi-app.web.app/conta") == "Feito." ? "Abri o site." : "Não abri o site.");
+        Add("orbi-site", "Abrir o site do Orbi", "Produtividade", "site,conta,navegador", () => Shell("https://orbi-app.web.app") == "Feito." ? "Abri o site." : "Não abri o site.");
         Add("orbi-log", "Ver o log do Orbi", "Produtividade", "log,registro,problema", () =>
         {
             if (File.Exists(Log.Path)) Shell(Log.Path);
             return "Log em " + Log.Path;
         });
         Add("orbi-version", "Versão do Orbi", "Produtividade", "versao,update,atualizar", () =>
-            "Orbi " + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "?") + " · " + (Firebase.SignedIn ? Firebase.Email ?? "" : "sem conta"));
+            "Orbi " + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "?"));
 
         // segundo bloco: mais 200 ferramentas (área de trabalho, teclado e mouse,
         // captura de tela, arquivos, rede, energia, acessibilidade, dev, texto…)

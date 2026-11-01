@@ -62,7 +62,7 @@ public static class ProntoWindow
 
         painel.Children.Add(new TextBlock
         {
-            Text = "COISAS PARA TENTAR AGORA (funcionam sem internet e sem conta)",
+            Text = "COISAS PARA TENTAR AGORA",
             FontSize = 11,
             FontWeight = FontWeights.Bold,
             Foreground = destaque,
@@ -73,9 +73,8 @@ public static class ProntoWindow
         {
             "abrir chrome            · abre qualquer programa instalado",
             "volume 30               · volume, brilho, energia, captura",
-            "nota comprar leite      · notas rápidas",
             "lembrar 18:00 reunião   · aviso na hora marcada",
-            "/  ou F1               · catálogo com 120+ ações",
+            "/  ou F1               · catálogo com centenas de ações",
             "status                  · CPU, memória, disco e bateria",
         })
         {
