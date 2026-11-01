@@ -137,6 +137,16 @@ jobs:
           $tamanho = [math]::Round((Get-ChildItem $target -Recurse | Measure-Object Length -Sum).Sum / 1MB, 1)
           Write-Host "instalado: $tamanho MB em $target"
 
+          # O app instalado abre? É a prova que importa depois de instalar.
+          $logApp = Join-Path $env:APPDATA "Orbi\orbi.log"
+          if (Test-Path $logApp) { Remove-Item $logApp -Force }
+          $app = Start-Process -FilePath (Join-Path $target "Orbi.exe") -ArgumentList "--tray" -PassThru
+          Start-Sleep -Seconds 15
+          if ($app.HasExited) { Falhar "o Orbi instalado fechou sozinho (código $($app.ExitCode))" }
+          if (-not (Test-Path $logApp)) { Falhar "o Orbi instalado está aberto mas não escreveu orbi.log" }
+          Get-Content $logApp | Select-Object -Last 5 | ForEach-Object { Write-Host "app: $_" }
+          Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
+
           $u = Start-Process -FilePath $exe -ArgumentList "--silent","--uninstall" -PassThru -Wait
           if ($u.ExitCode -ne 0) { Falhar "desinstalação silenciosa falhou ($($u.ExitCode))" }
           if (Test-Path (Join-Path $target "Orbi.exe")) { Falhar "Orbi.exe continuou depois de desinstalar" }

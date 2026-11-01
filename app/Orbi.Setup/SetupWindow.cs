@@ -54,8 +54,7 @@ public class SetupWindow : Window
             {
                 var linhas = $"janela visível={IsVisible} tamanho={ActualWidth:0}x{ActualHeight:0} " +
                              $"conteúdo={(_raiz.Children.Count > 1 ? "montado" : "vazio")} " +
-                             $"log={(App.Current as App)?.LogBox is not null} " +
-                             $"sink={Installer.Sink is not null}";
+                             $"versão={Installer.Versao}";
                 try
                 {
                     File.WriteAllText(App.SilentLog, $"self-test: {linhas}" + Environment.NewLine);
