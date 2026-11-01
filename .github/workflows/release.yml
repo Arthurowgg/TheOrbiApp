@@ -146,46 +146,38 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = "Continue"
-          $exe = "artifacts\publish\Orbi.exe"
-          $log = "$env:APPDATA\Orbi\selftest.txt"
-          $ini = "$env:APPDATA\Orbi\ultima-execucao.txt"
-          Remove-Item $log, $ini -ErrorAction SilentlyContinue
+          $exe = (Resolve-Path "artifacts\publish\Orbi.exe").Path
+          Write-Host "exe: $exe"
+          Get-Item $exe | Select-Object Length | Format-List | Out-String | Write-Host
+          Get-ChildItem "artifacts\publish" | Select-Object -First 10 Name, Length | Format-Table | Out-String | Write-Host
 
-          $p = Start-Process -FilePath $exe -ArgumentList "--selftest" -PassThru
-          Start-Sleep -Seconds 15
-          if ($p.HasExited) { Write-Host "::warning::o processo terminou sozinho com código $($p.ExitCode)" }
-          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          # Roda e captura stdout/stderr: se o processo morrer na partida, o
+          # motivo aparece aqui.
+          $saida = & $exe "--selftest" 2>&1 | Out-String
+          Write-Host "saida do processo:"; Write-Host $saida
+          Write-Host "exit code: $LASTEXITCODE"
 
-          # Tudo o que interessa vai para anotação: o log do runner não é legível.
-          if (Test-Path $ini) { Get-Content $ini | ForEach-Object { Write-Host "::notice::exec: $_" } }
-          if (Test-Path "$env:APPDATA\Orbi\startup.log") {
-            Get-Content "$env:APPDATA\Orbi\startup.log" | Select-Object -Last 40 | ForEach-Object { Write-Host "::notice::startup: $_" }
+          $pasta = "$env:APPDATA\Orbi"
+          Write-Host "conteudo de $pasta :"
+          if (Test-Path $pasta) { Get-ChildItem $pasta | Select-Object Name, Length | Format-Table | Out-String | Write-Host } else { Write-Host "PASTA AUSENTE" }
+          foreach ($f in @("sonda.txt", "ultima-execucao.txt", "startup.log", "crash.log", "selftest.txt")) {
+            $caminho = Join-Path $pasta $f
+            if (Test-Path $caminho) {
+              Write-Host "=== $f"
+              Get-Content $caminho | Select-Object -Last 40 | ForEach-Object { Write-Host "::notice::$f :: $_" }
+            } else {
+              Write-Host "::warning::$f AUSENTE"
+            }
           }
-          if (Test-Path "$env:APPDATA\Orbi\crash.log") {
-            Get-Content "$env:APPDATA\Orbi\crash.log" | Select-Object -Last 40 | ForEach-Object { Write-Host "::error::crash: $_" }
-          }
 
-          if (-not (Test-Path $log)) {
-            Write-Host "::error::sem selftest.txt — o app não chegou a rodar a interface"
-            exit 1
-          }
-
-          $texto = Get-Content $log -Raw
-          $texto -split "`n" | ForEach-Object { if ($_.Trim()) { Write-Host "::notice::$_" } }
-
+          $relatorio = Join-Path $pasta "selftest.txt"
+          if (-not (Test-Path $relatorio)) { Write-Host "::error::sem selftest.txt"; exit 1 }
+          $texto = Get-Content $relatorio -Raw
           $falhas = ($texto -split "`n") | Where-Object { $_ -match "FALHOU|SEM TAMANHO|vazia" }
-          if ($falhas) {
-            $falhas | Select-Object -First 10 | ForEach-Object { Write-Host "::error::$_" }
-            exit 1
-          }
-          if ($texto -notmatch "RESULTADO: tudo abriu") {
-            Write-Host "::error::resultado inesperado no autoteste"
-            exit 1
-          }
+          if ($falhas) { $falhas | Select-Object -First 10 | ForEach-Object { Write-Host "::error::$_" }; exit 1 }
+          if ($texto -notmatch "RESULTADO: tudo abriu") { Write-Host "::error::resultado inesperado"; exit 1 }
           Write-Host "Autoteste passou."
 
-      # Publica o relatório num check-run: o log do runner não é legível pela API,
-      # mas as anotações são. É assim que o resultado chega para quem precisa dele.
       - name: Guardar os logs do autoteste
         if: always()
         uses: actions/upload-artifact@v4

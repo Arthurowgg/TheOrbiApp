@@ -19,8 +19,39 @@ public partial class App : System.Windows.Application
     [STAThread]
     public static void Main()
     {
-        var app = new App();
-        app.Run();
+        // Sonda: a primeira coisa que o processo faz. Se este arquivo não existir
+        // depois de executar o Orbi, o problema não está no app — o processo nem
+        // chegou a rodar (exe quebrado, DLL faltando, self-extract bloqueado).
+        Probe("Main() entrou");
+
+        try
+        {
+            var app = new App();
+            Probe("App construído");
+            app.Run();
+            Probe("Run() terminou");
+        }
+        catch (Exception error)
+        {
+            Probe("EXCEÇÃO em Main: " + error);
+            throw;
+        }
+    }
+
+    internal static void Probe(string texto)
+    {
+        try
+        {
+            var pasta = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Orbi");
+            Directory.CreateDirectory(pasta);
+            File.AppendAllText(Path.Combine(pasta, "sonda.txt"),
+                $"{DateTime.Now:HH:mm:ss.fff} {texto}{Environment.NewLine}");
+        }
+        catch
+        {
+            // sonda é diagnóstico: nunca pode atrapalhar
+        }
     }
 
     private Forms.NotifyIcon? _tray;
@@ -37,6 +68,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        Probe("OnStartup entrou");
         // --console: log de cada etapa no terminal (para descobrir onde para).
         var console = e.Args.Contains("--console") || e.Args.Contains("--console-keep");
         if (console && !ConsoleWindow.Attach())
