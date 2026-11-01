@@ -28,6 +28,9 @@ public static class ToolsWeb
 
         string D() => Args.Current;
 
+        // dado vazio = usa o que está copiado
+        string Texto(string valor) => string.IsNullOrWhiteSpace(valor) ? ClipboardSafe() : valor;
+
         string Copia(string texto)
         {
             try { System.Windows.Clipboard.SetText(texto); return "Copiado: " + Curto(texto); }
@@ -136,7 +139,7 @@ public static class ToolsWeb
         Add("mover-um-arquivo", "Mover um arquivo", "Arquivos e pastas", "mover,arquivo", () => Mover(d()), "origem → destino");
         Add("apagar-um-arquivo", "Apagar um arquivo", "Arquivos e pastas", "apagar,arquivo,excluir", () => Apagar(d()), "o caminho");
         Add("ler-um-arquivo-de-texto", "Ler um arquivo de texto", "Arquivos e pastas", "ler,arquivo,texto", () => Ler(d()), "o caminho");
-        Add("contar-as-palavras", "Contar as palavras", "Texto", "contar,palavras", () => Texto(d()).WordCount(), "o texto");
+        Add("contar-as-palavras", "Contar as palavras", "Texto", "contar,palavras", () => Texto(d()).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length + " palavras.", "o texto");
         Add("contar-as-letras", "Contar as letras", "Texto", "contar,letras,caracteres", () => Texto(d()).Length.ToString("N0") + " letras.", "o texto");
         Add("deixar-em-maiusculas", "Deixar em MAIÚSCULAS", "Texto", "maiusculas,texto", () => Copia(Texto(d()).ToUpperInvariant()), "o texto");
         Add("deixar-em-minusculas", "Deixar em minúsculas", "Texto", "minusculas,texto", () => Copia(Texto(d()).ToLowerInvariant()), "o texto");
@@ -162,11 +165,11 @@ public static class ToolsWeb
         Add("clicar-em-uma-posicao", "Clicar em uma posição", "Janelas e mouse", "clicar,posicao,mouse", () => Pc.ParsePoint(d()) is { } p ? (Pc.Click(p.X, p.Y), $"Cliquei em {p.X},{p.Y}.").Item2 : "Diga a posição como 640,400.", "x,y");
         Add("clicar-com-o-botao-direito", "Clicar com o botão direito", "Janelas e mouse", "clique,direito", () => Pc.ParsePoint(d()) is { } p ? (Pc.Click(p.X, p.Y, "right"), $"Clique direito em {p.X},{p.Y}.").Item2 : "Diga a posição como 640,400.", "x,y");
         Add("clique-duplo", "Clique duplo", "Janelas e mouse", "clique,duplo", () => Pc.ParsePoint(d()) is { } p ? (Pc.DoubleClick(p.X, p.Y), $"Clique duplo em {p.X},{p.Y}.").Item2 : "Diga a posição como 640,400.", "x,y");
-        Add("digitar-um-texto", "Digitar um texto", "Janelas e mouse", "digitar,escrever", () => Pc.Type(d()); return "Digitei.";, "o texto");
-        Add("apertar-um-atalho", "Apertar um atalho", "Janelas e mouse", "atalho,tecla,aperte", () => Pc.Hotkey(d()); return $"Atalho {d()} enviado.";, "ctrl+t");
+        Add("digitar-um-texto", "Digitar um texto", "Janelas e mouse", "digitar,escrever", () => { Pc.Type(d()); return "Digitei."; }, "o texto");
+        Add("apertar-um-atalho", "Apertar um atalho", "Janelas e mouse", "atalho,tecla,aperte", () => { Pc.Hotkey(d()); return $"Atalho {d()} enviado."; }, "ctrl+t");
         Add("rolar-a-tela", "Rolar a tela", "Janelas e mouse", "rolar,scroll", () => int.TryParse(d(), out var n) ? (Pc.Scroll(n), $"Rolei {n}.").Item2 : (Pc.Scroll(3), "Rolei 3.").Item2, "quantos cliques");
-        Add("capturar-a-tela", "Capturar a tela", "Tela", "capturar,tela,foto", () => Copia(Pc.Capture()); return "Captura salva.";);
-        Add("capturar-e-guardar-o-caminho", "Capturar e guardar o caminho", "Tela", "capturar,caminho", () => "Captura salva em " + Pc.Capture(););
+        Add("capturar-a-tela", "Capturar a tela", "Tela", "capturar,tela,foto", () => { Copia(Pc.Capture()); return "Captura salva."; });
+        Add("capturar-e-guardar-o-caminho", "Capturar e guardar o caminho", "Tela", "capturar,caminho", () => "Captura salva em " + Pc.Capture());
         Add("ver-o-tamanho-da-tela", "Ver o tamanho da tela", "Tela", "tamanho,tela,resolucao", () => $"{Pc.ScreenSize().Width}x{Pc.ScreenSize().Height}.");
         Add("ver-a-posicao-do-mouse", "Ver a posição do mouse", "Tela", "mouse,posicao", () => $"Mouse em {Pc.CursorPosition().X},{Pc.CursorPosition().Y}.");
         Add("abrir-as-configuracoes-de-video", "Abrir as configurações de vídeo", "Configurações do Windows", "video,tela,resolucao", () => Abrir("ms-settings:display"));
