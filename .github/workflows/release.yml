@@ -119,9 +119,59 @@ jobs:
             artifacts/SHA256SUMS.txt
           retention-days: 14
 
+  # Prova real: executa o app no Windows e lê o relatório do autoteste.
+  # Antes disso, "build verde" não significava "o app abre" — e foi assim que
+  # um tema XAML quebrado passou por seis versões.
+  autoteste:
+    name: Autoteste no Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publicar
+        run: >
+          dotnet publish app/Orbi.App/Orbi.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
+          -o artifacts/publish
+
+      - name: Rodar o Orbi com --selftest
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Continue"
+          $exe = "artifacts\publish\Orbi.exe"
+          $log = "$env:APPDATA\Orbi\selftest.txt"
+          $ini = "$env:APPDATA\Orbi\ultima-execucao.txt"
+          Remove-Item $log, $ini -ErrorAction SilentlyContinue
+
+          $p = Start-Process -FilePath $exe -ArgumentList "--selftest" -PassThru
+          Start-Sleep -Seconds 12
+          $vivo = -not $p.HasExited
+          if (-not $vivo) { Write-Host "::warning::o processo terminou com código $($p.ExitCode)" }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+
+          Write-Host "=== ultima-execucao.txt"; if (Test-Path $ini) { Get-Content $ini } else { Write-Host "AUSENTE" }
+          Write-Host "=== selftest.txt"
+          if (-not (Test-Path $log)) { throw "O app não gerou o relatório do autoteste — ele não chegou a rodar a interface." }
+          Get-Content $log
+
+          $texto = Get-Content $log -Raw
+          $falhas = ($texto -split "`n") | Where-Object { $_ -match "FALHOU|SEM TAMANHO|vazia" }
+          if ($falhas) {
+            $falhas | Select-Object -First 8 | ForEach-Object { Write-Host "::error::$_" }
+            throw "O autoteste encontrou falhas (veja acima)."
+          }
+          if ($texto -notmatch "RESULTADO: tudo abriu") {
+            throw "Resultado inesperado do autoteste."
+          }
+
   release:
     name: Publicar release
-    needs: windows
+    needs: [windows, autoteste]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -135,20 +185,20 @@ jobs:
       - name: Criar/atualizar a release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.7
-          name: Orbi 1.0.7
+          tag_name: v1.0.8
+          name: Orbi 1.0.8
           draft: false
           prerelease: false
           make_latest: true
           files: |
-            artifacts/OrbiSetup-1.0.7.exe
+            artifacts/OrbiSetup-1.0.8.exe
             artifacts/SHA256SUMS.txt
           body: |
-            ## Orbi 1.0.7 — para Windows 11
+            ## Orbi 1.0.8 — para Windows 11
 
             Instalador único, sem Python, sem privilégio de administrador.
 
-            **Baixe `OrbiSetup-1.0.7.exe`** e execute. Na primeira vez, o Orbi mostra uma
+            **Baixe `OrbiSetup-1.0.8.exe`** e execute. Na primeira vez, o Orbi mostra uma
             janela de boas-vindas (prova de que ele abriu) e o diagnóstico. Depois, aperte
             `Alt+Shift+O` em qualquer lugar do Windows.
 
@@ -169,7 +219,7 @@ jobs:
             **Verificação:** compare o SHA-256 com `SHA256SUMS.txt`.
 
             ```powershell
-            certutil -hashfile OrbiSetup-1.0.7.exe SHA256
+            certutil -hashfile OrbiSetup-1.0.8.exe SHA256
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -38,9 +38,53 @@ public partial class App : System.Windows.Application
         ConsoleLog.Step("Orbi iniciando", string.Join(" ", e.Args));
         ConsoleLog.Step("Versão", typeof(App).Assembly.GetName().Version?.ToString() ?? "?");
 
+        // Marcador de execução: se o app morrer antes de escrever de novo, o
+        // arquivo "ultima-execucao.txt" mostra que ele chegou a rodar.
+        try
+        {
+            Directory.CreateDirectory(Store.Root);
+            File.WriteAllText(
+                Path.Combine(Store.Root, "ultima-execucao.txt"),
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} · versão {typeof(App).Assembly.GetName().Version}\n" +
+                $"argumentos: {string.Join(" ", e.Args)}\n" +
+                $"exe: {Environment.ProcessPath}\n");
+        }
+        catch
+        {
+            // sem marcador: o log ainda existe
+        }
+
         base.OnStartup(e);
         Diagnostics.Install();
-        ConsoleLog.Step("Manifesto e tema carregados");
+
+        // O tema vem do App.xaml. Se ele falhar, TODO XAML quebra — e era
+        // exatamente isso que deixava o app sem abrir nada. Aqui verificamos que
+        // o tema carregou de verdade e, se não, seguimos sem ele (as janelas de
+        // emergência não usam recursos do tema).
+        try
+        {
+            var recurso = Resources["Film2"];
+            ConsoleLog.Step("Tema carregado", recurso is not null ? "ok" : "vazio");
+        }
+        catch (Exception error)
+        {
+            ConsoleLog.Fail("carregar o tema", error);
+            Diagnostics.Report(error, "Tema", fatal: false);
+            try
+            {
+                Resources.MergedDictionaries.Clear();
+                Resources.MergedDictionaries.Add(new ResourceDictionary
+                {
+                    Source = new Uri("Theme.xaml", UriKind.Relative),
+                });
+                ConsoleLog.Step("Tema recarregado");
+            }
+            catch (Exception again)
+            {
+                ConsoleLog.Fail("recarregar o tema", again);
+                Diagnostics.Report(again, "Tema (recarga)", fatal: false);
+            }
+        }
         // Uma instância só: se já existe, a segunda apenas abre a barra.
         if (!SingleInstance.TryAcquire())
         {

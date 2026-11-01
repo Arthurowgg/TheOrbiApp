@@ -23,7 +23,7 @@
 
     <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,16,0,0" Padding="0">
       <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
-        <TextBlock x:Name="Report" FontFamily="{StaticResource Mono}" FontSize="11.5"
+        <TextBlock x:Name="Report" FontFamily="{StaticResource MonoFont}" FontSize="11.5"
                    Foreground="{StaticResource Ink2}" TextWrapping="Wrap"/>
       </ScrollViewer>
     </Border>

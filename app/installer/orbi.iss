@@ -6,7 +6,7 @@
 ; ---------------------------------------------------------------------------
 
 #define AppName "Orbi"
-#define AppVersion "1.0.7"
+#define AppVersion "1.0.8"
 #define AppPublisher "Orbi"
 #define AppURL "https://orbi-app-auth.web.app"
 #define AppExe "Orbi.exe"

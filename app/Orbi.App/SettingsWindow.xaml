@@ -340,7 +340,7 @@
                         HorizontalAlignment="Left" Margin="0,8,0,0" Click="OpenReleases_Click"/>
                 <Border Style="{StaticResource Divider}"/>
                 <TextBlock Text="Pasta de dados" Style="{StaticResource Label}"/>
-                <TextBlock x:Name="DataPath" Style="{StaticResource Mono}" Margin="0,4,0,0"/>
+                <TextBlock x:Name="DataPath" Style="{StaticResource MonoText}" Margin="0,4,0,0"/>
               </StackPanel>
             </Border>
           </StackPanel>

@@ -40,7 +40,7 @@
           <TextBox x:Name="Input"
                    Background="Transparent" BorderThickness="0"
                    Foreground="{StaticResource Bone}" CaretBrush="{StaticResource SignalBrush}"
-                   FontFamily="{StaticResource Mono}" FontSize="16"
+                   FontFamily="{StaticResource MonoFont}" FontSize="16"
                    VerticalAlignment="Center"
                    TextChanged="Input_TextChanged"
                    KeyDown="Input_KeyDown"
@@ -53,7 +53,7 @@
 
         <Border x:Name="EscBadge" Grid.Column="2" Background="#22FFFFFF" CornerRadius="3"
                 VerticalAlignment="Center" IsHitTestVisible="False">
-          <TextBlock Text="Esc" Foreground="#99F1EBDF" FontFamily="{StaticResource Mono}" FontSize="10"/>
+          <TextBlock Text="Esc" Foreground="#99F1EBDF" FontFamily="{StaticResource MonoFont}" FontSize="10"/>
         </Border>
       </Grid>
     </Border>
@@ -79,7 +79,7 @@
 
             <StackPanel Grid.Column="1">
               <TextBlock Text="{Binding Text}" Foreground="{StaticResource Bone}" FontSize="13.5" TextWrapping="Wrap"/>
-              <TextBlock Text="{Binding Detail}" Foreground="#80F1EBDF" FontFamily="{StaticResource Mono}"
+              <TextBlock Text="{Binding Detail}" Foreground="#80F1EBDF" FontFamily="{StaticResource MonoFont}"
                          FontSize="10.5" TextWrapping="Wrap" Margin="0,2,0,0"
                          Visibility="{Binding DetailVisibility}"/>
             </StackPanel>
@@ -87,7 +87,7 @@
             <Border Grid.Column="2" Background="{Binding BadgeBrush}" CornerRadius="3"
                     VerticalAlignment="Top" Margin="10,1,0,0">
               <TextBlock Text="{Binding Badge}" Foreground="{Binding BadgeTextBrush}"
-                         FontFamily="{StaticResource Mono}" FontSize="9"/>
+                         FontFamily="{StaticResource MonoFont}" FontSize="9"/>
             </Border>
           </Grid>
         </DataTemplate>
@@ -104,11 +104,11 @@
         </Grid.ColumnDefinitions>
 
         <TextBlock x:Name="Footer" Grid.Column="0" Text="Enter executa · Esc esconde"
-                   Foreground="#80F1EBDF" FontFamily="{StaticResource Mono}" FontSize="10"
+                   Foreground="#80F1EBDF" FontFamily="{StaticResource MonoFont}" FontSize="10"
                    TextTrimming="CharacterEllipsis"/>
 
         <TextBlock x:Name="AiStatus" Grid.Column="1" Text="local"
-                   Foreground="#80F1EBDF" FontFamily="{StaticResource Mono}" FontSize="10" Margin="10,0,0,0"/>
+                   Foreground="#80F1EBDF" FontFamily="{StaticResource MonoFont}" FontSize="10" Margin="10,0,0,0"/>
       </Grid>
     </Border>
   </Grid>
