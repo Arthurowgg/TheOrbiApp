@@ -5,7 +5,7 @@ using Forms = System.Windows.Forms;
 
 namespace Orbi;
 
-public partial class App : Application
+public partial class App : System.Windows.Application
 {
     private Forms.NotifyIcon? _tray;
     private CommandBar? _bar;
@@ -14,7 +14,7 @@ public partial class App : Application
     private DispatcherTimer? _idleTimer;
     private DateTime _lastActivity = DateTime.Now;
 
-    public static App Instance => (App)Current;
+    public static App Instance => (App)System.Windows.Application.Current;
 
     protected override void OnStartup(StartupEventArgs e)
     {

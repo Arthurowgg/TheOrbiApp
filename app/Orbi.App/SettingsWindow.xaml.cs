@@ -138,7 +138,7 @@ public partial class SettingsWindow : Window
     {
         try
         {
-            Clipboard.SetText(PairingCode.Text);
+            System.Windows.Clipboard.SetText(PairingCode.Text);
             Toast("Código copiado.");
         }
         catch
@@ -157,12 +157,12 @@ public partial class SettingsWindow : Window
 
     private void OpenSite_Click(object sender, RoutedEventArgs e) => OpenUrl("https://orbi-app-auth.web.app/#/conta/dispositivos");
     private void OpenReleases_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/Arthurowgg/TheOrbiApp/releases");
-    private void OpenBar_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ShowBar();
+    private void OpenBar_Click(object sender, RoutedEventArgs e) => ((App)System.Windows.Application.Current).ShowBar();
 
     private void Exit_Click(object sender, RoutedEventArgs e)
     {
         Store.Save();
-        ((App)Application.Current).ExitApp();
+        ((App)System.Windows.Application.Current).ExitApp();
     }
 
     private void AddNote_Click(object sender, RoutedEventArgs e)

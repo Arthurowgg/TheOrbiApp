@@ -3,7 +3,7 @@ using System.IO;
 using System.Management;
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Forms;
+using Forms = System.Windows.Forms;
 using Microsoft.Win32;
 
 namespace Orbi.Services;
@@ -14,35 +14,35 @@ public static class SystemActions
     /* ----------------------------- áudio ----------------------------- */
     private static void KeyPress(Keys key)
     {
-        SendKeys.SendWait(key.ToString());
+        Forms.SendKeys.SendWait(key.ToString());
     }
 
     public static void VolumeUp(int percent = 10)
     {
         // Via teclas de mídia: funciona com qualquer saída de áudio.
         var steps = Math.Clamp(percent / 2, 1, 50);
-        for (var i = 0; i < steps; i++) KeyPress(Keys.VolumeUp);
+        for (var i = 0; i < steps; i++) KeyPress(Forms.Keys.VolumeUp);
     }
 
     public static void VolumeDown(int percent = 10)
     {
         var steps = Math.Clamp(percent / 2, 1, 50);
-        for (var i = 0; i < steps; i++) KeyPress(Keys.VolumeDown);
+        for (var i = 0; i < steps; i++) KeyPress(Forms.Keys.VolumeDown);
     }
 
-    public static void Mute() => KeyPress(Keys.VolumeMute);
-    public static void PlayPause() => KeyPress(Keys.MediaPlayPause);
+    public static void Mute() => KeyPress(Forms.Keys.VolumeMute);
+    public static void PlayPause() => KeyPress(Forms.Keys.MediaPlayPause);
 
     /// <summary>Ajusta o volume para um nível absoluto (0-100) usando o estado atual.</summary>
     public static string SetVolume(int target)
     {
         target = Math.Clamp(target, 0, 100);
         // Se estiver mudo, sai do mudo; depois zera e sobe até o nível pedido.
-        KeyPress(Keys.VolumeMute);
-        KeyPress(Keys.VolumeMute);
-        for (var i = 0; i < 50; i++) KeyPress(Keys.VolumeDown);
+        KeyPress(Forms.Keys.VolumeMute);
+        KeyPress(Forms.Keys.VolumeMute);
+        for (var i = 0; i < 50; i++) KeyPress(Forms.Keys.VolumeDown);
         var steps = (int)Math.Round(target / 2.0);
-        for (var i = 0; i < steps; i++) KeyPress(Keys.VolumeUp);
+        for (var i = 0; i < steps; i++) KeyPress(Forms.Keys.VolumeUp);
         Store.Current.Volume = target;
         Store.Save();
         return $"Volume em {target}%.";
@@ -337,7 +337,7 @@ public static class SystemActions
         int? battery = null;
         try
         {
-            battery = SystemInformation.PowerStatus.BatteryLifePercent is var p and >= 0 and <= 1
+            battery = Forms.SystemInformation.PowerStatus.BatteryLifePercent is var p and >= 0 and <= 1
                 ? (int)Math.Round(p * 100)
                 : null;
         }
@@ -371,7 +371,7 @@ public static class SystemActions
     {
         try
         {
-            var bounds = Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
+            var bounds = Forms.Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
             using var bitmap = new System.Drawing.Bitmap(bounds.Width, bounds.Height);
             using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
             {

@@ -27,6 +27,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- WPF + WinForms no mesmo projeto: remove os usings implícitos do WinForms
+         para evitar tipos ambíguos (Application, KeyEventArgs, Clipboard…). -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
