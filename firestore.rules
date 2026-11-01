@@ -34,13 +34,6 @@ service cloud.firestore {
       allow delete: if isOwner(uid);
     }
 
-    // Códigos de pareamento: o app Windows grava um "claim" aqui e o site
-    // consome. Nada além de uid + nome do PC é guardado, e a leitura é
-    // autenticada.
-    match /pairings/{code} {
-      allow read, write: if signedIn();
-    }
-
     match /{document=**} {
       allow read, write: if false;
     }

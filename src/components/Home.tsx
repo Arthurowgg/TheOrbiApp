@@ -125,6 +125,18 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
           className="pointer-events-none absolute -right-40 -top-40 h-[520px] w-[520px] rounded-full bg-signal/[0.07] blur-3xl"
           aria-hidden
         />
+        {/* ilustração editorial de fundo */}
+        <div className="pointer-events-none absolute inset-x-0 top-16 hidden justify-end px-8 xl:flex" aria-hidden>
+          <img
+            src="/images/hero-opt.jpg"
+            alt=""
+            width={1200}
+            height={800}
+            className="float-slow mt-6 w-[420px] opacity-[0.16] mix-blend-multiply [mask-image:radial-gradient(circle_at_50%_50%,black,transparent_72%)]"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
         <div className="relative mx-auto grid max-w-[1200px] items-center gap-12 px-5 pb-16 pt-28 sm:px-8 lg:grid-cols-[0.94fr_1.06fr] lg:gap-14 lg:pb-20 lg:pt-32">
           <div className="animate-fade-up">
             <div className="flex flex-wrap items-center gap-3">
@@ -252,6 +264,62 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
               </Reveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ---------------------------- CENA EDITORIAL ---------------------------- */}
+      <section className="border-y border-rule bg-paper-2/20">
+        <div className="mx-auto grid max-w-[1200px] items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:py-20">
+          <Reveal>
+            <figure className="relative">
+              <img
+                src="/images/hero-opt.jpg"
+                alt="Ilustração de uma barra de comando flutuando sobre janelas empilhadas"
+                width={1200}
+                height={800}
+                className="w-full border border-rule object-cover shadow-panel"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption className="mt-3 flex items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.14em] text-warm">
+                <span>fig. 01 — uma barra, todas as janelas</span>
+                <span className="text-signal">Orbi 1.0</span>
+              </figcaption>
+            </figure>
+          </Reveal>
+
+          <Reveal delay={80}>
+            <Eyebrow>Como funciona</Eyebrow>
+            <h2 className="display mt-4 text-[clamp(2.2rem,4.4vw,3.2rem)] text-ink">
+              Você escreve.
+              <br />
+              <span className="display-serif">O Windows obedece.</span>
+            </h2>
+            <p className="mt-5 max-w-[46ch] text-[14px] leading-[1.7] text-ink-2">
+              A Orbi lê o seu comando, monta um plano e mostra o que vai fazer antes de fazer.
+              O que é do Windows acontece no Windows, com as APIs nativas — sem navegador escondido,
+              sem automação frágil de cliques.
+            </p>
+
+            <ol className="mt-7 grid gap-4 sm:grid-cols-2">
+              {[
+                ["Interpreta", "Português do dia a dia, apelidos e erros de digitação."],
+                ["Confirma", "Ações destrutivas pedem um “sim” antes."],
+                ["Executa", "APIs do Windows: áudio, energia, apps, captura."],
+                ["Aprende", "Apelidos e rotinas ficam na sua conta."],
+              ].map(([title, body], index) => (
+                <li key={title} className="border-t border-rule pt-3">
+                  <p className="flex items-baseline gap-2">
+                    <span className="label tnum text-signal">0{index + 1}</span>
+                    <span className="font-cond text-[17px] font-semibold uppercase tracking-[0.02em] text-ink">
+                      {title}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-[12.5px] leading-snug text-warm">{body}</p>
+                </li>
+              ))}
+            </ol>
+          </Reveal>
         </div>
       </section>
 
@@ -466,6 +534,17 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
           </Reveal>
 
           <Reveal delay={80} className="order-1 lg:order-2">
+            <figure className="mb-7 overflow-hidden border border-rule">
+              <img
+                src="/images/security-opt.jpg"
+                alt="Cadeado sobre o desenho técnico de um notebook aberto"
+                width={1024}
+                height={1536}
+                className="h-[190px] w-full object-cover object-center"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
             <Eyebrow>Segurança</Eyebrow>
             <h2 className="display mt-4 text-[clamp(2.3rem,4.6vw,3.4rem)] text-ink">
               Nada sensível
@@ -537,6 +616,21 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                     </button>
                   )}
                 </div>
+
+                <figure className="mt-7 overflow-hidden border border-rule/70">
+                  <img
+                    src="/images/download-opt.jpg"
+                    alt="Caixa de papel com faixa vermelha e um pen drive ao lado"
+                    width={1024}
+                    height={1536}
+                    className="h-[168px] w-full object-cover object-center"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <figcaption className="border-t border-rule/70 bg-paper-2/40 px-3 py-2 font-mono text-[9.5px] uppercase tracking-[0.12em] text-warm">
+                    um arquivo · um atalho · zero configuração
+                  </figcaption>
+                </figure>
 
                 <p className="mt-4 font-mono text-[10px] leading-relaxed text-warm">
                   {loaded && release?.installer

@@ -786,11 +786,11 @@ export default function OrbiChat({ onDownload, onLogin }: OrbiChatProps) {
           </div>
 
           <form onSubmit={submit} className="flex items-center gap-2">
-            <label htmlFor="nova-chat-input" className="sr-only">
+            <label htmlFor="orbi-chat-input" className="sr-only">
               Mensagem para o Orbi
             </label>
             <input
-              id="nova-chat-input"
+              id="orbi-chat-input"
               type="text"
               value={value}
               onChange={(event) => setValue(event.target.value)}

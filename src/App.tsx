@@ -12,8 +12,7 @@ import Security from "./components/account/Security";
 import { Avatar, Brand, Button, Icon, Mark, OrbitArt } from "./components/ui";
 import { NAV } from "./data/site";
 import { addDownload, ensureProfile, firstName, signOut, type Account } from "./lib/accounts";
-import { auth } from "./lib/firebaseClient";
-import { initAnalytics } from "./lib/firebaseClient";
+import { auth, initAnalytics } from "./lib/firebaseClient";
 import { BUILD } from "./lib/download";
 import {
   modePath,

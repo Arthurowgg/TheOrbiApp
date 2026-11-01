@@ -1,12 +1,17 @@
 {
-  "name": "react-vite-tailwind",
+  "name": "orbi-site",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "deploy": "npm run build && firebase deploy --only hosting,firestore:rules",
+    "emulators": "firebase emulators:start",
+    "app": "dotnet run --project app/Orbi.App/Orbi.App.csproj",
+    "installer": "dotnet publish app/Orbi.App/Orbi.App.csproj -c Release -r win-x64 --self-contained true -o artifacts/publish && ISCC app/installer/orbi.iss"
   },
   "dependencies": {
     "clsx": "2.1.1",
@@ -24,7 +29,7 @@
     "@vitejs/plugin-react": "5.1.1",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
-    "vite": "7.3.2",
-    "vite-plugin-singlefile": "2.3.0"
-  }
+    "vite": "7.3.2"
+  },
+  "description": "Site oficial do Orbi — assistente em português para Windows 11"
 }

@@ -15,8 +15,6 @@ import {
   createUserWithEmailAndPassword,
   deleteUser,
   EmailAuthProvider,
-  linkWithCredential,
-  onAuthStateChanged,
   reauthenticateWithCredential,
   reload as reloadUser,
   sendEmailVerification,
@@ -31,7 +29,6 @@ import {
 import {
   doc,
   getDoc,
-  onSnapshot,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -126,9 +123,6 @@ export class AuthError extends Error {
 /* ------------------------------------------------------------------ */
 // Sem 0, 1, I, L e O para não confundir quando alguém digita o código.
 export const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-
-const encoder = new TextEncoder();
-void encoder;
 
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -263,25 +257,6 @@ export async function ensureProfile(user: User, name?: string): Promise<Account>
     return toAccount(user, payload);
   }
   return toAccount(user, snapshot.data());
-}
-
-/** Escuta o documento do usuário em tempo real. */
-export function watchAccount(uid: string, onChange: (account: Account, user: User) => void, onError?: (error: AuthError) => void) {
-  let current: User | null = auth.currentUser;
-  const stopAuth = onAuthStateChanged(auth, (user) => {
-    current = user;
-  });
-  const stopDoc = onSnapshot(
-    userDoc(uid),
-    (snapshot) => {
-      if (current) onChange(toAccount(current, snapshot.data()), current);
-    },
-    (error) => onError?.(toAuthError(error)),
-  );
-  return () => {
-    stopAuth();
-    stopDoc();
-  };
 }
 
 /** Lê o documento uma vez (usado pelo `reload` das páginas). */
@@ -668,4 +643,3 @@ export function passwordStrength(password: string): { score: 0 | 1 | 2 | 3 | 4; 
   };
 }
 
-export const linkGoogleCredential = linkWithCredential;
