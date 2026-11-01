@@ -116,7 +116,7 @@ public static partial class Interpreter
         }
         if (LockCmd().IsMatch(text))
         {
-            return OrbiReply.Local(SystemActions.Lock(), "Usa o bloqueio nativo do Windows.");
+            return OrbiReply.Local(SystemActions.Lock(), detail: "Usa o bloqueio nativo do Windows.");
         }
 
         /* ----------------------------- lembretes ----------------------------- */

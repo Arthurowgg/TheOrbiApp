@@ -28,7 +28,7 @@ public static class PairingCodes
         {
             body.Append(Alphabet[Random.Shared.Next(Alphabet.Length)]);
         }
-        var full = body + CheckChar(body.ToString());
+        var full = body.ToString() + CheckChar(body.ToString());
         return $"ORBI-{full[..4]}-{full[4..]}";
     }
 

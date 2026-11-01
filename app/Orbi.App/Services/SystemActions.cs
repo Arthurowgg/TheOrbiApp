@@ -56,7 +56,7 @@ public static class SystemActions
         {
             using var searcher = new ManagementObjectSearcher(
                 "SELECT * FROM WmiMonitorBrightnessMethods");
-            foreach (var item in searcher.Get())
+            foreach (System.Management.ManagementObject item in searcher.Get())
             {
                 using var method = item;
                 method.InvokeMethod("WmiSetBrightness", new object[] { 1, target });
@@ -384,7 +384,7 @@ public static class SystemActions
 
             try
             {
-                System.Windows.Clipboard.SetImage(bitmap);
+                System.Windows.Clipboard.SetImage(ToBitmapSource(bitmap));
             }
             catch { }
 
@@ -394,6 +394,20 @@ public static class SystemActions
         {
             return $"Não consegui capturar a tela: {error.Message}";
         }
+    }
+
+    private static System.Windows.Media.Imaging.BitmapSource ToBitmapSource(System.Drawing.Bitmap bitmap)
+    {
+        using var memory = new MemoryStream();
+        bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Png);
+        memory.Position = 0;
+        var image = new System.Windows.Media.Imaging.BitmapImage();
+        image.BeginInit();
+        image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+        image.StreamSource = memory;
+        image.EndInit();
+        image.Freeze();
+        return image;
     }
 
     public static string Wifi(bool on)

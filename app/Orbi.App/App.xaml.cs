@@ -139,8 +139,11 @@ public partial class App : System.Windows.Application
         try
         {
             Store.Save();
-            _tray?.Visible = false;
-            _tray?.Dispose();
+            if (_tray is not null)
+            {
+                _tray.Visible = false;
+                _tray.Dispose();
+            }
             HotKey.Detach();
             SingleInstance.Release();
         }
