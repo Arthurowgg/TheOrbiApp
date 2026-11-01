@@ -67,135 +67,135 @@ public static class ToolsExtra
         var janelas = "Janelas";
         Add("win-list", "Listar janelas abertas", janelas, "listar,janelas,abertas", () =>
         {
-            var lista = Control.Windows().Take(15).Select(w => w.Process + " — " + w.Title);
+            var lista = Pc.Windows().Take(15).Select(w => w.Process + " — " + w.Title);
             return string.Join("\n", lista);
         });
-        Add("win-active", "Janela em foco", janelas, "foco,ativa,janela", () => Control.ActiveWindowTitle() is { Length: > 0 } t ? t : "Nenhuma janela em foco.");
+        Add("win-active", "Janela em foco", janelas, "foco,ativa,janela", () => Pc.ActiveWindowTitle() is { Length: > 0 } t ? t : "Nenhuma janela em foco.");
         Add("win-close-all", "Fechar todas as janelas do app em foco", janelas, "fechar,todas,janelas",
             () => "Use o atalho Alt+F4 na janela ativa ou me diga o nome do app.");
         Add("win-cycle", "Alternar entre janelas", janelas, "alternar,cycle,alt tab",
-            () => { Control.Hotkey("alt+tab"); return "Próxima janela."; });
+            () => { Pc.Hotkey("alt+tab"); return "Próxima janela."; });
         Add("win-cycle-back", "Voltar de janela", janelas, "voltar,anterior,alt tab",
-            () => { Control.Hotkey("alt+shift+tab"); return "Janela anterior."; });
+            () => { Pc.Hotkey("alt+shift+tab"); return "Janela anterior."; });
         Add("win-snap-tl", "Janela no canto superior esquerdo", janelas, "canto,esquerda,cima,janela",
-            () => { Control.WinKey(0x25); Control.WinKey(0x26); return "Janela encaixada no canto."; });
+            () => { Pc.WinKey(0x25); Pc.WinKey(0x26); return "Janela encaixada no canto."; });
         Add("win-snap-tr", "Janela no canto superior direito", janelas, "canto,direita,cima,janela",
-            () => { Control.WinKey(0x27); Control.WinKey(0x26); return "Janela encaixada no canto."; });
+            () => { Pc.WinKey(0x27); Pc.WinKey(0x26); return "Janela encaixada no canto."; });
         Add("win-snap-bl", "Janela no canto inferior esquerdo", janelas, "canto,esquerda,baixo,janela",
-            () => { Control.WinKey(0x25); Control.WinKey(0x28); return "Janela encaixada no canto."; });
+            () => { Pc.WinKey(0x25); Pc.WinKey(0x28); return "Janela encaixada no canto."; });
         Add("win-snap-br", "Janela no canto inferior direito", janelas, "canto,direita,baixo,janela",
-            () => { Control.WinKey(0x27); Control.WinKey(0x28); return "Janela encaixada no canto."; });
+            () => { Pc.WinKey(0x27); Pc.WinKey(0x28); return "Janela encaixada no canto."; });
         Add("win-restore", "Restaurar a janela", janelas, "restaurar,janela,tamanho",
-            () => { Control.Hotkey("win+down"); return "Janela restaurada."; });
+            () => { Pc.Hotkey("win+down"); return "Janela restaurada."; });
         Add("win-center", "Centralizar a janela", janelas, "centralizar,janela,meio",
             () => "Arraste a janela ou use Win+setas para encaixar.");
         Add("win-desktop-left", "Mover para a área de trabalho à esquerda", janelas, "area de trabalho,esquerda,mover",
-            () => { Control.Hotkey("win+ctrl+left"); return "Área de trabalho à esquerda."; });
+            () => { Pc.Hotkey("win+ctrl+left"); return "Área de trabalho à esquerda."; });
         Add("win-desktop-right", "Mover para a área de trabalho à direita", janelas, "area de trabalho,direita,mover",
-            () => { Control.Hotkey("win+ctrl+right"); return "Área de trabalho à direita."; });
+            () => { Pc.Hotkey("win+ctrl+right"); return "Área de trabalho à direita."; });
         Add("win-close-desktop", "Fechar a área de trabalho atual", janelas, "fechar,area de trabalho,virtual",
-            () => { Control.Hotkey("win+ctrl+f4"); return "Área de trabalho atual fechada."; });
+            () => { Pc.Hotkey("win+ctrl+f4"); return "Área de trabalho atual fechada."; });
         Add("win-always-on-top", "Ver as janelas em visão de tarefas", janelas, "visao,tarefas,janelas",
-            () => { Control.Hotkey("win+tab"); return "Visão de tarefas aberta."; });
+            () => { Pc.Hotkey("win+tab"); return "Visão de tarefas aberta."; });
         Add("win-menu", "Menu do sistema da janela", janelas, "menu,alt,espaco,janela",
-            () => { Control.Hotkey("alt+space"); return "Menu da janela aberto."; });
+            () => { Pc.Hotkey("alt+space"); return "Menu da janela aberto."; });
         Add("win-fullscreen", "Tela cheia", janelas, "tela cheia,fullscreen,f11",
-            () => { Control.Press(0x7A); return "F11 enviado."; });
+            () => { Pc.Press(0x7A); return "F11 enviado."; });
         Add("win-zoom-in", "Aumentar o zoom do app", janelas, "zoom,aumentar,ctrl mais",
-            () => { Control.Hotkey("ctrl+plus"); return "Zoom aumentado."; });
+            () => { Pc.Hotkey("ctrl+plus"); return "Zoom aumentado."; });
         Add("win-zoom-out", "Diminuir o zoom do app", janelas, "zoom,diminuir,ctrl menos",
-            () => { Control.Hotkey("ctrl+minus"); return "Zoom diminuído."; });
+            () => { Pc.Hotkey("ctrl+minus"); return "Zoom diminuído."; });
         Add("win-zoom-reset", "Voltar o zoom ao normal", janelas, "zoom,normal,ctrl zero",
-            () => { Control.Hotkey("ctrl+0"); return "Zoom normal."; });
+            () => { Pc.Hotkey("ctrl+0"); return "Zoom normal."; });
 
         /* ----------------------------- teclado e escrita ----------------------------- */
 
         var entrada = "Teclado e mouse";
         Add("type-text", "Digitar um texto", entrada, "digitar,escrever,texto,teclado",
             () => "Me diga o texto: “digite: bom dia”.");
-        Add("key-enter", "Apertar Enter", entrada, "enter,confirmar", () => { Control.Press(0x0D); return "Enter."; });
-        Add("key-tab", "Apertar Tab", entrada, "tab,proximo campo", () => { Control.Press(0x09); return "Tab."; });
-        Add("key-esc", "Apertar Esc", entrada, "esc,fechar,cancelar", () => { Control.Press(0x1B); return "Esc."; });
-        Add("key-space", "Apertar espaço", entrada, "espaco,barra", () => { Control.Press(0x20); return "Espaço."; });
+        Add("key-enter", "Apertar Enter", entrada, "enter,confirmar", () => { Pc.Press(0x0D); return "Enter."; });
+        Add("key-tab", "Apertar Tab", entrada, "tab,proximo campo", () => { Pc.Press(0x09); return "Tab."; });
+        Add("key-esc", "Apertar Esc", entrada, "esc,fechar,cancelar", () => { Pc.Press(0x1B); return "Esc."; });
+        Add("key-space", "Apertar espaço", entrada, "espaco,barra", () => { Pc.Press(0x20); return "Espaço."; });
         Add("key-backspace", "Apagar o último caractere", entrada, "apagar,backspace,corrigir",
-            () => { Control.Press(0x08); return "Apaguei um caractere."; });
-        Add("key-delete", "Apagar à frente", entrada, "delete,apagar", () => { Control.Press(0x2E); return "Delete."; });
+            () => { Pc.Press(0x08); return "Apaguei um caractere."; });
+        Add("key-delete", "Apagar à frente", entrada, "delete,apagar", () => { Pc.Press(0x2E); return "Delete."; });
         Add("key-select-all", "Selecionar tudo", entrada, "selecionar tudo,ctrl a",
-            () => { Control.Hotkey("ctrl+a"); return "Tudo selecionado."; });
+            () => { Pc.Hotkey("ctrl+a"); return "Tudo selecionado."; });
         Add("key-undo", "Desfazer", entrada, "desfazer,ctrl z,errei",
-            () => { Control.Hotkey("ctrl+z"); return "Desfiz."; });
-        Add("key-redo", "Refazer", entrada, "refazer,ctrl y", () => { Control.Hotkey("ctrl+y"); return "Refiz."; });
-        Add("key-copy", "Copiar", entrada, "copiar,ctrl c", () => { Control.Hotkey("ctrl+c"); return "Copiado."; });
-        Add("key-cut", "Recortar", entrada, "recortar,ctrl x", () => { Control.Hotkey("ctrl+x"); return "Recortado."; });
-        Add("key-paste", "Colar", entrada, "colar,ctrl v", () => { Control.Hotkey("ctrl+v"); return "Colei."; });
-        Add("key-save", "Salvar", entrada, "salvar,ctrl s", () => { Control.Hotkey("ctrl+s"); return "Salvei."; });
+            () => { Pc.Hotkey("ctrl+z"); return "Desfiz."; });
+        Add("key-redo", "Refazer", entrada, "refazer,ctrl y", () => { Pc.Hotkey("ctrl+y"); return "Refiz."; });
+        Add("key-copy", "Copiar", entrada, "copiar,ctrl c", () => { Pc.Hotkey("ctrl+c"); return "Copiado."; });
+        Add("key-cut", "Recortar", entrada, "recortar,ctrl x", () => { Pc.Hotkey("ctrl+x"); return "Recortado."; });
+        Add("key-paste", "Colar", entrada, "colar,ctrl v", () => { Pc.Hotkey("ctrl+v"); return "Colei."; });
+        Add("key-save", "Salvar", entrada, "salvar,ctrl s", () => { Pc.Hotkey("ctrl+s"); return "Salvei."; });
         Add("key-find", "Procurar no app", entrada, "procurar,buscar,ctrl f",
-            () => { Control.Hotkey("ctrl+f"); return "Busca aberta."; });
-        Add("key-print", "Imprimir", entrada, "imprimir,ctrl p", () => { Control.Hotkey("ctrl+p"); return "Impressão aberta."; });
-        Add("key-new-tab", "Nova aba", entrada, "aba,nova,ctrl t", () => { Control.Hotkey("ctrl+t"); return "Nova aba."; });
-        Add("key-close-tab", "Fechar a aba", entrada, "aba,fechar,ctrl w", () => { Control.Hotkey("ctrl+w"); return "Aba fechada."; });
+            () => { Pc.Hotkey("ctrl+f"); return "Busca aberta."; });
+        Add("key-print", "Imprimir", entrada, "imprimir,ctrl p", () => { Pc.Hotkey("ctrl+p"); return "Impressão aberta."; });
+        Add("key-new-tab", "Nova aba", entrada, "aba,nova,ctrl t", () => { Pc.Hotkey("ctrl+t"); return "Nova aba."; });
+        Add("key-close-tab", "Fechar a aba", entrada, "aba,fechar,ctrl w", () => { Pc.Hotkey("ctrl+w"); return "Aba fechada."; });
         Add("key-reopen-tab", "Reabrir a aba fechada", entrada, "aba,reabrir,ctrl shift t",
-            () => { Control.Hotkey("ctrl+shift+t"); return "Aba reaberta."; });
+            () => { Pc.Hotkey("ctrl+shift+t"); return "Aba reaberta."; });
         Add("key-next-tab", "Próxima aba", entrada, "aba,proxima,ctrl tab",
-            () => { Control.Hotkey("ctrl+tab"); return "Próxima aba."; });
+            () => { Pc.Hotkey("ctrl+tab"); return "Próxima aba."; });
         Add("key-prev-tab", "Aba anterior", entrada, "aba,anterior,ctrl shift tab",
-            () => { Control.Hotkey("ctrl+shift+tab"); return "Aba anterior."; });
-        Add("key-home", "Início da linha", entrada, "home,inicio", () => { Control.Press(0x24); return "Início."; });
-        Add("key-end", "Fim da linha", entrada, "end,fim", () => { Control.Press(0x23); return "Fim."; });
-        Add("key-page-up", "Subir uma página", entrada, "page up,subir", () => { Control.Press(0x21); return "Subi uma página."; });
-        Add("key-page-down", "Descer uma página", entrada, "page down,descer", () => { Control.Press(0x22); return "Desci uma página."; });
-        Add("key-f5", "Atualizar (F5)", entrada, "atualizar,f5,refresh", () => { Control.Press(0x74); return "Atualizei."; });
-        Add("key-f2", "Renomear (F2)", entrada, "renomear,f2,nome", () => { Control.Press(0x73); return "F2 enviado."; });
-        Add("key-f11", "Tela cheia (F11)", entrada, "tela cheia,f11", () => { Control.Press(0x7A); return "F11 enviado."; });
+            () => { Pc.Hotkey("ctrl+shift+tab"); return "Aba anterior."; });
+        Add("key-home", "Início da linha", entrada, "home,inicio", () => { Pc.Press(0x24); return "Início."; });
+        Add("key-end", "Fim da linha", entrada, "end,fim", () => { Pc.Press(0x23); return "Fim."; });
+        Add("key-page-up", "Subir uma página", entrada, "page up,subir", () => { Pc.Press(0x21); return "Subi uma página."; });
+        Add("key-page-down", "Descer uma página", entrada, "page down,descer", () => { Pc.Press(0x22); return "Desci uma página."; });
+        Add("key-f5", "Atualizar (F5)", entrada, "atualizar,f5,refresh", () => { Pc.Press(0x74); return "Atualizei."; });
+        Add("key-f2", "Renomear (F2)", entrada, "renomear,f2,nome", () => { Pc.Press(0x73); return "F2 enviado."; });
+        Add("key-f11", "Tela cheia (F11)", entrada, "tela cheia,f11", () => { Pc.Press(0x7A); return "F11 enviado."; });
         Add("mouse-left", "Clicar com o botão esquerdo", entrada, "clicar,esquerdo,mouse",
             () => { Forms.SendKeys.SendWait("{ENTER}"); return "Clique enviado ao elemento em foco."; });
         Add("mouse-scroll-down", "Rolar para baixo", entrada, "rolar,scroll,descer,baixo",
-            () => { Control.Scroll(-3); return "Rolei para baixo."; });
+            () => { Pc.Scroll(-3); return "Rolei para baixo."; });
         Add("mouse-scroll-up", "Rolar para cima", entrada, "rolar,scroll,subir,cima",
-            () => { Control.Scroll(3); return "Rolei para cima."; });
+            () => { Pc.Scroll(3); return "Rolei para cima."; });
         Add("mouse-scroll-top", "Ir para o topo", entrada, "topo,inicio,rolar",
-            () => { Control.Hotkey("ctrl+home"); return "Fui ao topo."; });
+            () => { Pc.Hotkey("ctrl+home"); return "Fui ao topo."; });
         Add("mouse-scroll-bottom", "Ir para o fim", entrada, "fim,rolar,baixo",
-            () => { Control.Hotkey("ctrl+end"); return "Fui ao fim."; });
+            () => { Pc.Hotkey("ctrl+end"); return "Fui ao fim."; });
         Add("mouse-where", "Onde está o mouse", entrada, "mouse,posicao,onde",
-            () => { var (x, y) = Control.CursorPosition(); return $"Mouse em {x},{y}."; });
+            () => { var (x, y) = Pc.CursorPosition(); return $"Mouse em {x},{y}."; });
         Add("mouse-move-center", "Levar o mouse ao centro da tela", entrada, "mouse,centro,mover",
-            () => { var (w, h) = Control.ScreenSize(); Control.Move(w / 2, h / 2); return "Mouse no centro."; });
+            () => { var (w, h) = Pc.ScreenSize(); Pc.Move(w / 2, h / 2); return "Mouse no centro."; });
         Add("mouse-move-corner", "Levar o mouse ao canto", entrada, "mouse,canto,mover",
-            () => { Control.Move(4, 4); return "Mouse no canto superior esquerdo."; });
+            () => { Pc.Move(4, 4); return "Mouse no canto superior esquerdo."; });
         Add("mouse-double-click", "Clique duplo no centro", entrada, "duplo,clicar,abrir",
-            () => { var (w, h) = Control.ScreenSize(); Control.DoubleClick(w / 2, h / 2); return "Clique duplo no centro."; });
+            () => { var (w, h) = Pc.ScreenSize(); Pc.DoubleClick(w / 2, h / 2); return "Clique duplo no centro."; });
 
         /* ----------------------------- tela e captura ----------------------------- */
 
         var tela = "Tela e captura";
         Add("screen-see", "Ver a tela agora", tela, "ver,tela,descrever,o que esta na tela",
-            () => Control.DescribeScreen());
+            () => Pc.DescribeScreen());
         Add("screen-shot-pictures", "Salvar captura em Imagens", tela, "captura,salvar,imagens,screenshot",
-            () => "Captura salva em " + Control.Capture());
+            () => "Captura salva em " + Pc.Capture());
         Add("screen-shot-desktop", "Salvar captura na área de trabalho", tela, "captura,salvar,area de trabalho",
-            () => "Captura salva em " + Control.Capture(Path.Combine(
+            () => "Captura salva em " + Pc.Capture(Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
                 $"orbi-tela-{DateTime.Now:HH:mm:ss}".Replace(":", "-") + ".png")));
         Add("screen-copy-shot", "Capturar e copiar", tela, "capturar,copiar,print",
-            () => { Control.Hotkey("win+shift+s"); return "Escolha a área na tela."; });
+            () => { Pc.Hotkey("win+shift+s"); return "Escolha a área na tela."; });
         Add("screen-record", "Gravar a tela", tela, "gravar,video,tela,game bar",
-            () => { Control.Hotkey("win+alt+r"); return "Gravação do Xbox Game Bar alternada."; });
+            () => { Pc.Hotkey("win+alt+r"); return "Gravação do Xbox Game Bar alternada."; });
         Add("screen-freeze", "Congelar a tela", tela, "congelar,pausar,tela",
-            () => { Control.WinKey(0x13); return "Tela congelada."; });
+            () => { Pc.WinKey(0x13); return "Tela congelada."; });
         Add("screen-project-pc", "Projetar só no PC", tela, "projetar,monitor,pc",
-            () => { Control.Hotkey("win+p"); return "Escolha “Somente tela do PC”."; });
+            () => { Pc.Hotkey("win+p"); return "Escolha “Somente tela do PC”."; });
         Add("screen-duplicate", "Duplicar a tela", tela, "duplicar,monitor,espelhar",
-            () => { Control.Hotkey("win+p"); return "Escolha “Duplicar”."; });
+            () => { Pc.Hotkey("win+p"); return "Escolha “Duplicar”."; });
         Add("screen-extend", "Estender a tela", tela, "estender,monitor,segunda tela",
-            () => { Control.Hotkey("win+p"); return "Escolha “Estender”."; });
+            () => { Pc.Hotkey("win+p"); return "Escolha “Estender”."; });
         Add("screen-scale", "Escala da tela", tela, "escala,dpi,tamanho,texto",
             () => Panel("ms-settings:display-advanced"));
         Add("screen-rotate-settings", "Rotação da tela", tela, "rotacao,girar,orientacao",
             () => Panel("ms-settings:display"));
         Add("screen-hdr", "HDR", tela, "hdr,cores,video", () => Panel("ms-settings:display-advanced"));
         Add("screen-nighty", "Luz noturna agora", tela, "luz noturna,descanso,olhos",
-            () => { Control.Hotkey("win+a"); return "Abra a luz noturna na central de ações."; });
+            () => { Pc.Hotkey("win+a"); return "Abra a luz noturna na central de ações."; });
         Add("screen-color-profile", "Perfil de cor", tela, "cor,perfil,calibracao",
             () => { Shell("control.exe", "color"); return "Perfis de cor abertos."; });
         Add("screen-dpi", "Ajustar tamanho do texto", tela, "texto,tamanho,dpi,escala",
@@ -215,7 +215,7 @@ public static class ToolsExtra
         Add("sound-levels", "Níveis de volume dos apps", som, "niveis,app,volume",
             () => Panel("ms-settings:apps-volume"));
         Add("sound-mute-app", "Silenciar o app em foco", som, "silenciar,app,mudo",
-            () => { Control.Hotkey("win+alt+m"); return "Mudo alternado no app em foco."; });
+            () => { Pc.Hotkey("win+alt+m"); return "Mudo alternado no app em foco."; });
         Add("sound-spatial", "Som espacial", som, "espacial,3d,audio",
             () => Panel("ms-settings:apps-volume"));
         Add("sound-spotify", "Abrir o Spotify", som, "spotify,musica,streaming",
@@ -368,7 +368,7 @@ public static class ToolsExtra
             () => Panel("ms-settings:powersleep"));
         Add("pwr-screen-off", "Desligar a tela", energia, "tela,desligar,economizar", () =>
         {
-            Control.Press(0x2C); // PrintScreen não desliga; usa o monitor off
+            Pc.Press(0x2C); // PrintScreen não desliga; usa o monitor off
             SendMessage(0x0112, 0xF170, 2);
             return "Tela desligada. Qualquer tecla volta.";
         });
@@ -470,7 +470,7 @@ public static class ToolsExtra
         Add("acc-voice", "Voz do Windows", acesso, "voz,falar,narrar",
             () => Panel("ms-settings:speech"));
         Add("acc-speech-recognition", "Ditado", acesso, "ditar,voz,escrever",
-            () => { Control.Hotkey("win+h"); return "Ditado aberto."; });
+            () => { Pc.Hotkey("win+h"); return "Ditado aberto."; });
         Add("acc-sticky-keys", "Teclas de aderência", acesso, "teclas,aderencia,shift",
             () => Panel("ms-settings:easeofaccess-keyboard"));
         Add("acc-filter-keys", "Teclas de filtragem", acesso, "teclas,filtro,repeticao",
@@ -550,7 +550,7 @@ public static class ToolsExtra
             () => { var p = Environment.GetEnvironmentVariable("PATH") ?? ""; System.Windows.Clipboard.SetText(p); return "PATH copiado (" + p.Length + " caracteres)."; });
         Add("dev-ports", "Portas em uso", dev, "portas,listening,servidor", () => Run("netstat.exe", "-an"));
         Add("dev-process-kill", "Fechar um programa travado", dev, "fechar,travar,finalizar",
-            () => { Control.Hotkey("ctrl+shift+esc"); return "Gerenciador de tarefas aberto."; });
+            () => { Pc.Hotkey("ctrl+shift+esc"); return "Gerenciador de tarefas aberto."; });
         Add("dev-temp-folder", "Abrir a pasta de temporários", dev, "temp,temporarios,limpar",
             () => { Shell(Path.GetTempPath()); return "Temporários abertos."; });
         Add("dev-env-list", "Listar variáveis de ambiente", dev, "ambiente,variaveis", () =>
@@ -760,11 +760,11 @@ public static class ToolsExtra
     {
         try
         {
-            var handle = Control.FindWindowW("Progman", null);
+            var handle = Pc.FindWindowW("Progman", null);
             if (handle == IntPtr.Zero) return "Não achei a área de trabalho.";
-            var shell = Control.FindWindowW("SHELLDLL_DefView", null);
+            var shell = Pc.FindWindowW("SHELLDLL_DefView", null);
             var alvo = shell != IntPtr.Zero ? shell : handle;
-            Control.SendMessageToWindow(alvo, 0x111, (IntPtr)(mostrar ? 0x7402 : 0x7401), IntPtr.Zero);
+            Pc.SendMessageToWindow(alvo, 0x111, (IntPtr)(mostrar ? 0x7402 : 0x7401), IntPtr.Zero);
             return mostrar ? "Ícones visíveis." : "Ícones escondidos.";
         }
         catch (Exception error)
@@ -774,7 +774,7 @@ public static class ToolsExtra
     }
 
     private static void SendMessage(int msg, int wParam, int lParam) =>
-        Control.SendMessageToWindow(IntPtr.Zero, msg, (IntPtr)wParam, (IntPtr)lParam);
+        Pc.SendMessageToWindow(IntPtr.Zero, msg, (IntPtr)wParam, (IntPtr)lParam);
 
     private static readonly DateTime Boot = DateTime.Now - TimeSpan.FromMilliseconds(Environment.TickCount64);
 
@@ -796,7 +796,7 @@ public static class ToolsExtra
     private static string RuntimeInformationDescription() =>
         System.Runtime.InteropServices.RuntimeInformation.OSDescription;
 
-    private static string Shell(string file, string args)
+    private static string Shell(string file, string args = "")
     {
         try
         {

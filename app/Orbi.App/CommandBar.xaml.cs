@@ -623,15 +623,15 @@ public partial class CommandBar : Window
         if (digitar.Success)
         {
             var conteudo = digitar.Groups["t"].Value.Trim().Trim('"');
-            Control.Type(conteudo);
+            Pc.Type(conteudo);
             return new ResultRow { Glyph = "\u2713", Text = "Digitei.", Detail = conteudo, Badge = "digitado" };
         }
 
         var clicar = System.Text.RegularExpressions.Regex.Match(
             t, @"^(?:clique|clicar|click)(?:\s+em)?\s+(?<p>.+)$");
-        if (clicar.Success && Control.ParsePoint(clicar.Groups["p"].Value) is { } ponto)
+        if (clicar.Success && Pc.ParsePoint(clicar.Groups["p"].Value) is { } ponto)
         {
-            Control.Click(ponto.X, ponto.Y);
+            Pc.Click(ponto.X, ponto.Y);
             return new ResultRow { Glyph = "\u2713", Text = $"Cliquei em {ponto.X},{ponto.Y}.", Badge = "clique" };
         }
 
@@ -640,13 +640,13 @@ public partial class CommandBar : Window
         if (atalho.Success)
         {
             var combo = atalho.Groups["k"].Value.Trim();
-            Control.Hotkey(combo);
+            Pc.Hotkey(combo);
             return new ResultRow { Glyph = "\u2713", Text = $"Atalho {combo} enviado.", Badge = "teclas" };
         }
 
         if (t is "ver a tela" or "ver tela" or "o que esta na tela" or "olhe a tela" or "olhar a tela")
         {
-            return new ResultRow { Glyph = "\u25C9", Text = Control.DescribeScreen(), Badge = "tela" };
+            return new ResultRow { Glyph = "\u25C9", Text = Pc.DescribeScreen(), Badge = "tela" };
         }
 
         var focar = System.Text.RegularExpressions.Regex.Match(
@@ -654,7 +654,7 @@ public partial class CommandBar : Window
         if (focar.Success)
         {
             var janela = focar.Groups["j"].Value.Trim();
-            var ok = Control.Focus(janela);
+            var ok = Pc.Focus(janela);
             return new ResultRow
             {
                 Glyph = ok ? "\u2713" : "!",

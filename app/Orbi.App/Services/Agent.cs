@@ -161,19 +161,19 @@ public static class Agent
         switch (acao.Kind)
         {
             case "ver":
-                return ("olhei a tela", Control.DescribeScreen().Replace("\n", " · "), true);
+                return ("olhei a tela", Pc.DescribeScreen().Replace("\n", " · "), true);
 
             case "clicar":
             {
                 if (acao.X is not { } x || acao.Y is not { } y) return ("clicar", "sem posição", false);
-                Control.Click(x, y);
+                Pc.Click(x, y);
                 return ($"cliquei em {x},{y}", "feito", true);
             }
 
             case "digitar":
             {
                 if (string.IsNullOrEmpty(acao.Texto)) return ("digitar", "sem texto", false);
-                Control.Type(acao.Texto);
+                Pc.Type(acao.Texto);
                 var trecho = acao.Texto.Length > 40 ? acao.Texto[..40] + "…" : acao.Texto;
                 return ($"digitei “{trecho}”", "feito", true);
             }
@@ -181,14 +181,14 @@ public static class Agent
             case "atalho":
             {
                 if (string.IsNullOrEmpty(acao.Tecla)) return ("atalho", "sem tecla", false);
-                Control.Hotkey(acao.Tecla);
+                Pc.Hotkey(acao.Tecla);
                 return ($"atalho {acao.Tecla}", "feito", true);
             }
 
             case "focar":
             {
                 if (string.IsNullOrEmpty(acao.Alvo)) return ("focar", "sem janela", false);
-                var ok = Control.Focus(acao.Alvo);
+                var ok = Pc.Focus(acao.Alvo);
                 return ($"trouxe {acao.Alvo}", ok ? "feito" : "não achei essa janela", ok);
             }
 
@@ -208,7 +208,7 @@ public static class Agent
     private static string SystemPrompt(string? memory)
     {
         var nome = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "amigo" : Store.Current.UserName.Split(' ')[0];
-        var janela = Control.ActiveWindowTitle();
+        var janela = Pc.ActiveWindowTitle();
         return "Você é o Orbi, o assistente que controla o Windows para " + nome + ". " +
                "Você fala português do Brasil, direto e sem enrolação. " +
                $"Agora: {DateTime.Now:dddd, dd/MM/yyyy HH:mm}. " +

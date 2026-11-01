@@ -383,10 +383,10 @@ public static class Tools
         // quando precisa ver a tela, clicar, digitar ou mexer em uma janela.
         Add("control-see", "Ver a tela e o que está aberto", "Controle do PC",
             "ver tela,capturar tela,o que esta na tela,ler tela",
-            () => Control.DescribeScreen());
+            () => Pc.DescribeScreen());
         Add("control-shot", "Salvar uma foto da tela", "Controle do PC",
             "foto da tela,capturar tela,screenshot,print",
-            () => "Captura salva em " + Control.Capture());
+            () => "Captura salva em " + Pc.Capture());
         Add("control-click", "Clicar em um ponto da tela", "Controle do PC",
             "clicar,ponto,posicao,mouse",
             () => "Me diga: “clicar em 640,400”.");
@@ -401,7 +401,7 @@ public static class Tools
             () => "Me diga o app: “traga o Chrome para a frente”.");
         Add("control-window-list", "Listar as janelas abertas", "Controle do PC",
             "janelas,abertas,listar",
-            () => Control.DescribeScreen());
+            () => Pc.DescribeScreen());
 
         return tools;
     }

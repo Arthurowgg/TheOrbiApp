@@ -12,7 +12,7 @@ namespace Orbi.Services;
 /// clicar em um ponto, digitar, apertar teclas e conversar com as janelas.
 /// Tudo por Win32, sem instalar nada.
 /// </summary>
-public static class Control
+public static class Pc
 {
     /* ------------------------------ mouse ------------------------------ */
 
