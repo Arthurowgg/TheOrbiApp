@@ -5,10 +5,19 @@ name: Site no GitHub Pages
 # Requer UM ajuste no repositório (uma vez):
 #   Settings ▸ Pages ▸ Build and deployment ▸ Source: "GitHub Actions"
 #
-# Roda só manualmente para não deixar a lista de checks vermelha enquanto o
-# Pages não estiver configurado assim.
+# Dispara em push (o site é estático) e manualmente.
 
 on:
+  push:
+    branches: [main, arena/0e280858-theorbiapp]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'firebase.json'
+      - 'vite.config.ts'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -59,10 +68,21 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Conferir a URL publicada
+        shell: bash
         run: |
+          URL="https://arthurowgg.github.io/TheOrbiApp/"
+          CODE="000"
           for i in 1 2 3 4 5 6; do
-            CODE=$(curl -s -o /dev/null -w '%{http_code}' "https://arthurowgg.github.io/TheOrbiApp/")
+            CODE=$(curl -s -o /tmp/pagina.html -w '%{http_code}' "$URL")
             echo "tentativa $i: HTTP $CODE"
             [ "$CODE" = "200" ] && break
             sleep 10
           done
+          if [ "$CODE" != "200" ]; then
+            echo "::error::Pages respondeu HTTP $CODE em $URL"
+            exit 1
+          fi
+          echo "::notice::Pages no ar: $URL"
+          grep -o '<title>[^<]*</title>' /tmp/pagina.html || echo "::warning::HTML sem <title>"
+          grep -qi "orbi" /tmp/pagina.html && echo "conteúdo do Orbi presente" \
+            || echo "::error::a página não parece ser o site do Orbi (build errado?)"
