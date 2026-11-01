@@ -172,3 +172,59 @@ jobs:
           name: relatorio-firebase
           path: relatorio-firebase.txt
           if-no-files-found: warn
+
+  # Deploy do site: roda só quando o secret existe. Usa a mesma credencial do
+  # job de Hosting do release.yml, mas aqui para publicar imediatamente.
+  hosting:
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - name: Conferir secret
+        id: check
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Secret FIREBASE_SERVICE_ACCOUNT ausente — deploy pulado."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.available == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.available == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - if: steps.check.outputs.available == 'true'
+        run: npm ci && npm run build
+
+      - if: steps.check.outputs.available == 'true'
+        name: Preparar credencial
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+
+      - if: steps.check.outputs.available == 'true'
+        name: Deploy (hosting + regras)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          npx --yes firebase-tools@latest deploy \
+            --only hosting,firestore:rules \
+            --project orbi-app-auth --non-interactive
+
+      - if: steps.check.outputs.available == 'true'
+        name: Conferir o site publicado
+        run: |
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' https://orbi-app-auth.web.app/)
+            echo "tentativa $i: HTTP $CODE"
+            [ "$CODE" = "200" ] && break
+            sleep 10
+          done
+          curl -s https://orbi-app-auth.web.app/ | grep -o '<title>[^<]*</title>' || true
