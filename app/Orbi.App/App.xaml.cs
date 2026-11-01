@@ -35,6 +35,9 @@ public partial class App : System.Windows.Application
     private Forms.NotifyIcon? _tray;
     private CommandBar? _bar;
     private SettingsWindow? _settings;
+    private Window? _panel;
+    private string? _panelName;
+    private bool _barShouldReturn;
     private DispatcherTimer? _reminderTimer;
     private DispatcherTimer? _idleTimer;
     private DateTime _lastActivity = DateTime.Now;
@@ -211,10 +214,32 @@ public partial class App : System.Windows.Application
     }
 
     /* ----------------------------- janelas ----------------------------- */
-    /// <summary>Esconde a barra (o app continua na bandeja).</summary>
-    public void HideBar()
+    /// <summary>
+    /// Esconde a barra porque o Orbi vai mexer na tela (ver, clicar, digitar).
+    /// Nesse caso ela volta sozinha depois.
+    /// </summary>
+    public void HideBarForAction()
     {
         _bar?.HideBar();
+        _barShouldReturn = true;
+    }
+
+    /// <summary>Esconde a barra em definitivo até você chamar de novo.</summary>
+    public void HideBar()
+    {
+        _barShouldReturn = false;
+        _bar?.HideBar();
+    }
+
+    /// <summary>A barra volta (usado depois de salvar a chave, sair da conta…).</summary>
+    public void ReturnBar()
+    {
+        if (_panel is not null)
+        {
+            ClosePanels();
+        }
+        _barShouldReturn = false;
+        ShowBar();
     }
 
     public void ShowBar()
@@ -227,6 +252,10 @@ public partial class App : System.Windows.Application
                 EmergencyWindow();
                 return;
             }
+            // Uma coisa na frente por vez: se um painel está aberto, a barra o
+            // substitui em vez de aparecer por cima.
+            _barShouldReturn = false;
+            ClosePanels();
             if (_bar.WindowState == WindowState.Minimized) _bar.WindowState = WindowState.Normal;
             _bar.ShowBar();
         }
@@ -318,7 +347,7 @@ public partial class App : System.Windows.Application
         {
             _bar?.RefreshGreeting();
             _bar?.RefreshAccountChip();
-            _settings?.Refresh();
+            (_panel as ProfileWindow)?.Refresh();
         }
     }
 
@@ -329,21 +358,80 @@ public partial class App : System.Windows.Application
             ShowLogin();
             return;
         }
-        ShowSettings("conta");
+        OpenPanel("perfil");
     }
 
-    public void ShowSettings(string? tab = null)
+    public void ShowSettings(string? tab = null) => OpenPanel(Mapear(tab));
+
+    private static string Mapear(string? tab) => tab switch
     {
-        if (_settings is null)
+        null or "" or "geral" or "ajustes" => "ajustes",
+        "ia" => "ia",
+        "conta" or "perfil" => "perfil",
+        "ferramentas" => "ferramentas",
+        "memoria" or "lembretes" or "notas" or "atalhos" => "ajustes",
+        _ => "ajustes",
+    };
+
+    /// <summary>
+    /// Um painel por vez. Abrir outro fecha o anterior antes: nada de janelas
+    /// empilhadas na frente da pessoa.
+    /// </summary>
+    public void OpenPanel(string qual)
+    {
+        if (_panel is not null)
         {
-            _settings = new SettingsWindow();
-            _settings.Closed += (_, _) => _settings = null;
+            var anterior = _panel;
+            _panel = null;
+            _panelName = null;
+            try { anterior.Close(); } catch { }
         }
-        _settings.Show();
-        if (_settings.WindowState == WindowState.Minimized) _settings.WindowState = WindowState.Normal;
-        _settings.Activate();
-        if (tab is not null) _settings.SelectTab(tab);
+
+        Window painel = qual switch
+        {
+            "ia" => new IaWindow(),
+            "ferramentas" => new ToolsWindow(),
+            "perfil" => new ProfileWindow(),
+            _ => new SettingsWindow(),
+        };
+
+        _panel = painel;
+        _panelName = qual;
+        painel.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_panel, painel))
+            {
+                _panel = null;
+                _panelName = null;
+            }
+        };
+        painel.Show();
+        painel.Activate();
     }
+
+    /// <summary>Fecha o painel que estiver aberto (a barra voltou a ser a única na frente).</summary>
+    /// <summary>A barra ficou escondida porque um painel abriu (não é caso de voltar sozinha).</summary>
+    public void NoteBarHiddenByPanel() => _barShouldReturn = false;
+
+    public bool BarShouldReturn => _barShouldReturn;
+
+    /// <summary>Depois de salvar/tirar a chave, a barra atualiza o estado e volta.</summary>
+    public void RefreshAfterKey()
+    {
+        _bar?.RefreshGreeting();
+    }
+
+    public void ClosePanels()
+    {
+        var painel = _panel;
+        if (painel is null) return;
+        _panel = null;
+        _panelName = null;
+        try { painel.Close(); } catch { }
+    }
+
+    /// <summary>O painel aberto respondeu? A barra não abre por cima dele.</summary>
+    public bool PanelOpen => _panel is not null;
 
     /// <summary>Fechar a barra não pode matar o app: ela é a janela principal.</summary>
     public bool ClosingForReal { get; private set; }

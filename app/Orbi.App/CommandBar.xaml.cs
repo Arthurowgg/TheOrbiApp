@@ -29,6 +29,9 @@ public partial class CommandBar : Window
     private readonly List<(string Role, string Text)> _history = new();
     private readonly DispatcherTimer _debounce = new() { Interval = TimeSpan.FromMilliseconds(260) };
     private bool _thinking;
+    private string _panel = "menu";
+    private string _sheetTitle = "conta";
+    private string _sheetNote = "";
 
     /// <summary>Altura da barra fechada: só a linha de comando.</summary>
     private const double CompactHeight = 62;
@@ -103,76 +106,193 @@ public partial class CommandBar : Window
     }
 
     /* ----------------------------- conta ----------------------------- */
-    /// <summary>O avatar mostra quem está logado (ou "O" quando não há conta).</summary>
+    /// <summary>
+    /// O botão da direita: três pontos. O ponto verde aparece quando você está
+    /// numa conta (ou a cor da marca quando não está).
+    /// </summary>
     public void RefreshAccountChip()
     {
         var nome = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "" : Store.Current.UserName.Trim();
-        var primeiro = string.IsNullOrWhiteSpace(nome) ? "O" : nome[..1].ToUpperInvariant();
-        AvatarInitial.Text = primeiro;
-        Avatar.Background = Firebase.SignedIn
-            ? new SolidColorBrush(Color.FromRgb(0x3B, 0x6E, 0x3F))
-            : (Brush)new SolidColorBrush(Color.FromRgb(0xC7, 0x45, 0x2A));
+        Dots.Fill = Firebase.SignedIn
+            ? new SolidColorBrush(Color.FromRgb(0xE9, 0xE3, 0xD6))
+            : new SolidColorBrush(Color.FromRgb(0x8C, 0x84, 0x74));
+        AccountDot.Fill = Firebase.SignedIn
+            ? new SolidColorBrush(Color.FromRgb(0x4E, 0x9A, 0x5C))
+            : new SolidColorBrush(Color.FromRgb(0xC7, 0x45, 0x2A));
         AccountButton.ToolTip = Firebase.SignedIn
-            ? $"{nome} · {(Firebase.Email ?? "")}"
-            : "Sem conta — clique para entrar";
+            ? $"{(string.IsNullOrWhiteSpace(nome) ? "Conta" : nome)} · {(Firebase.Email ?? "")}"
+            : "Menu — entre na conta, ajustes, IA";
     }
 
-    /// <summary>Menu de conta: perfil, ajustes, ferramentas, atalhos e sair.</summary>
     private void AccountButton_Click(object sender, RoutedEventArgs e)
     {
-        var menu = new ContextMenu
-        {
-            PlacementTarget = AccountButton,
-            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
-            FontFamily = FontFamily,
-        };
+        if (MenuOpen) CloseMenu();
+        else OpenMenu();
+    }
 
-        void Item(string texto, Action acao, bool negrito = false)
-        {
-            var item = new MenuItem { Header = texto };
-            if (negrito) item.FontWeight = FontWeights.SemiBold;
-            item.Click += (_, _) => acao();
-            menu.Items.Add(item);
-        }
+    /// <summary>Três pontos: perfil, ajustes, IA, ferramentas e o resto.</summary>
+    private void OpenMenu()
+    {
+        Expand();
+        Results.Visibility = Visibility.Collapsed;
+        FooterBar.Visibility = Visibility.Collapsed;
 
         if (Firebase.SignedIn)
         {
-            var nome = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "Sua conta" : Store.Current.UserName;
-            var cabecalho = new MenuItem { Header = nome, IsEnabled = false };
-            menu.Items.Add(cabecalho);
-            if (!string.IsNullOrWhiteSpace(Firebase.Email))
-            {
-                menu.Items.Add(new MenuItem { Header = Firebase.Email, IsEnabled = false });
-            }
-            menu.Items.Add(new Separator());
-            Item("Conta e sincronização…", () => App.Instance.ShowSettings("conta"));
+            _sheetTitle = "conta";
+            _sheetNote = Firebase.Email ?? "";
         }
         else
         {
-            Item("Entrar na conta…", () => App.Instance.ShowLogin(), negrito: true);
-            Item("Criar conta no site", () => SystemActions.Open("https://orbi-app.web.app/criar"));
-            menu.Items.Add(new Separator());
+            _sheetTitle = "conta";
+            _sheetNote = "sem conta";
         }
 
-        Item("IA e chave do Gemini…", () => App.Instance.ShowSettings("ia"));
-        Item("Ajustes…", () => App.Instance.ShowSettings());
-        Item("Ferramentas do Windows…", () => App.Instance.ShowSettings("ferramentas"));
-        Item("Lembretes e notas…", () => App.Instance.ShowSettings("notas"));
-        menu.Items.Add(new Separator());
+        SheetClose.Visibility = Visibility.Collapsed;
+        SheetBody.Children.Clear();
+
         if (Firebase.SignedIn)
         {
-            Item("Sair da conta", () =>
+            SheetBody.Children.Add(SheetRow("Perfil e conta", Firebase.Email ?? "sua conta", () => Abrir("perfil")));
+        }
+        else
+        {
+            SheetBody.Children.Add(SheetRow("Entrar na conta", "a mesma do site", () => App.Instance.ShowLogin(), destaque: true));
+            SheetBody.Children.Add(SheetRow("Criar conta no site", "", () => Browser.Open("https://orbi-app.web.app/criar")));
+        }
+
+        SheetBody.Children.Add(SheetDivider());
+        SheetBody.Children.Add(SheetRow("IA e chave", Gemini.HasKey ? Gemini.Mode : "sem chave", () => Abrir("ia"),
+            aviso: !Gemini.HasKey));
+        SheetBody.Children.Add(SheetRow("Ajustes", "atalho, Windows, segurança", () => Abrir("ajustes")));
+        SheetBody.Children.Add(SheetRow("Ferramentas", $"{Tools.All.Count} ações", () => Abrir("ferramentas")));
+        SheetBody.Children.Add(SheetRow("Memória", "o que o Orbi lembra", () => Abrir("memoria")));
+        SheetBody.Children.Add(SheetDivider());
+
+        if (Firebase.SignedIn)
+        {
+            SheetBody.Children.Add(SheetRow("Sair da conta", "", () =>
             {
                 Firebase.SignOut();
                 RefreshAccountChip();
-                App.Instance.ShowBar();
+                OpenMenu();
+            }));
+        }
+
+        SheetBody.Children.Add(SheetRow("Encerrar o Orbi", "", () => App.Instance.ExitApp()));
+        ShowSheet();
+    }
+
+    /// <summary>
+    /// Abre um painel da barra. Antes disso a barra fecha: nada de duas janelas
+    /// na frente ao mesmo tempo.
+    /// </summary>
+    private void Abrir(string painel)
+    {
+        _panel = painel;
+        RememberPlace();
+        Hide();
+        App.Instance.NoteBarHiddenByPanel();
+        App.Instance.OpenPanel(painel);
+    }
+
+    private void SheetClose_Click(object sender, RoutedEventArgs e) => CloseMenu();
+
+    private void ShowSheet()
+    {
+        SheetTitle.Text = _sheetTitle;
+        SheetNote.Text = _sheetNote;
+        Sheet.Visibility = Visibility.Visible;
+        // cresce o suficiente para o conteúdo, sem ocupar a tela toda
+        var desejada = 300 + SheetBody.Children.Count * 34;
+        Height = Math.Min(Math.Max(CompactHeight + 60, desejada), 560);
+    }
+
+    private void CloseMenu()
+    {
+        Sheet.Visibility = Visibility.Collapsed;
+        SheetBody.Children.Clear();
+        Collapse();
+        Input.Focus();
+    }
+
+    public bool MenuOpen => Sheet.Visibility == Visibility.Visible;
+
+    /// <summary>Uma linha do painel: título, detalhe e ação.</summary>
+    private Border SheetRow(string titulo, string detalhe, Action acao, bool destaque = false, bool aviso = false)
+    {
+        var linha = new Grid();
+        linha.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        linha.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var textos = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        textos.Children.Add(new TextBlock
+        {
+            Text = titulo,
+            Foreground = new SolidColorBrush(aviso && destaque
+                ? Color.FromRgb(0xE9, 0x84, 0x6A)
+                : Color.FromRgb(0xF1, 0xEB, 0xDF)),
+            FontFamily = FontFamily,
+            FontSize = 13.5,
+            FontWeight = destaque ? FontWeights.SemiBold : FontWeights.Normal,
+        });
+        if (!string.IsNullOrWhiteSpace(detalhe))
+        {
+            textos.Children.Add(new TextBlock
+            {
+                Text = detalhe,
+                Foreground = new SolidColorBrush(Color.FromArgb(0x81, 0xF1, 0xEB, 0xDF)),
+                FontFamily = (FontFamily)FindResource("MonoFont"),
+                FontSize = 10,
+                TextTrimming = TextTrimming.CharacterEllipsis,
             });
         }
-        Item("Fechar a barra (Esc)", Hide);
-        Item("Encerrar o Orbi", () => App.Instance.ExitApp());
+        Grid.SetColumn(textos, 0);
+        linha.Children.Add(textos);
 
-        menu.IsOpen = true;
+        if (aviso)
+        {
+            var ponto = new Border
+            {
+                Width = 6, Height = 6, CornerRadius = new CornerRadius(3),
+                Background = new SolidColorBrush(Color.FromRgb(0xC7, 0x45, 0x2A)),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(8, 0, 2, 0),
+            };
+            Grid.SetColumn(ponto, 1);
+            linha.Children.Add(ponto);
+        }
+
+        var botao = new Button
+        {
+            Content = linha,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(6, 8, 6, 8),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Cursor = System.Windows.Input.Cursors.Hand,
+        };
+        botao.Click += (_, _) =>
+        {
+            botao.IsEnabled = false;
+            try { acao(); }
+            finally { botao.IsEnabled = true; }
+        };
+        botao.MouseEnter += (_, _) => botao.Background = new SolidColorBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
+        botao.MouseLeave += (_, _) => botao.Background = Brushes.Transparent;
+
+        var borda = new Border { Child = botao };
+        borda.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        botao.HorizontalAlignment = HorizontalAlignment.Stretch;
+        return borda;
     }
+
+    private static Border SheetDivider() => new()
+    {
+        Height = 1,
+        Margin = new Thickness(10, 6, 10, 6),
+        Background = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF)),
+    };
 
     /* ----------------------------- abrir / fechar ----------------------------- */
     public void RefreshGreeting()
@@ -308,6 +428,12 @@ public partial class CommandBar : Window
         base.OnPreviewKeyDown(e);
         if (e.Key == Key.Escape)
         {
+            if (MenuOpen)
+            {
+                CloseMenu();
+                e.Handled = true;
+                return;
+            }
             // Esc esconde a barra; o app continua vivo na bandeja.
             RememberPlace();
             Hide();
@@ -327,6 +453,10 @@ public partial class CommandBar : Window
     private void Input_TextChanged(object sender, TextChangedEventArgs e)
     {
         Hint.Visibility = string.IsNullOrEmpty(Input.Text) ? Visibility.Visible : Visibility.Collapsed;
+
+        // Digitou algo? O painel de menu sai da frente e os resultados voltam.
+        if (MenuOpen && !string.IsNullOrWhiteSpace(Input.Text)) CloseMenu();
+
         var text = Input.Text.Trim();
         _rows.Clear();
 
@@ -540,8 +670,9 @@ public partial class CommandBar : Window
             _thinking = false;
             UpdateFooter();
             // Se a barra se escondeu para o Orbi agir, volta com o resultado.
-            if (!IsVisible)
+            if (!IsVisible && App.Instance.BarShouldReturn)
             {
+                App.Instance.HideBarForAction(); // mantém a intenção para a próxima
                 Show();
                 Topmost = true;
                 Activate();
@@ -716,6 +847,7 @@ public partial class CommandBar : Window
         {
             RememberPlace();
             Hide();
+            App.Instance.HideBarForAction();
         }
 
         var reply = Interpreter.Execute(text);

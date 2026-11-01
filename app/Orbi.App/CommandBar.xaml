@@ -53,18 +53,17 @@
         </Grid>
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-          <!-- Conta: abre um menu com conta, ajustes e ferramentas -->
+          <!-- Três pontos: cai um painel com conta, ajustes e IA -->
           <Button x:Name="AccountButton" Click="AccountButton_Click"
                   Background="Transparent" BorderThickness="0" Cursor="Hand"
-                  ToolTip="Conta, ajustes e ferramentas">
-            <StackPanel Orientation="Horizontal">
-              <Border x:Name="Avatar" Width="22" Height="22" CornerRadius="11"
-                      Background="{StaticResource SignalBrush}" VerticalAlignment="Center">
-                <TextBlock x:Name="AvatarInitial" Text="O" Foreground="White" FontSize="10.5"
-                           FontFamily="{StaticResource Sans}" HorizontalAlignment="Center"
-                           VerticalAlignment="Center"/>
-              </Border>
-            </StackPanel>
+                  Padding="8,4" ToolTip="Menu">
+            <Grid Width="18" Height="18">
+              <Path x:Name="Dots" Fill="#E9E3D6"
+                    Data="M4,9 A1.6,1.6 0 1,0 4,9.01 M9,9 A1.6,1.6 0 1,0 9,9.01 M14,9 A1.6,1.6 0 1,0 14,9.01"
+                    Stretch="None"/>
+              <Ellipse x:Name="AccountDot" Width="5" Height="5" Fill="#C7452A"
+                       HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-1,-1,0"/>
+            </Grid>
           </Button>
 
           <Border x:Name="EscBadge" Background="#22FFFFFF" CornerRadius="3"
@@ -126,6 +125,37 @@
 
         <TextBlock x:Name="AiStatus" Grid.Column="1" Text="local"
                    Foreground="#80F1EBDF" FontFamily="{StaticResource MonoFont}" FontSize="10" Margin="10,0,0,0"/>
+      </Grid>
+    </Border>
+
+    <!-- painel que cai da barra: conta, ajustes, IA ou ferramentas -->
+    <Border x:Name="Sheet" Grid.Row="1" Grid.RowSpan="2" Visibility="Collapsed"
+            Background="{StaticResource Film2}" BorderBrush="#24FFFFFF" BorderThickness="0,1,0,0">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="SheetHeader" Grid.Row="0" Margin="14,10,10,6">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock x:Name="SheetTitle" Grid.Column="0" Text="" VerticalAlignment="Center"
+                     Foreground="{StaticResource Bone}" FontFamily="{StaticResource Display}" FontSize="13"/>
+          <TextBlock x:Name="SheetNote" Grid.Column="1" Text="" Margin="10,0,0,0" VerticalAlignment="Center"
+                     Foreground="#80F1EBDF" FontFamily="{StaticResource MonoFont}" FontSize="10"
+                     TextTrimming="CharacterEllipsis"/>
+          <Button x:Name="SheetClose" Grid.Column="2" Content="voltar" Click="SheetClose_Click"
+                  Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="8,2"
+                  Foreground="#99F1EBDF" FontFamily="{StaticResource MonoFont}" FontSize="10"/>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8,0,8,10">
+          <StackPanel x:Name="SheetBody"/>
+        </ScrollViewer>
       </Grid>
     </Border>
   </Grid>

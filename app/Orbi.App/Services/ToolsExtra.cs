@@ -738,7 +738,7 @@ public static class ToolsExtra
 
     /* ------------------------------ utilidades ------------------------------ */
 
-    private static string Open(string target)
+    internal static string Open(string target)
     {
         try
         {
