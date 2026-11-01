@@ -560,6 +560,58 @@ public static class ToolsExtra
         });
         Add("dev-guid", "Gerar um identificador", dev, "guid,uuid,id", () =>
             { var g = Guid.NewGuid().ToString(); System.Windows.Clipboard.SetText(g); return g + " (copiado)"; });
+        Add("dev-format-json", "Organizar um JSON", dev, "json,formatar,indentar", () =>
+        {
+            try
+            {
+                var doc = System.Text.Json.JsonDocument.Parse(System.Windows.Clipboard.GetText());
+                var bonito = System.Text.Json.JsonSerializer.Serialize(doc,
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                System.Windows.Clipboard.SetText(bonito);
+                return "JSON organizado e copiado.";
+            }
+            catch { return "O texto copiado não é um JSON válido."; }
+        });
+        Add("dev-json-minify", "Compactar um JSON", dev, "json,minificar,compactar", () =>
+        {
+            try
+            {
+                var doc = System.Text.Json.JsonDocument.Parse(System.Windows.Clipboard.GetText());
+                System.Windows.Clipboard.SetText(System.Text.Json.JsonSerializer.Serialize(doc));
+                return "JSON compactado e copiado.";
+            }
+            catch { return "O texto copiado não é um JSON válido."; }
+        });
+        Add("dev-cpf-validate", "Conferir um CPF", dev, "cpf,validar,documento", () =>
+        {
+            var digitos = new string(System.Windows.Clipboard.GetText().Where(char.IsDigit).ToArray());
+            if (digitos.Length != 11) return "Copie um CPF de 11 dígitos antes.";
+            var valido = true;
+            for (var posicao = 9; posicao < 11 && valido; posicao++)
+            {
+                var soma = 0;
+                for (var i = 0; i < posicao; i++) soma += (digitos[i] - '0') * (posicao + 1 - i);
+                var resto = soma * 10 % 11 % 10;
+                valido = resto == digitos[posicao] - '0';
+            }
+            return valido ? "CPF válido." : "CPF inválido.";
+        });
+        Add("dev-cnpj-validate", "Conferir um CNPJ", dev, "cnpj,validar,empresa", () =>
+        {
+            var digitos = new string(System.Windows.Clipboard.GetText().Where(char.IsDigit).ToArray());
+            if (digitos.Length != 14) return "Copie um CNPJ de 14 dígitos antes.";
+            int[] pesos1 = { 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 };
+            int[] pesos2 = { 6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 };
+            int Digito(int[] pesos)
+            {
+                var soma = 0;
+                for (var i = 0; i < pesos.Length; i++) soma += (digitos[i] - '0') * pesos[i];
+                var resto = soma % 11;
+                return resto < 2 ? 0 : 11 - resto;
+            }
+            var ok = Digito(pesos1) == digitos[12] - '0' && Digito(pesos2) == digitos[13] - '0';
+            return ok ? "CNPJ válido." : "CNPJ inválido.";
+        });
         Add("dev-random-password", "Gerar uma senha forte", dev, "senha,password,aleatoria", () =>
         {
             const string chars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%";
