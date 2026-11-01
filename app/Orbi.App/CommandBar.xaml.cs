@@ -332,9 +332,9 @@ public partial class CommandBar : Window
             Add(new ResultRow
             {
                 Glyph = "\u2022",
-                Text = "Cole a sua chave do Gemini para o Orbi pensar.",
-                Detail = "Ajustes ▸ IA. A chave é gratuita e fica cifrada neste PC.",
-                Command = "conta",
+                Text = "A chave da IA é o único requisito.",
+                Detail = "É gratuita, fica cifrada neste PC e abre a IA no menu …",
+                Command = "ia",
                 Badge = "configurar",
                 BadgeBrush = "#FFC7452A",
                 BadgeTextBrush = "#FFFFFFFF",
@@ -359,7 +359,7 @@ public partial class CommandBar : Window
     private void UpdateFooter()
     {
         var keys = string.IsNullOrEmpty(HotKey.Combination) ? "use o ícone na bandeja" : HotKey.Combination;
-        Footer.Text = $"{keys} · / ferramentas · Esc esconde";
+        Footer.Text = string.IsNullOrEmpty(HotKey.Combination) ? "/ ferramentas · Esc esconde" : $"{keys} · / ferramentas";
     }
 
     /// <summary>
@@ -792,8 +792,9 @@ public partial class CommandBar : Window
     {
         Store.PushCommand(text);
 
-        // "conta" abre o menu do botão de conta (sem digitar nada além disso).
-        if (string.Equals(text.Trim(), "conta", StringComparison.OrdinalIgnoreCase))
+        // "menu" abre a lista dos três pontos (sem digitar nada além disso).
+        if (string.Equals(text.Trim(), "menu", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(text.Trim(), "conta", StringComparison.OrdinalIgnoreCase))
         {
             Input.Text = "";
             AccountButton_Click(AccountButton, new RoutedEventArgs());
