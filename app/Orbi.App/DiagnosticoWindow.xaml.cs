@@ -53,6 +53,13 @@ public partial class DiagnosticoWindow : Window
         Line("Conta", Firebase.SignedIn ? Firebase.Email ?? "(conectada)" : "sem conta — funciona local");
 
         report.AppendLine();
+        report.AppendLine("Passos da inicialização (startup.log)");
+        report.AppendLine(new string('-', 46));
+        report.AppendLine(ConsoleLog.Transcript.Trim().Length > 0
+            ? ConsoleLog.Transcript.Trim()
+            : "(vazio — o app abriu pelo modo --diag sem passar pela inicialização normal)");
+
+        report.AppendLine();
         report.AppendLine("Últimos erros (crash.log)");
         report.AppendLine(new string('-', 46));
         try
@@ -79,7 +86,24 @@ public partial class DiagnosticoWindow : Window
 
     private void OpenBar_Click(object sender, RoutedEventArgs e)
     {
-        (System.Windows.Application.Current as App)?.ShowBar();
+        var app = System.Windows.Application.Current as App;
+        if (app is null)
+        {
+            MessageBox.Show("O app não terminou de iniciar. Feche esta janela e abra o Orbi de novo.",
+                "Orbi — diagnóstico");
+            return;
+        }
+
+        try
+        {
+            app.ShowBar();
+        }
+        catch (Exception error)
+        {
+            MessageBox.Show("A barra falhou de novo:\n\n" + error.Message + "\n\n" + error.GetType().Name,
+                "Orbi — diagnóstico", MessageBoxButton.OK, MessageBoxImage.Error);
+            Reload();
+        }
     }
 
     private void Copy_Click(object sender, RoutedEventArgs e)

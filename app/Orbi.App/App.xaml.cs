@@ -22,20 +22,37 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // --console: log de cada etapa no terminal (para descobrir onde para).
+        var console = e.Args.Contains("--console");
+        if (console)
+        {
+            ConsoleWindow.Attach();
+            ConsoleLog.EnableConsole(true);
+        }
+
+        ConsoleLog.EnableConsole(console);
+        ConsoleLog.Reset();
+        ConsoleLog.Step("Orbi iniciando", string.Join(" ", e.Args));
+        ConsoleLog.Step("Versão", typeof(App).Assembly.GetName().Version?.ToString() ?? "?");
+
         base.OnStartup(e);
         Diagnostics.Install();
+        ConsoleLog.Step("Manifesto e tema carregados");
         // Uma instância só: se já existe, a segunda apenas abre a barra.
         if (!SingleInstance.TryAcquire())
         {
+            ConsoleLog.Step("Já existe uma instância — pedindo para mostrar a barra");
             SingleInstance.SignalExisting(settings: e.Args.Contains("--settings"));
             Shutdown();
             return;
         }
+        ConsoleLog.Step("Instância única adquirida");
 
         // --safe: só a interface. Sem bandeja, sem atalho, sem sincronização,
         // sem leitura de conta — o caminho mais curto entre clicar e ver algo.
         if (e.Args.Contains("--safe"))
         {
+            ConsoleLog.Step("Modo --safe: sem bandeja, sem atalho, sem sincronização");
             ShowBar();
             return;
         }
@@ -43,7 +60,9 @@ public partial class App : System.Windows.Application
         try
         {
             BuildTray();
+            ConsoleLog.Step("Bandeja criada", TrayVisible ? "visível" : "não visível");
             RegisterHotkey();
+            ConsoleLog.Step("Atalho global", string.IsNullOrEmpty(HotKey.Combination) ? "NÃO registrado" : HotKey.Combination);
             SingleInstance.Listen(ShowBar, () => ShowSettings());
         }
         catch (Exception error)
@@ -81,6 +100,7 @@ public partial class App : System.Windows.Application
 
         if (e.Args.Contains("--diag"))
         {
+            ConsoleLog.Step("Abrindo diagnóstico");
             ShowDiagnostics();
             return;
         }
@@ -200,10 +220,14 @@ public partial class App : System.Windows.Application
     {
         try
         {
-            return new CommandBar();
+            ConsoleLog.Step("Criando a barra (XAML)");
+            var bar = new CommandBar();
+            ConsoleLog.Step("Barra criada");
+            return bar;
         }
         catch (Exception error)
         {
+            ConsoleLog.Fail("criar a barra", error);
             Diagnostics.Report(error, "Barra", fatal: false);
             return null;
         }
@@ -218,15 +242,19 @@ public partial class App : System.Windows.Application
 
             if (_bar is null)
             {
+                ConsoleLog.Step("Barra nula — abrindo janela de emergência");
                 EmergencyWindow();
                 return;
             }
 
             if (_bar.WindowState == WindowState.Minimized) _bar.WindowState = WindowState.Normal;
+            ConsoleLog.Step("Exibindo barra");
             _bar.ShowBar();
+            ConsoleLog.Step("Barra visível", $"visível={_bar.IsVisible} · {_bar.Left:0},{_bar.Top:0} · {_bar.Width:0}×{_bar.Height:0}");
         }
         catch (Exception error)
         {
+            ConsoleLog.Fail("mostrar barra", error);
             Diagnostics.Report(error, "Mostrar barra", fatal: false);
             EmergencyWindow();
         }
