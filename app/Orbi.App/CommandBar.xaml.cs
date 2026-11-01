@@ -30,7 +30,7 @@ public partial class CommandBar : Window
     private readonly DispatcherTimer _debounce = new() { Interval = TimeSpan.FromMilliseconds(260) };
     private bool _thinking;
     private string _panel = "menu";
-    private string _sheetTitle = "conta";
+    private string _sheetTitle = "menu";
     private string _sheetNote = "";
 
     /// <summary>Altura da barra fechada: só a linha de comando.</summary>

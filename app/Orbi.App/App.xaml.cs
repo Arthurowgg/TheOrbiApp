@@ -294,7 +294,7 @@ public partial class App : System.Windows.Application
         }));
     }
 
-    /// <summary>A barra volta (usado depois de salvar a chave, sair da conta…).</summary>
+    /// <summary>A barra volta (usado depois de salvar a chave, fechar um painel…).</summary>
     public void ReturnBar()
     {
         if (_panel is not null)
