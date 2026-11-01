@@ -23,7 +23,7 @@ export const BUILD = {
   minimum: "Windows 11 22H2 ou superior (Windows 10 1809+)",
   installer: "OrbiSetup-1.1.2.exe",
   packageName: "Orbi-1.1.2",
-  sizeHint: "≈ 5 MB · o resto baixa na instalação",
+  sizeHint: "≈ 70 MB",
   repo: "Arthurowgg/TheOrbiApp",
 };
 

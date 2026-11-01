@@ -60,27 +60,25 @@ public static class Paths
 }
 
 /// <summary>
-/// O app não viaja dentro do setup: o instalador tem poucos MB e baixa o pacote
-/// (~200 MB) na hora de instalar. Fica em cache, então uma reinstalação é rápida.
+/// O app não viaja dentro do setup: o instalador baixa o pacote na hora de
+/// instalar e guarda em cache, então uma reinstalação no mesmo PC é rápida.
+/// O pacote é autossuficiente (traz o .NET junto), então o app não depende do
+/// runtime instalado no computador.
 /// </summary>
 public static class Payload
 {
-    /// <summary>Runtime .NET Desktop 8 (o app depende dele). Só baixa se faltar.</summary>
-    public const string RuntimeUrl =
-        "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.11/windowsdesktop-runtime-8.0.11-win-x64.exe";
-
     /// <summary>Pacote publicado junto com o instalador na mesma release.</summary>
     public const string Url =
         "https://github.com/Arthurowgg/TheOrbiApp/releases/download/v1.1.2/orbi-payload-1.1.2.zip";
 
-    public const long ApproximateSize = 2L * 1024 * 1024;
+    public const long ApproximateSize = 68L * 1024 * 1024;
 
     public static string Cache =>
         Path.Combine(Path.GetTempPath(), "orbi-payload-" + Installer.Versao + ".zip");
 
     private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromMinutes(15) };
 
-    public static bool Cached => File.Exists(Cache) && new FileInfo(Cache).Length > 200L * 1024;
+    public static bool Cached => File.Exists(Cache) && new FileInfo(Cache).Length > 20L * 1024 * 1024;
 
     /// <summary>
     /// Pacote local (usado pelos testes e por quem instala sem internet):
@@ -168,7 +166,7 @@ public static class Payload
         }
 
         var info = new FileInfo(temp);
-        if (info.Length < 200L * 1024)
+        if (info.Length < 20L * 1024 * 1024)
         {
             File.Delete(temp);
             throw new InvalidOperationException($"o pacote veio incompleto ({info.Length} bytes)");
@@ -236,9 +234,7 @@ public static class Installer
 
             token.ThrowIfCancellationRequested();
 
-            // 3. runtime do .NET (só se faltar) e o pacote do app
-            EnsureRuntime();
-
+            // 3. pacote do app (já traz o .NET dentro)
             Write("Baixando o Orbi…");
             var zipPath = Payload
                 .DownloadAsync(new Progress<double>(value => progress.Report(0.16 + 0.60 * value)), token)
@@ -298,81 +294,6 @@ public static class Installer
             progress.Report(1.0);
             Write("Instalação concluída.");
         }, token);
-    }
-
-    /// <summary>
-    /// O app é publicado "framework-dependent" (é o que faz ele abrir sem extrair
-    /// nada). Se este PC ainda não tem o .NET Desktop 8, instala agora — é a única
-    /// dependência, e é por isso que o setup em si tem poucos MB.
-    /// </summary>
-    private static void EnsureRuntime()
-    {
-        if (RuntimeInstalled())
-        {
-            Write("Runtime .NET já instalado");
-            return;
-        }
-
-        Write("Instalando o .NET Desktop 8 (uma vez, só neste PC)…");
-        var installer = Path.Combine(Path.GetTempPath(), "orbi-dotnet-desktop.exe");
-        if (!File.Exists(installer))
-        {
-            using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-            using var response = client.GetAsync(Payload.RuntimeUrl).GetAwaiter().GetResult();
-            response.EnsureSuccessStatusCode();
-            using var file = File.Create(installer);
-            response.Content.ReadAsStream().CopyTo(file);
-            Write($".NET baixado ({new FileInfo(installer).Length / 1024 / 1024} MB)");
-        }
-
-        var processo = Process.Start(new ProcessStartInfo(installer, "/install /quiet /norestart")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        });
-        processo?.WaitForExit(10 * 60 * 1000);
-
-        if (!RuntimeInstalled())
-        {
-            throw new InvalidOperationException(
-                "Não consegui instalar o .NET Desktop 8. Baixe em dotnet.microsoft.com/download/dotnet/8.0 e rode o setup de novo.");
-        }
-        Write("Runtime .NET pronto");
-    }
-
-    /// <summary>
-    /// O .NET Desktop 8 está disponível? Olha a pasta oficial (é onde o runtime
-    /// se instala de fato) e, por garantia, o registro.
-    /// </summary>
-    private static bool RuntimeInstalled()
-    {
-        var raiz = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "shared", "Microsoft.WindowsDesktop.App");
-        try
-        {
-            if (Directory.Exists(raiz) &&
-                Directory.GetDirectories(raiz).Any(pasta => Path.GetFileName(pasta).StartsWith("8.", StringComparison.Ordinal)))
-            {
-                return true;
-            }
-        }
-        catch { }
-
-        foreach (var (baseKey, caminho) in new[]
-                 {
-                     (Registry.LocalMachine, @"SOFTWARE\dotnet\WindowsDesktop\v8.0"),
-                     (Registry.LocalMachine, @"SOFTWARE\WOW6432Node\dotnet\WindowsDesktop\v8.0"),
-                     (Registry.CurrentUser, @"SOFTWARE\dotnet\WindowsDesktop\v8.0"),
-                 })
-        {
-            try
-            {
-                using var key = baseKey.OpenSubKey(caminho);
-                if (key is not null) return true;
-            }
-            catch { }
-        }
-        return false;
     }
 
     private static void CloseRunning()
