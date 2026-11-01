@@ -224,9 +224,12 @@ jobs:
             --project orbi-app-auth --non-interactive --debug 2>&1 | tee deploy.log | tail -40
           STATUS=${PIPESTATUS[0]}
           if [ "$STATUS" != "0" ]; then
-            echo "---- resumo do erro (para a API de checks) ----"
-            grep -iE "error|forbidden|permission|invalid|failed|not found|quota" deploy.log | tail -8 | while IFS= read -r line; do
+            echo "---- resumo para a API de checks ----"
+            tail -25 deploy.log | while IFS= read -r line; do
               echo "::error::$line"
+            done
+            grep -iE "error|forbidden|permission|invalid|failed|quota|credential" deploy.log | head -10 | while IFS= read -r line; do
+              echo "::warning::$line"
             done
             exit "$STATUS"
           fi
