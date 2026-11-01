@@ -60,7 +60,7 @@ jobs:
       - name: Publish (pasta)
         run: >
           dotnet publish app/Orbi.App/Orbi.App.csproj
-          -c Release -r win-x64 --self-contained false
+          -c Release -r win-x64 --self-contained true
           -o artifacts/publish
 
       # O app é publicado "framework-dependent": o .NET vai embutido no setup,
@@ -77,7 +77,7 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
-          dotnet publish app/Orbi.Setup/Orbi.Setup.csproj -c Release -r win-x64 --self-contained false `
+          dotnet publish app/Orbi.Setup/Orbi.Setup.csproj -c Release -r win-x64 --self-contained true `
             -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/setup
           New-Item -ItemType Directory -Force -Path artifacts/Installer | Out-Null
           Move-Item artifacts/setup/OrbiSetup.exe "artifacts/Installer/OrbiSetup-1.1.0.exe" -Force
@@ -94,7 +94,7 @@ jobs:
         shell: powershell
         run: |
           $exe = Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1
-          if ($exe.Length -lt 3MB) { throw "instalador suspeito: $($exe.Length) bytes" }
+          if ($exe.Length -lt 20MB) { throw "instalador suspeito (sem o app dentro?): $($exe.Length) bytes" }
           Write-Host ("setups: " + $exe.Name + " · " + [math]::Round($exe.Length/1MB,1) + " MB")
 
       - uses: actions/upload-artifact@v4
@@ -122,7 +122,7 @@ jobs:
       - name: Publicar (exatamente como o instalador publica)
         run: >
           dotnet publish app/Orbi.App/Orbi.App.csproj
-          -c Release -r win-x64 --self-contained false
+          -c Release -r win-x64 --self-contained true
           -o artifacts/publish
 
       - name: Rodar o Orbi com --selftest
