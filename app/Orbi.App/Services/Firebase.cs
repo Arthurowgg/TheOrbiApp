@@ -280,9 +280,9 @@ public static class Firebase
             }
             if (response.StatusCode == HttpStatusCode.Forbidden)
             {
-                return (false, "O Firestore recusou (permission-denied). Publique as regras do firestore.rules no console.");
+                return (false, "A conta não aceitou a gravação agora.");
             }
-            return (false, $"Firestore: {response.StatusCode} {Trim(json)}");
+            return (false, "Não deu para salvar na conta agora.");
         }
         catch (Exception error)
         {
@@ -309,7 +309,7 @@ public static class Firebase
             using var response = await Client.SendAsync(request);
             return response.IsSuccessStatusCode
                 ? (true, "Documento criado na sua conta.")
-                : (false, $"Firestore: {response.StatusCode}");
+                : (false, "Não deu para ler a conta agora.");
         }
         catch (Exception error)
         {

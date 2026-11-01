@@ -9,7 +9,7 @@ public sealed class MemoryEntry
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
     public DateTime At { get; set; } = DateTime.Now;
-    public string Kind { get; set; } = "pedido";   // pedido · nota · lembrete · rotina
+    public string Kind { get; set; } = "pedido";   // pedido · ação · ferramenta · ia
     public string Text { get; set; } = "";
     public string? Answer { get; set; }
 }
@@ -19,8 +19,8 @@ public sealed class MemoryEntry
 /// anotou — e usa isso para responder perguntas sobre você ("o que eu tava
 /// fazendo ontem?", "qual era o site que eu abri?").
 ///
-/// Fica em %APPDATA%\Orbi\memoria.json (últimos 500 registros) e, quando você
-/// está na conta, sobe para o Firestore como as outras preferências.
+/// Fica em %APPDATA%\Orbi\memoria.json (últimos 500 registros) e acompanha a
+/// conta quando você entra.
 /// </summary>
 public static class Memory
 {

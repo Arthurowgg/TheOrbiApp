@@ -119,7 +119,7 @@ public partial class SettingsWindow : Window
         HotkeyState.Text = ok
             ? $"Pronto: aperte {nome} em qualquer programa."
             : $"{nome} já está em uso por outro app. Escolha outra combinação.";
-        Toast(ok ? $"Atalho alterado para {nome}." : $"Não consegui registrar {nome}.");
+        Toast(ok ? $"Atalho: {nome}." : $"Não consegui registrar {nome}.");
     }
 
     private void RefreshAccount()
@@ -165,7 +165,7 @@ public partial class SettingsWindow : Window
         Firebase.SignOut();
         Store.SaveSession(null);
         RefreshAccount();
-        Toast("Você saiu da conta. O app continua funcionando com os dados locais.");
+        Toast("Você saiu da conta.");
     }
 
     /* ----------------------------- navegação ----------------------------- */
@@ -212,7 +212,7 @@ public partial class SettingsWindow : Window
                 ["geminiModel"] = Firebase.Str(Store.Current.GeminiModel),
             }),
         });
-        Toast("Preferências salvas e enviadas para a conta.");
+        Toast("Salvo.");
     }
 
     private void SaveKey_Click(object sender, RoutedEventArgs e)
@@ -269,7 +269,7 @@ public partial class SettingsWindow : Window
                 ["geminiModel"] = Firebase.Str(Store.Current.GeminiModel),
             }),
         });
-        Toast("Segurança atualizada e enviada para a conta.");
+        Toast("Salvo.");
     }
 
     private void OpenSite_Click(object sender, RoutedEventArgs e) => OpenUrl(Firebase.SiteUrl);
