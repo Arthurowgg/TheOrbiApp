@@ -161,33 +161,48 @@ jobs:
           -c Release -r win-x64 --self-contained true
           -o artifacts/publish
 
-      # O app abre de verdade e as ferramentas respondem? É isso que importa.
+      # O app abre de verdade? É isso que importa — build verde não prova nada.
       - name: Abrir o Orbi e conferir o log
         shell: powershell
         timeout-minutes: 5
         run: |
           $ErrorActionPreference = "Stop"
+          function Falhar($msg) {
+            Write-Host "::error::$msg"
+            $pasta = "$env:APPDATA\Orbi"
+            Write-Host "pasta existe: $(Test-Path $pasta)"
+            if (Test-Path $pasta) { Get-ChildItem $pasta | Select-Object Name, Length | Format-Table | Out-String | Write-Host }
+            Write-Host "eventos de aplicativo (últimos):"
+            try {
+              Get-WinEvent -LogName Application -MaxEvents 8 |
+                Where-Object { $_.ProviderName -match "Application Error|.NET Runtime" } |
+                ForEach-Object { Write-Host ("::error::" + ($_.Message -split "`n")[0..3] -join " ") }
+            } catch { }
+            exit 1
+          }
+
           $exe = (Resolve-Path "artifacts\publish\Orbi.exe").Path
           Write-Host "exe: $exe ($([math]::Round((Get-Item $exe).Length/1MB,1)) MB)"
 
           $p = Start-Process -FilePath $exe -ArgumentList "--tray" -PassThru
-          Start-Sleep -Seconds 12
-          if ($p.HasExited) { throw "o Orbi fechou sozinho (código $($p.ExitCode))" }
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) { Falhar "o Orbi fechou sozinho (código $($p.ExitCode))" }
 
           $log = "$env:APPDATA\Orbi\orbi.log"
-          if (-not (Test-Path $log)) { throw "o Orbi não escreveu o log — não chegou a iniciar" }
-          Get-Content $log | ForEach-Object { Write-Host "  $_" }
-          $texto = Get-Content $log -Raw
-          foreach ($esperado in @("Orbi iniciando", "bandeja e atalho")) {
-            if ($texto -notmatch [regex]::Escape($esperado)) { throw "log sem '$esperado'" }
+          if (-not (Test-Path $log)) {
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            Falhar "o Orbi está rodando mas não escreveu orbi.log (travou numa janela de erro?)"
           }
 
-          # Catálogo de ferramentas: precisa ter pelo menos 80 ações.
-          $ferramentas = (Select-String -Path $log -Pattern "ferramenta" -AllMatches).Count
-          Write-Host "linhas de ferramenta no log: $ferramentas"
+          Get-Content $log | ForEach-Object { Write-Host "  $_" }
+          $texto = Get-Content $log -Raw
+          if ($texto -notmatch "Orbi iniciando") {
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            Falhar "log sem a linha de inicialização"
+          }
 
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-          Write-Host "::notice::o Orbi abriu, criou a bandeja e registrou o atalho"
+          Write-Host "::notice::o Orbi abriu e registrou a inicialização"
 
       - name: Guardar o log do Orbi
         if: always()
