@@ -281,7 +281,7 @@ public static class Installer
         if (!File.Exists(installer))
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-            using var response = client.GetAsync(RuntimeUrl).GetAwaiter().GetResult();
+            using var response = client.GetAsync(Payload.RuntimeUrl).GetAwaiter().GetResult();
             response.EnsureSuccessStatusCode();
             using var file = File.Create(installer);
             response.Content.ReadAsStream().CopyTo(file);
