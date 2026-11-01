@@ -83,7 +83,9 @@ public static class Sync
                 Target: item["mapValue"]?["fields"]?["target"]?["stringValue"]?.GetValue<string>() ?? ""))
             .Where(item => !string.IsNullOrWhiteSpace(item.Alias) && !string.IsNullOrWhiteSpace(item.Target))
             .ToList();
-        if (aliases.Count > 0)
+        // Presença do campo (e não quantidade) define quem manda: se você apagar
+        // todos os apelidos no site, o app também limpa a lista local.
+        if (fields["aliases"] is not null)
         {
             settings.Aliases = aliases.Select(item => new AliasEntry { Alias = item.Alias, Target = item.Target }).ToList();
             changes++;
@@ -96,7 +98,7 @@ public static class Sync
                 Expansion: item["mapValue"]?["fields"]?["expansion"]?["stringValue"]?.GetValue<string>() ?? ""))
             .Where(item => !string.IsNullOrWhiteSpace(item.Trigger) && !string.IsNullOrWhiteSpace(item.Expansion))
             .ToList();
-        if (shortcuts.Count > 0)
+        if (fields["shortcuts"] is not null)
         {
             settings.Shortcuts = shortcuts
                 .Select(item => new TextShortcut { Trigger = item.Trigger, Expansion = item.Expansion })
@@ -106,7 +108,7 @@ public static class Sync
 
         // rotinas
         var routines = Firebase.ReadList(fields, "routines").ToList();
-        if (routines.Count > 0)
+        if (fields["routines"] is not null)
         {
             settings.Routines = routines
                 .Select(node =>
