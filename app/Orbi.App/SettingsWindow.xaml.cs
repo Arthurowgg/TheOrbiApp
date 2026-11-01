@@ -38,7 +38,7 @@ public partial class SettingsWindow : Window
         RenderReminders();
         RenderNotes();
         RenderShortcuts();
-        RenderAliases();
+        RenderMemory();
     }
 
     /* ----------------------------- conta e sync ----------------------------- */
@@ -133,7 +133,7 @@ public partial class SettingsWindow : Window
     {
         if (Pages is null) return;
         var tag = (Nav.SelectedItem as ListBoxItem)?.Tag as string ?? "geral";
-        foreach (var page in new[] { PageGeral, PageIa, PageConta, PageLembretes, PageNotas, PageAtalhos, PageApelidos, PageSeguranca, PageSobre })
+        foreach (var page in new[] { PageGeral, PageIa, PageConta, PageLembretes, PageNotas, PageAtalhos, PageMemoria, PageSeguranca, PageSobre })
         {
             page.Visibility = Visibility.Collapsed;
         }
@@ -144,7 +144,7 @@ public partial class SettingsWindow : Window
             "lembretes" => PageLembretes,
             "notas" => PageNotas,
             "atalhos" => PageAtalhos,
-            "apelidos" => PageApelidos,
+            "memoria" => PageMemoria,
             "seguranca" => PageSeguranca,
             "sobre" => PageSobre,
             _ => PageGeral,
@@ -272,18 +272,11 @@ public partial class SettingsWindow : Window
         _ = Sync.PushAsync();
     }
 
-    private void AddAlias_Click(object sender, RoutedEventArgs e)
+    private void ForgetMemory_Click(object sender, RoutedEventArgs e)
     {
-        var alias = AliasName.Text.Trim();
-        var target = AliasTarget.Text.Trim();
-        if (string.IsNullOrWhiteSpace(alias) || string.IsNullOrWhiteSpace(target)) return;
-        Store.Current.Aliases.RemoveAll(item => item.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase));
-        Store.Current.Aliases.Add(new AliasEntry { Alias = alias, Target = target });
-        Store.Save();
-        AliasName.Text = "";
-        AliasTarget.Text = "";
-        RenderAliases();
-        _ = Sync.PushAsync();
+        Memory.Forget();
+        RenderMemory();
+        MemoriaStatus.Text = "Memória apagada.";
     }
 
     /* ----------------------------- listas ----------------------------- */
@@ -398,21 +391,23 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void RenderAliases()
+    private void RenderMemory()
     {
-        AliasesList.Items.Clear();
-        foreach (var alias in Store.Current.Aliases.ToList())
+        var entradas = Memory.All;
+        MemoriaList.Items.Clear();
+        MemoriaResumo.Text = entradas.Count == 0
+            ? "Ainda não há nada registrado. Peça alguma coisa na barra e volte aqui."
+            : $"{entradas.Count} registros · os mais recentes aparecem primeiro.";
+
+        foreach (var entry in entradas.Take(80))
         {
-            AliasesList.Items.Add(new TextBlock
+            MemoriaList.Items.Add(new TextBlock
             {
                 Margin = new Thickness(0, 4, 0, 4),
+                TextWrapping = TextWrapping.Wrap,
                 Foreground = (Brush)FindResource("Ink2"),
-                Text = $"“{alias.Alias}” → {alias.Target}",
+                Text = $"{entry.At:dd/MM HH:mm} · {entry.Kind} · {entry.Text}",
             });
-        }
-        if (AliasesList.Items.Count == 0)
-        {
-            AliasesList.Items.Add(new TextBlock { Text = "Nenhum apelido ainda.", Foreground = (Brush)FindResource("Warm") });
         }
     }
 

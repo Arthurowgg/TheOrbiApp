@@ -63,7 +63,7 @@
           <ListBoxItem Content="Lembretes" Tag="lembretes"/>
           <ListBoxItem Content="Notas" Tag="notas"/>
           <ListBoxItem Content="Atalhos de texto" Tag="atalhos"/>
-          <ListBoxItem Content="Apelidos de apps" Tag="apelidos"/>
+          <ListBoxItem Content="Memória" Tag="memoria"/>
           <ListBoxItem Content="Segurança" Tag="seguranca"/>
           <ListBoxItem Content="Sobre" Tag="sobre"/>
         </ListBox>
@@ -204,7 +204,7 @@
 
                 <TextBlock Text="O que sincroniza pelo Firestore" Style="{StaticResource Label}"/>
                 <TextBlock Style="{StaticResource Body}" Margin="0,6,0,0"
-                           Text="Apelidos de apps · atalhos de texto · rotinas · preferências (abrir com o Windows, volume, bloqueio) · nome"/>
+                           Text="Memória do Orbi · atalhos de texto · rotinas · preferências (abrir com o Windows, volume, bloqueio) · nome"/>
                 <Border Style="{StaticResource Divider}"/>
                 <TextBlock Text="O que fica só neste PC" Style="{StaticResource Label}"/>
                 <TextBlock Style="{StaticResource Body}" Margin="0,6,0,0"
@@ -257,20 +257,22 @@
             </Border>
           </StackPanel>
 
-          <!-- APELIDOS -->
-          <StackPanel x:Name="PageApelidos" Visibility="Collapsed">
-            <TextBlock Text="Apelidos de apps" Style="{StaticResource H1}"/>
-            <TextBlock Text="“zap” = WhatsApp. O apelido vale para o comando “abre …”." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
+          <!-- MEMÓRIA -->
+          <StackPanel x:Name="PageMemoria" Visibility="Collapsed">
+            <TextBlock Text="Memória do Orbi" Style="{StaticResource H1}"/>
+            <TextBlock Text="O que você pediu, o que foi feito e o que você anotou. É daqui que saem as respostas para “o que eu fiz hoje?”." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <TextBlock Text="Apelido" Style="{StaticResource Label}"/>
-                <TextBox x:Name="AliasName" Style="{StaticResource Field}" Margin="0,6,0,0"/>
-                <TextBlock Text="App ou caminho" Style="{StaticResource Label}" Margin="0,10,0,0"/>
-                <TextBox x:Name="AliasTarget" Style="{StaticResource Field}" Margin="0,6,0,0"/>
-                <Button Content="Adicionar" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
-                        Margin="0,8,0,0" Click="AddAlias_Click"/>
+                <TextBlock x:Name="MemoriaResumo" Style="{StaticResource Muted}"/>
                 <Border Style="{StaticResource Divider}"/>
-                <ItemsControl x:Name="AliasesList"/>
+                <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                  <ItemsControl x:Name="MemoriaList"/>
+                </ScrollViewer>
+                <Border Style="{StaticResource Divider}"/>
+                <StackPanel Orientation="Horizontal">
+                  <Button Content="Esquecer tudo" Style="{StaticResource PrimaryButton}" Click="ForgetMemory_Click"/>
+                  <TextBlock x:Name="MemoriaStatus" Style="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
               </StackPanel>
             </Border>
           </StackPanel>
@@ -310,7 +312,7 @@
                            Style="{StaticResource Body}" Margin="0,6,0,0"/>
                 <Border Style="{StaticResource Divider}"/>
                 <TextBlock Text="O que pode ir para a sua conta" Style="{StaticResource Label}"/>
-                <TextBlock Text="Nome, e-mail, apelidos de apps, atalhos de texto, preferências e a lista de PCs vinculados"
+                <TextBlock Text="Nome, e-mail, memória do Orbi, atalhos de texto, preferências e a lista de PCs"
                            Style="{StaticResource Body}" Margin="0,6,0,0"/>
                 <Border Style="{StaticResource Divider}"/>
                 <TextBlock Text="Chave do Gemini" Style="{StaticResource Label}"/>

@@ -189,6 +189,13 @@ public partial class CommandBar : Window
             Add(new ResultRow { Glyph = "\u2192", Text = command, Command = command, Badge = "exemplo" });
         }
 
+        // A memória aparece como sugestão: é assim que a pessoa descobre que
+        // pode perguntar “o que eu fiz hoje?”.
+        foreach (var lembranca in Memory.Suggestions().Take(2))
+        {
+            Add(new ResultRow { Glyph = "\u21BA", Text = lembranca, Command = lembranca, Badge = "memória" });
+        }
+
         var recent = Store.Current.Commands.Take(3).ToList();
         foreach (var command in recent)
         {
@@ -291,6 +298,23 @@ public partial class CommandBar : Window
         BadgeTextBrush = reply.Kind is ReplyKind.Confirm or ReplyKind.NeedsAi ? "#FFFFFFFF" : "#99F1EBDF",
     };
 
+    /// <summary>
+    /// Toda conversa vira memória: o pedido, o que o app fez e a resposta da IA.
+    /// É isso que permite “o que eu tava fazendo ontem?” funcionar depois.
+    /// </summary>
+    private static void Remember(string pedido, OrbiReply reply)
+    {
+        try
+        {
+            var detalhe = string.IsNullOrWhiteSpace(reply.Detail) ? reply.Text : reply.Detail;
+            Memory.Remember(pedido, "pedido", detalhe);
+        }
+        catch
+        {
+            // memória nunca pode atrapalhar a execução
+        }
+    }
+
     /* ----------------------------- IA ----------------------------- */
     private async Task AskAiAsync(string prompt)
     {
@@ -299,7 +323,7 @@ public partial class CommandBar : Window
         Footer.Text = "consultando o Gemini…";
         try
         {
-            var answer = await Gemini.AskAsync(prompt, _history);
+            var answer = await Gemini.AskAsync(prompt, _history, Memory.TodaySummary());
             _rows.Clear();
             if (answer is null)
             {
@@ -324,6 +348,7 @@ public partial class CommandBar : Window
                 });
                 _history.Add(("user", prompt));
                 _history.Add(("assistant", answer));
+                Memory.Remember(prompt, "ia", answer);
                 if (_history.Count > 12) _history.RemoveRange(0, _history.Count - 12);
             }
         }
@@ -404,6 +429,7 @@ public partial class CommandBar : Window
     {
         Store.PushCommand(text);
         var reply = Interpreter.Execute(text);
+        Remember(text, reply);
 
         _rows.Clear();
         Add(ToRow(reply));

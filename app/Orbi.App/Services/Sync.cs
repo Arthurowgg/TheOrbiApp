@@ -6,7 +6,7 @@ namespace Orbi.Services;
 /// <summary>
 /// Sincronização com o Firestore — a mesma coleção `users/{uid}` que o site usa.
 ///
-/// - PULL: traz apelidos, atalhos, rotinas, preferências e o nome da conta.
+/// - PULL: traz a memória, atalhos, rotinas, preferências e o nome da conta.
 /// - PUSH: manda o que foi editado no app (só campos que o app controla),
 ///   quase sempre com updateMask parcial, para nunca sobrescrever o site.
 /// - LOOP: a cada 45 s confere a versão remota; se mudou, aplica.
@@ -76,18 +76,28 @@ public static class Sync
 
         settings.AccountEmail = Firebase.ReadString(fields, "email", Firebase.Email ?? "");
 
-        // apelidos
-        var aliases = Firebase.ReadList(fields, "aliases")
-            .Select(item => (
-                Alias: item["mapValue"]?["fields"]?["alias"]?["stringValue"]?.GetValue<string>() ?? "",
-                Target: item["mapValue"]?["fields"]?["target"]?["stringValue"]?.GetValue<string>() ?? ""))
-            .Where(item => !string.IsNullOrWhiteSpace(item.Alias) && !string.IsNullOrWhiteSpace(item.Target))
-            .ToList();
-        // Presença do campo (e não quantidade) define quem manda: se você apagar
-        // todos os apelidos no site, o app também limpa a lista local.
-        if (fields["aliases"] is not null)
+        // memória do Orbi (o que você pediu, anotou e fez)
+        if (fields["memory"] is not null)
         {
-            settings.Aliases = aliases.Select(item => new AliasEntry { Alias = item.Alias, Target = item.Target }).ToList();
+            var lembrancas = Firebase.ReadList(fields, "memory")
+                .Select(item =>
+                {
+                    var campos = item["mapValue"]?["fields"];
+                    var quando = campos?["at"]?["timestampValue"]?.GetValue<string>();
+                    return new MemoryEntry
+                    {
+                        Kind = campos?["kind"]?["stringValue"]?.GetValue<string>() ?? "pedido",
+                        Text = campos?["text"]?["stringValue"]?.GetValue<string>() ?? "",
+                        Answer = campos?["answer"]?["stringValue"]?.GetValue<string>(),
+                        At = DateTime.TryParse(quando, out var at) ? at.ToLocalTime() : DateTime.Now,
+                    };
+                })
+                .Where(entry => !string.IsNullOrWhiteSpace(entry.Text))
+                .OrderByDescending(entry => entry.At)
+                .Take(200)
+                .ToList();
+
+            if (lembrancas.Count > 0) Memory.Adopt(lembrancas);
             changes++;
         }
 
@@ -161,10 +171,12 @@ public static class Sync
         {
             ["name"] = Firebase.Str(settings.UserName),
             ["lastSyncAt"] = Firebase.Timestamp(DateTime.UtcNow),
-            ["aliases"] = Firebase.List(settings.Aliases.Select(alias => Firebase.Map(new JsonObject
+            ["memory"] = Firebase.List(Memory.All.Take(120).Select(entry => Firebase.Map(new JsonObject
             {
-                ["alias"] = Firebase.Str(alias.Alias),
-                ["target"] = Firebase.Str(alias.Target),
+                ["text"] = Firebase.Str(entry.Text),
+                ["kind"] = Firebase.Str(entry.Kind),
+                ["answer"] = Firebase.Str(entry.Answer ?? ""),
+                ["at"] = Firebase.Timestamp(entry.At.ToUniversalTime()),
             }))),
             ["shortcuts"] = Firebase.List(settings.Shortcuts.Select(shortcut => Firebase.Map(new JsonObject
             {

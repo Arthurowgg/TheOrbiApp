@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
 using System.IO;
 using System.Management;
 using System.Runtime.InteropServices;
@@ -175,15 +177,7 @@ public static class SystemActions
         var name = rawName.Trim().Trim('"', '.', ',');
         if (string.IsNullOrWhiteSpace(name)) return "Não entendi qual app você quer abrir.";
 
-        // 1. apelido do usuário
-        var alias = Store.Current.Aliases.FirstOrDefault(
-            item => item.Alias.Equals(name, StringComparison.OrdinalIgnoreCase));
-        if (alias is not null && !string.IsNullOrWhiteSpace(alias.Target))
-        {
-            name = alias.Target;
-        }
-
-        // 2. apelido conhecido
+        // 1. nome conhecido
         if (KnownApps.TryGetValue(name.ToLowerInvariant(), out var executable))
         {
             // Package Family Name (app da Store): shell:AppsFolder\AUMID
@@ -196,20 +190,20 @@ public static class SystemActions
             return Launch(executable, DisplayName(executable, name));
         }
 
-        // 3. caminho direto
+        // 2. caminho direto
         if (File.Exists(name))
         {
             return Launch($"\"{name}\"", Path.GetFileNameWithoutExtension(name));
         }
 
-        // 4. procura no Menu Iniciar
+        // 3. procura sozinho no Windows (Menu Iniciar, Área de trabalho, Store)
         var found = SearchStartMenu(name);
         if (found is not null)
         {
             return Launch($"\"{found}\"", Path.GetFileNameWithoutExtension(found));
         }
 
-        // 5. app da Store / protocolo
+        // 4. app da Store / protocolo
         try
         {
             Process.Start(new ProcessStartInfo(name) { UseShellExecute = true });
@@ -217,7 +211,7 @@ public static class SystemActions
         }
         catch
         {
-            return $"Não encontrei “{name}” neste PC. Confira o nome no Menu Iniciar — ou cadastre um apelido em Ajustes ▸ Apelidos.";
+            return $"Não encontrei “{name}” instalado neste PC. Confira o nome no Menu Iniciar.";
         }
     }
 
@@ -247,7 +241,7 @@ public static class SystemActions
             return $"Abrindo {display}.";
         }
 
-        return $"Não consegui abrir {display}. Ele está instalado? Tente “abre o {display.ToLowerInvariant()}” ou cadastre um apelido em Ajustes ▸ Apelidos.";
+        return $"Não consegui abrir {display}. Ele está instalado?";
     }
 
     private static bool TryStart(string command)
@@ -324,31 +318,147 @@ public static class SystemActions
         }
     }
 
+    /// <summary>
+    /// Acha o app sem ninguém cadastrar nada: Menu Iniciar (+ Inicializar), atalhos
+    /// da Área de trabalho, executáveis soltos e apps da Microsoft Store, com
+    /// comparação tolerante a acento, caixa, espaços e erros de digitação.
+    /// </summary>
     private static string? SearchStartMenu(string query)
+    {
+        var wanted = AppKey(query);
+        if (wanted.Length < 2) return null;
+
+        string? fuzzy = null;
+
+        foreach (var (file, key) in InstalledShortcuts())
+        {
+            if (key == wanted) return file;                  // exato
+            if (key.Replace(" ", "") == wanted.Replace(" ", "")) return file;
+
+            // "zap" acha "WhatsApp"; "excel" acha "Microsoft Excel"…
+            if (wanted.Length >= 3 && key.Contains(wanted)) return file;
+            if (fuzzy is null && wanted.Length >= 4 && key.Length >= 3 && Distance(key, wanted) <= 2)
+            {
+                fuzzy = file;
+            }
+        }
+
+        if (fuzzy is not null) return fuzzy;
+
+        return SearchStoreApps(wanted);
+    }
+
+    /// <summary>Atalhos instalados para este usuário, com a chave comparável.</summary>
+    private static IEnumerable<(string File, string Key)> InstalledShortcuts()
     {
         var folders = new[]
         {
             Environment.GetFolderPath(Environment.SpecialFolder.StartMenu),
             Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu),
+            Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory),
         };
-        var terms = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
+        foreach (var folder in folders.Where(Directory.Exists))
+        {
+            IEnumerable<string> files;
+            try
+            {
+                files = Directory.EnumerateFiles(folder, "*.lnk", SearchOption.AllDirectories).ToList();
+            }
+            catch
+            {
+                continue; // pasta protegida: segue
+            }
+
+            foreach (var file in files)
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                yield return (file, AppKey(name));
+            }
+        }
+    }
+
+    /// <summary>Apps da Microsoft Store: compara com o nome de exibição.</summary>
+    private static string? SearchStoreApps(string wanted)
+    {
         try
         {
-            foreach (var folder in folders.Where(Directory.Exists))
+            // Late binding (sem interop): o Windows expõe shell:AppsFolder pelo Shell.
+            dynamic? shell = Activator.CreateInstance(Type.GetTypeFromProgID("Shell.Application")!);
+            if (shell is null) return null;
+            dynamic? folder = shell.NameSpace("shell:AppsFolder");
+            if (folder is null) return null;
+
+            foreach (dynamic entry in folder.Items())
             {
-                foreach (var file in Directory.EnumerateFiles(folder, "*.lnk", SearchOption.AllDirectories))
+                string name;
+                string path;
+                try
                 {
-                    var fileName = Path.GetFileNameWithoutExtension(file).ToLowerInvariant();
-                    if (terms.All(term => fileName.Contains(term))) return file;
+                    name = (string)(entry.Name ?? "");
+                    path = (string)(entry.Path ?? "");
+                }
+                catch
+                {
+                    continue;
+                }
+
+                var key = AppKey(name);
+                if (key.Length < 3) continue;
+                if (key == wanted || key.Contains(wanted) || (wanted.Length >= 4 && Distance(key, wanted) <= 2))
+                {
+                    // O Shell devolve "pasta\AUMID"; o que abre é só o AUMID.
+                    var atalho = "shell:AppsFolder\\" + Path.GetFileName(path ?? "");
+                    if (!string.IsNullOrWhiteSpace(Path.GetFileName(path ?? ""))) return atalho;
                 }
             }
         }
         catch
         {
-            // acesso negado em alguma pasta: seguimos para o próximo caminho
+            // sem shell/COM: o Menu Iniciar já cobriu os casos comuns
         }
         return null;
+    }
+
+    /// <summary>Nome comparável: sem acento, sem caixa, sem pontuação, sem "app"/"desktop".</summary>
+    private static string AppKey(string name)
+    {
+        var lowered = (name ?? "").ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(lowered.Length);
+        foreach (var ch in lowered)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark) continue;
+            builder.Append(char.IsLetterOrDigit(ch) || ch == ' ' ? ch : ' ');
+        }
+
+        var words = builder.ToString()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(word => word is not ("app" or "desktop" or "classic" or "new" or "v" or "x64" or "x86"))
+            .ToArray();
+
+        return string.Join(' ', words);
+    }
+
+    /// <summary>Distância de edição — para "whatsap" achar "WhatsApp".</summary>
+    private static int Distance(string a, string b)
+    {
+        if (Math.Abs(a.Length - b.Length) > 3) return 99;
+        var previous = new int[b.Length + 1];
+        var current = new int[b.Length + 1];
+        for (var j = 0; j <= b.Length; j++) previous[j] = j;
+
+        for (var i = 1; i <= a.Length; i++)
+        {
+            current[0] = i;
+            for (var j = 1; j <= b.Length; j++)
+            {
+                var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                current[j] = Math.Min(Math.Min(current[j - 1] + 1, previous[j] + 1), previous[j - 1] + cost);
+            }
+            (previous, current) = (current, previous);
+        }
+        return previous[b.Length];
     }
 
     public static string Close(string processName)

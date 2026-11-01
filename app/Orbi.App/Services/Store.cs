@@ -28,7 +28,6 @@ public sealed class OrbiSettings
     public List<Note> Notes { get; set; } = new();
     public List<string> ClipboardHistory { get; set; } = new();
     public List<TextShortcut> Shortcuts { get; set; } = new();
-    public List<AliasEntry> Aliases { get; set; } = new();
     public List<string> Commands { get; set; } = new();
     public List<Routine> Routines { get; set; } = new();
     public List<string> LinkedPcs { get; set; } = new();
@@ -63,12 +62,6 @@ public sealed class TextShortcut
 {
     public string Trigger { get; set; } = "";
     public string Expansion { get; set; } = "";
-}
-
-public sealed class AliasEntry
-{
-    public string Alias { get; set; } = "";
-    public string Target { get; set; } = "";
 }
 
 public sealed class Routine

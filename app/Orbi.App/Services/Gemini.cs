@@ -14,7 +14,8 @@ public static class Gemini
 
     public static bool Available => Store.Current.UseGemini && Store.HasApiKey();
 
-    public static async Task<string?> AskAsync(string prompt, IEnumerable<(string Role, string Text)>? history = null)
+    public static async Task<string?> AskAsync(string prompt, IEnumerable<(string Role, string Text)>? history = null,
+        string? memory = null)
     {
         var key = Store.LoadApiKey();
         if (string.IsNullOrWhiteSpace(key)) return null;
@@ -30,7 +31,9 @@ public static class Gemini
                      "direto, no máximo 3 frases. Se o pedido puder ser resolvido por um comando do app, " +
                      "diga o comando exato (ex.: “abre o zap”, “volume em 30”, “me lembra em 20 min”). " +
                      "Você não executa ações: apenas responde e sugere comandos. " +
-                     $"O usuário se chama {Store.Current.UserName}. Data: {DateTime.Now:dd/MM/yyyy}.";
+                     $"O usuário se chama {Store.Current.UserName}. Data: {DateTime.Now:dd/MM/yyyy}. " +
+                     "Você tem memória do dia dele e deve usá-la para responder perguntas como " +
+                     "“o que eu tava fazendo?”: " + (string.IsNullOrWhiteSpace(memory) ? "nada registrado hoje." : memory);
 
         if (history is not null)
         {

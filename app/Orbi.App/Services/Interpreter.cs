@@ -122,6 +122,11 @@ public static partial class Interpreter
         var text = Normalize(input);
         if (string.IsNullOrWhiteSpace(text)) return OrbiReply.Local("Me diga o que você precisa.");
 
+        /* ----------------------------- memória ----------------------------- */
+        // Perguntas sobre o próprio histórico são respondidas no PC, sem IA e
+        // sem internet a partir do que o app registrou.
+        if (Memory.Answer(input) is { } lembranca) return OrbiReply.Local(lembranca);
+
         /* ----------------------------- desligar / reiniciar ----------------------------- */
         if (Cancel().IsMatch(text))
         {
@@ -166,6 +171,7 @@ public static partial class Interpreter
             };
             Store.Current.Reminders.Add(reminder);
             Store.Save();
+            Memory.Remember(reminder.Text, "lembrete", $"aviso às {reminder.DueAt:dd/MM HH:mm}");
             return OrbiReply.Local(
                 $"Combinado. Te aviso {Human(minutes.Value)} sobre “{reminder.Text}”. Fica salvo neste PC.",
                 $"Próximo aviso às {reminder.DueAt:HH:mm}.");
@@ -177,6 +183,7 @@ public static partial class Interpreter
             if (string.IsNullOrWhiteSpace(note)) return OrbiReply.Local("O que você quer anotar?");
             Store.Current.Notes.Insert(0, new Note { Text = note });
             Store.Save();
+            Memory.Remember(note, "nota");
             return OrbiReply.Local($"Anotado: “{note}”.", "Fica no seu PC, em Ajustes ▸ Notas.");
         }
 
@@ -287,21 +294,6 @@ public static partial class Interpreter
             return OrbiReply.Local("Play/pause enviado para o player.");
         }
 
-        /* ----------------------------- apelidos do usuário ----------------------------- */
-        // "abre o trabalho" → apelido "trabalho" cadastrado no app/site.
-        var alias = Store.Current.Aliases.FirstOrDefault(item =>
-            !string.IsNullOrWhiteSpace(item.Alias) &&
-            (text.Contains(" " + Normalize(item.Alias), StringComparison.Ordinal) ||
-             text.StartsWith(Normalize(item.Alias), StringComparison.Ordinal) ||
-             text == Normalize(item.Alias)));
-
-        if (alias is not null && alias.Target.Length > 0 &&
-            (text.StartsWith("abre", StringComparison.Ordinal) || text.StartsWith("abrir", StringComparison.Ordinal)
-             || text.StartsWith("inicia", StringComparison.Ordinal) || text == Normalize(alias.Alias)))
-        {
-            return OrbiReply.Local(SystemActions.Open(alias.Target), $"Apelido “{alias.Alias}” da sua conta.");
-        }
-
         /* ----------------------------- rotinas ----------------------------- */
         // As rotinas vêm da conta (Firestore) e são editáveis no site.
         var routine = Store.Current.Routines.FirstOrDefault(item =>
@@ -344,7 +336,7 @@ public static partial class Interpreter
             {
                 return OrbiReply.Local("Qual app devo abrir?");
             }
-            return OrbiReply.Local(SystemActions.Open(target), "Busca por apelido no seu PC.");
+            return OrbiReply.Local(SystemActions.Open(target), "Procurei no seu Windows — sem precisar cadastrar nada.");
         }
 
         var closeMatch = CloseCmd().Match(text);

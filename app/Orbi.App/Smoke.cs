@@ -37,7 +37,7 @@ public static class Smoke
         try
         {
             var settings = Store.Current;
-            Line($"Dados locais: ok (nome \"{settings.UserName}\", {settings.Aliases.Count} apelidos, {settings.Reminders.Count} lembretes)");
+            Line($"Dados locais: ok (nome \"{settings.UserName}\", {Memory.All.Count} registros de memória, {settings.Reminders.Count} lembretes)");
         }
         catch (Exception error)
         {
