@@ -50,26 +50,54 @@ public partial class CommandBar : Window
 
     public void ShowBar()
     {
-        if (!IsVisible)
-        {
-            Show();
-        }
-
-        // Centraliza na tela em que o usuário está.
-        var screen = System.Windows.Forms.Screen.FromPoint(
-            System.Windows.Forms.Cursor.Position);
+        // Redimensiona para caber na tela (notebook pequeno, escala 150%…).
+        var screen = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Cursor.Position);
         var area = screen.WorkingArea;
-        var dpi = VisualTreeHelper.GetDpi(this);
-        Left = area.Left / dpi.DpiScaleX + (area.Width / dpi.DpiScaleX - Width) / 2;
-        Top = area.Top / dpi.DpiScaleY + area.Height / dpi.DpiScaleY * 0.28;
+        var scale = VisualTreeHelper.GetDpi(this);
+
+        var width = Math.Min(Width, area.Width / scale.DpiScaleX - 40);
+        var height = Math.Min(Height, area.Height / scale.DpiScaleY - 40);
+        if (width > 300) Width = width;
+        if (height > 200) Height = height;
+
+        // WorkingArea e Left/Top: ambos em pixels físicos (unidades nativas).
+        Left = area.Left + (area.Width - Width * scale.DpiScaleX) / 2;
+        Top = area.Top + area.Height * 0.24;
+
+        if (!IsVisible) Show();
 
         Input.Text = "";
         _rows.Clear();
         ShowGreeting();
-        Activate();
+        UpdateFooter();
+
         Topmost = true;
+        Activate();
+        Focus();
         Input.Focus();
         Keyboard.Focus(Input);
+    }
+
+    /// <summary>Mostra o atalho que está realmente funcionando.</summary>
+    private void UpdateFooter()
+    {
+        var keys = string.IsNullOrEmpty(HotKey.Combination) ? "use o ícone na bandeja" : HotKey.Combination;
+        Footer.Text = $"{keys} abre · Enter executa · Esc esconde";
+    }
+
+    /// <summary>
+    /// Fechar a janela (X, Alt+F4) só esconde — o app vive na bandeja.
+    /// Só o menu "Sair" encerra de verdade.
+    /// </summary>
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        var app = System.Windows.Application.Current as App;
+        if (app is null || !app.ClosingForReal)
+        {
+            e.Cancel = true;
+            Hide();
+        }
+        base.OnClosing(e);
     }
 
     public void HideBar()
@@ -77,10 +105,14 @@ public partial class CommandBar : Window
         Hide();
     }
 
-    protected override void OnDeactivated(EventArgs e)
+    /// <summary>Arrasta a janela pela faixa de entrada.</summary>
+    private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        base.OnDeactivated(e);
-        if (!_thinking) HideBar();
+        if (e.ButtonState == MouseButtonState.Pressed)
+        {
+            try { DragMove(); }
+            catch { /* clique simples, sem arrasto */ }
+        }
     }
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
@@ -88,7 +120,8 @@ public partial class CommandBar : Window
         base.OnPreviewKeyDown(e);
         if (e.Key == Key.Escape)
         {
-            HideBar();
+            // Esc esconde a barra; o app continua vivo na bandeja.
+            Hide();
             e.Handled = true;
         }
     }
@@ -102,7 +135,7 @@ public partial class CommandBar : Window
         var pending = Store.Current.Reminders.Count(r => !r.Done && r.DueAt > DateTime.Now);
         var detail = pending > 0
             ? $"Você tem {pending} lembrete(s) pendente(s)."
-            : "Alt+Space em qualquer programa.";
+            : ShortcutHint();
 
         Add(new ResultRow
         {
@@ -134,6 +167,11 @@ public partial class CommandBar : Window
         }
     }
 
+    private static string ShortcutHint() =>
+        string.IsNullOrEmpty(HotKey.Combination)
+            ? "Abra pelo ícone do Orbi na bandeja."
+            : $"{HotKey.Combination} abre em qualquer programa.";
+
     private void Add(ResultRow row) => _rows.Add(row);
 
     /* ----------------------------- digitação ----------------------------- */
@@ -150,11 +188,15 @@ public partial class CommandBar : Window
             return;
         }
 
+        // Sugestão ao vivo: mostra o que vai acontecer antes de apertar Enter.
         var preview = Interpreter.Interpret(text);
         if (preview.Kind != ReplyKind.NeedsAi)
         {
             _debounce.Stop();
             Add(ToRow(preview));
+
+            // 1º item selecionado: Enter executa sem precisar clicar.
+            Results.SelectedIndex = 0;
             if (preview.Kind == ReplyKind.Confirm)
             {
                 Add(new ResultRow
@@ -174,6 +216,7 @@ public partial class CommandBar : Window
 
         if (!Gemini.Available)
         {
+            Results.SelectedIndex = 0;
             Add(new ResultRow
             {
                 Glyph = "?",
@@ -258,7 +301,7 @@ public partial class CommandBar : Window
         finally
         {
             _thinking = false;
-            Footer.Text = "Alt+Space abre · Enter executa · Esc fecha";
+            UpdateFooter();
         }
     }
 
@@ -308,15 +351,8 @@ public partial class CommandBar : Window
             return;
         }
 
-        if (selected?.Command is { } command && string.IsNullOrWhiteSpace(text) == false
-            && string.Equals(command, text, StringComparison.OrdinalIgnoreCase) == false
-            && _rows.Count == 4)
-        {
-            // usuário escolheu um exemplo
-            ExecuteSelected(command);
-            return;
-        }
-
+        // Texto digitado sempre vence: Enter executa o que está na caixa.
+        // A seleção só é usada quando a caixa está vazia (exemplos/recentes).
         if (string.IsNullOrWhiteSpace(text) && selected?.Command is { } picked)
         {
             ExecuteSelected(picked);

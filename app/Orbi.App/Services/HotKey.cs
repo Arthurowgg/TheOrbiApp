@@ -23,28 +23,48 @@ public static class HotKey
     private static Action? _callback;
     public static bool Registered { get; private set; }
 
-    public static void Attach(Window window)
+    /// <summary>Qual combinação está valendo: "Alt+Space", "Ctrl+Alt+Space" ou nenhuma.</summary>
+    public static string Combination { get; private set; } = "";
+
+    /// <summary>
+    /// Anexa o atalho a uma janela. O HWND só existe depois de SourceInitialized —
+    /// registrar antes disso era o motivo de Alt+Space não funcionar.
+    /// Se a janela já foi criada, registra imediatamente.
+    /// </summary>
+    public static void Attach(Window window, Action callback)
     {
-        window.SourceInitialized += (_, _) =>
+        _callback = callback;
+
+        void Try()
         {
-            _source = HwndSource.FromHwnd(new WindowInteropHelper(window).Handle);
+            var handle = new WindowInteropHelper(window).Handle;
+            if (handle == IntPtr.Zero) return;
+            _source = HwndSource.FromHwnd(handle);
             _source?.AddHook(Hook);
             TryRegister();
-        };
+        }
+
+        if (new WindowInteropHelper(window).Handle != IntPtr.Zero) Try();
+        else window.SourceInitialized += (_, _) => Try();
     }
 
     public static void Register(Action<IntPtr> _unused, Action callback) => _callback = callback;
 
     public static void TryRegister()
     {
-        if (_source is null) return;
+        if (_source is null || _source.Handle == IntPtr.Zero) return;
+
         Registered = RegisterHotKey(_source.Handle, Id, ModAlt | ModNoRepeat, VkSpace);
-        if (!Registered)
+        if (Registered)
         {
-            // Outro app pode já usar Alt+Space (PowerToys Run, por exemplo).
-            // Nesse caso a bandeja e o atalho Ctrl+Alt+Space continuam funcionando.
-            RegisterHotKey(_source.Handle, Id + 1, 0x0002 | 0x0001 | ModNoRepeat, VkSpace); // Ctrl+Alt+Space
+            Combination = "Alt+Space";
+            return;
         }
+
+        // Outro app pode já usar Alt+Space (PowerToys Run, por exemplo).
+        // Nesse caso caímos para Ctrl+Alt+Space, e a bandeja continua funcionando.
+        Registered = RegisterHotKey(_source.Handle, Id + 1, 0x0002 | 0x0001 | ModNoRepeat, VkSpace);
+        Combination = Registered ? "Ctrl+Alt+Space" : "";
     }
 
     private static IntPtr Hook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

@@ -160,6 +160,11 @@ public static class SystemActions
         ["notion"] = "Notion.exe",
         ["netflix"] = "netflix:",
         ["camera"] = "microsoft.windows.camera:",
+        ["fotos"] = "ms-photos:",
+        ["spotify music"] = "SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify",
+        ["whatsapp store"] = "5319275A.WhatsAppDesktop_cv1g1gvanyjgm!WhatsAppDesktop",
+        ["tiktok"] = "BytedancePte.Ltd.TikTok_6yq1qqg9905d0!App",
+        ["instagram"] = "Facebook.InstagramBeta_8xx8rvfyw5cn7!App",
     };
 
     public static IReadOnlyCollection<string> AppNames => KnownApps.Keys;
@@ -181,6 +186,13 @@ public static class SystemActions
         // 2. apelido conhecido
         if (KnownApps.TryGetValue(name.ToLowerInvariant(), out var executable))
         {
+            // Package Family Name (app da Store): shell:AppsFolder\AUMID
+            if (executable.Contains('!'))
+            {
+                return TryStart("shell:AppsFolder\\" + executable)
+                    ? $"Abrindo {name}."
+                    : $"Não consegui abrir {name}. Ele está instalado neste PC?";
+            }
             return Launch(executable, DisplayName(executable, name));
         }
 
@@ -217,14 +229,98 @@ public static class SystemActions
 
     private static string Launch(string command, string display)
     {
+        if (TryStart(command)) return $"Abrindo {display}.";
+
+        // Protocolos (ms-settings:, netflix:, ms-photos:…) não têm outro caminho:
+        // falhar aqui significa que o app não está instalado.
+        if (command.Contains(':')) return $"{display} não está instalado neste PC.";
+
+        // Executável fora do PATH ou app da Microsoft Store: tenta o shell.
+        if (!command.Contains(':') && TryStart("shell:AppsFolder\\" + Path.GetFileNameWithoutExtension(command)))
+        {
+            return $"Abrindo {display}.";
+        }
+
+        var direct = ResolveExecutable(command);
+        if (direct is not null && TryStart($"\"{direct}\""))
+        {
+            return $"Abrindo {display}.";
+        }
+
+        return $"Não consegui abrir {display}. Ele está instalado? Tente “abre o {display.ToLowerInvariant()}” ou cadastre um apelido em Ajustes ▸ Apelidos.";
+    }
+
+    private static bool TryStart(string command)
+    {
         try
         {
             Process.Start(new ProcessStartInfo(command) { UseShellExecute = true });
-            return $"Abrindo {display}.";
+            return true;
         }
         catch
         {
-            return $"Não consegui abrir {display}. O app está instalado?";
+            return false;
+        }
+    }
+
+    /// <summary>Procura o executável em Program Files, LocalAppData e afins.</summary>
+    private static string? ResolveExecutable(string command)
+    {
+        var name = Path.GetFileName(command);
+        if (!name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) name += ".exe";
+
+        var roots = new[]
+        {
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "WindowsApps"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)),
+        };
+
+        foreach (var root in roots.Where(Directory.Exists))
+        {
+            try
+            {
+                // profundidade 3 cobre Program Files\Fornecedor\App\app.exe
+                foreach (var candidate in EnumerateSafe(root, name, 3))
+                {
+                    return candidate;
+                }
+            }
+            catch
+            {
+                // pasta sem permissão: segue para a próxima
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> EnumerateSafe(string root, string fileName, int depth)
+    {
+        var pending = new Queue<(string Path, int Level)>();
+        pending.Enqueue((root, 0));
+
+        while (pending.Count > 0)
+        {
+            var (folder, level) = pending.Dequeue();
+            string[] files;
+            try { files = Directory.GetFiles(folder, fileName); }
+            catch { files = Array.Empty<string>(); }
+
+            foreach (var file in files) yield return file;
+
+            if (level >= depth) continue;
+
+            string[] subfolders;
+            try { subfolders = Directory.GetDirectories(folder); }
+            catch { subfolders = Array.Empty<string>(); }
+
+            foreach (var subfolder in subfolders)
+            {
+                if (pending.Count < 400) pending.Enqueue((subfolder, level + 1));
+            }
         }
     }
 

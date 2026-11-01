@@ -19,6 +19,7 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        Diagnostics.Install();
         // Uma instância só: se já existe, a segunda apenas abre a barra.
         if (!SingleInstance.TryAcquire())
         {
@@ -27,26 +28,16 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        BuildTray();
-        RegisterHotkey();
-        Sync.Start();
-
-        // Primeiro uso sem conta: pergunta uma vez, sem travar o app.
-        if (!Firebase.SignedIn && !Store.Current.AskedAccount)
+        try
         {
-            Store.Current.AskedAccount = true;
-            Store.Save();
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                var answer = System.Windows.MessageBox.Show(
-                    "Quer entrar na conta do Orbi neste PC?\n\n" +
-                    "Isso sincroniza apelidos, atalhos de texto, rotinas e preferências entre o site e o app. " +
-                    "Notas, área de transferência e a chave do Gemini continuam só neste computador.",
-                    "Orbi — conta",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-                if (answer == MessageBoxResult.Yes) ShowLogin();
-            }));
+            BuildTray();
+            RegisterHotkey();
+            Sync.Start();
+        }
+        catch (Exception error)
+        {
+            // Sem bandeja/atalho o app ainda deve abrir: registra e segue.
+            Diagnostics.Report(error, "Startup", fatal: false);
         }
 
         _reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
@@ -72,10 +63,40 @@ public partial class App : System.Windows.Application
         }
 
         var silent = e.Args.Contains("--tray");
-        if (!silent)
+        if (silent)
         {
-            ShowBar();
+            // Iniciado com o Windows: fica na bandeja, com um aviso de que está vivo.
+            _tray?.ShowBalloonTip(5000, "Orbi está pronto",
+                "Aperte Alt+Space para abrir. Clique com o botão direito aqui para ajustes.",
+                Forms.ToolTipIcon.Info);
+            return;
         }
+
+        ShowBar();
+
+        // Primeiro uso sem conta: pergunta DEPOIS que a barra já apareceu,
+        // para o app nunca parecer "travado".
+        if (!Firebase.SignedIn && !Store.Current.AskedAccount)
+        {
+            Store.Current.AskedAccount = true;
+            Store.Save();
+            Dispatcher.BeginInvoke(new Action(AskAccount), DispatcherPriority.ApplicationIdle);
+        }
+    }
+
+    /// <summary>Pergunta uma vez se a pessoa quer vincular a conta.</summary>
+    private void AskAccount()
+    {
+        var answer = System.Windows.MessageBox.Show(
+            "Quer entrar na conta do Orbi neste PC?\n\n" +
+            "Sincroniza apelidos, atalhos de texto, rotinas e preferências entre o site e o app. " +
+            "Notas, área de transferência e a chave do Gemini continuam só neste computador.\n\n" +
+            "Você pode fazer isso depois em Ajustes ▸ Conta.",
+            "Orbi — conta",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (answer == MessageBoxResult.Yes) ShowLogin();
     }
 
     /* ----------------------------- bandeja ----------------------------- */
@@ -85,12 +106,24 @@ public partial class App : System.Windows.Application
         {
             Icon = TrayIcon.Load(),
             Visible = true,
-            Text = "Orbi — Alt+Space",
+            Text = "Orbi — clique para abrir",
         };
         _tray.DoubleClick += (_, _) => ShowBar();
 
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Abrir Orbi (Alt+Space)", null, (_, _) => ShowBar());
+        menu.Opening += (_, _) =>
+        {
+            _tray!.Text = string.IsNullOrEmpty(HotKey.Combination)
+                ? "Orbi — clique para abrir"
+                : $"Orbi — {HotKey.Combination}";
+            if (menu.Items.Count > 0)
+            {
+                menu.Items[0].Text = string.IsNullOrEmpty(HotKey.Combination)
+                    ? "Abrir o Orbi"
+                    : $"Abrir o Orbi ({HotKey.Combination})";
+            }
+        };
+        menu.Items.Add("Abrir o Orbi", null, (_, _) => ShowBar());
         menu.Items.Add("Ajustes…", null, (_, _) => ShowSettings());
         menu.Items.Add(Firebase.SignedIn ? "Conta e sincronização…" : "Entrar na conta…", null, (_, _) => ShowAccount());
         menu.Items.Add(new Forms.ToolStripSeparator());
@@ -113,19 +146,23 @@ public partial class App : System.Windows.Application
     }
 
     /* ----------------------------- atalho global ----------------------------- */
+    /// <summary>
+    /// Registra Alt+Space. O hotkey do Win32 precisa de um HWND: criamos a barra
+    /// (ela ainda não aparece) e reagimos ao evento SourceInitialized, que é
+    /// quando a janela realmente passa a existir. Antes, TryRegister() era
+    /// chamado antes do handle existir e o atalho nunca era registrado.
+    /// </summary>
     private void RegisterHotkey()
     {
-        HotKey.Register(handle => { }, () => ShowBar());
-        // O hook precisa de uma janela viva; usamos a barra oculta como âncora.
-        _bar = new CommandBar();
-        HotKey.Attach(_bar);
-        HotKey.TryRegister();
+        _bar ??= new CommandBar();
+        HotKey.Attach(_bar, () => ShowBar());
     }
 
     /* ----------------------------- janelas ----------------------------- */
     public void ShowBar()
     {
         _bar ??= new CommandBar();
+        if (_bar.WindowState == WindowState.Minimized) _bar.WindowState = WindowState.Normal;
         _bar.ShowBar();
     }
 
@@ -163,8 +200,12 @@ public partial class App : System.Windows.Application
         if (tab is not null) _settings.SelectTab(tab);
     }
 
+    /// <summary>Fechar a barra não pode matar o app: ela é a janela principal.</summary>
+    public bool ClosingForReal { get; private set; }
+
     public void ExitApp()
     {
+        ClosingForReal = true;
         Cleanup();
         Shutdown();
     }

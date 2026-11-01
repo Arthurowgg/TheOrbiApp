@@ -6,7 +6,7 @@
 ; ---------------------------------------------------------------------------
 
 #define AppName "Orbi"
-#define AppVersion "1.0.0"
+#define AppVersion "1.0.1"
 #define AppPublisher "Orbi"
 #define AppURL "https://orbi-app-auth.web.app"
 #define AppExe "Orbi.exe"
@@ -48,7 +48,7 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 
 [Tasks]
 Name: "desktopicon"; Description: "Criar atalho na área de trabalho"; GroupDescription: "Atalhos:"; Flags: checkedonce
-Name: "startup"; Description: "Abrir o Orbi junto com o Windows"; GroupDescription: "Inicialização:"
+Name: "startup"; Description: "Abrir o Orbi junto com o Windows"; GroupDescription: "Inicialização:"; Flags: checkedonce
 
 [Files]
 Source: "..\..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

@@ -47,6 +47,37 @@ public static partial class Interpreter
     [GeneratedRegex(@"(\d+)\s*(min|minuto|minutos|m\b|h|hora|horas)")]
     private static partial Regex Duration();
 
+    /// <summary>
+    /// Limpa o alvo de "abre o zap": o regex captura o artigo junto ("o zap"),
+    /// e nenhum app se chama "o zap". Remove artigo/pronome do início e "para mim" do fim.
+    /// </summary>
+    private static string CleanTarget(string raw)
+    {
+        var target = raw.Trim().Trim('"', '.', ',', '?', '!');
+        var changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var article in new[] { "o ", "a ", "os ", "as ", "um ", "uma ", "meu ", "minha ", "no ", "na " })
+            {
+                if (target.StartsWith(article, StringComparison.Ordinal))
+                {
+                    target = target[article.Length..].Trim();
+                    changed = true;
+                    break;
+                }
+            }
+        }
+        foreach (var suffix in new[] { " para mim", " pra mim", " agora", " por favor", " ai", " aí" })
+        {
+            if (target.EndsWith(suffix, StringComparison.Ordinal))
+            {
+                target = target[..^suffix.Length].Trim();
+            }
+        }
+        return target;
+    }
+
     private static int? Minutes(string text)
     {
         var match = Duration().Match(text);
@@ -256,6 +287,21 @@ public static partial class Interpreter
             return OrbiReply.Local("Play/pause enviado para o player.");
         }
 
+        /* ----------------------------- apelidos do usuário ----------------------------- */
+        // "abre o trabalho" → apelido "trabalho" cadastrado no app/site.
+        var alias = Store.Current.Aliases.FirstOrDefault(item =>
+            !string.IsNullOrWhiteSpace(item.Alias) &&
+            (text.Contains(" " + Normalize(item.Alias), StringComparison.Ordinal) ||
+             text.StartsWith(Normalize(item.Alias), StringComparison.Ordinal) ||
+             text == Normalize(item.Alias)));
+
+        if (alias is not null && alias.Target.Length > 0 &&
+            (text.StartsWith("abre", StringComparison.Ordinal) || text.StartsWith("abrir", StringComparison.Ordinal)
+             || text.StartsWith("inicia", StringComparison.Ordinal) || text == Normalize(alias.Alias)))
+        {
+            return OrbiReply.Local(SystemActions.Open(alias.Target), $"Apelido “{alias.Alias}” da sua conta.");
+        }
+
         /* ----------------------------- rotinas ----------------------------- */
         // As rotinas vêm da conta (Firestore) e são editáveis no site.
         var routine = Store.Current.Routines.FirstOrDefault(item =>
@@ -293,7 +339,7 @@ public static partial class Interpreter
         var openMatch = OpenCmd().Match(text);
         if (openMatch.Success)
         {
-            var target = openMatch.Groups["app"].Value.Trim();
+            var target = CleanTarget(openMatch.Groups["app"].Value);
             if (string.IsNullOrWhiteSpace(target))
             {
                 return OrbiReply.Local("Qual app devo abrir?");
@@ -304,7 +350,7 @@ public static partial class Interpreter
         var closeMatch = CloseCmd().Match(text);
         if (closeMatch.Success)
         {
-            var target = closeMatch.Groups["app"].Value.Trim();
+            var target = CleanTarget(closeMatch.Groups["app"].Value);
             if (!string.IsNullOrWhiteSpace(target))
             {
                 return OrbiReply.Confirm($"Fechar {target}? Algo não salvo pode se perder.");
