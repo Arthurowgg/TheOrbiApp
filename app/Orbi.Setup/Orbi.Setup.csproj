@@ -29,7 +29,13 @@
   <ItemGroup>
     <Compile Remove="assets\**" />
     <EmbeddedResource Include="assets\orbi.png" Condition="Exists('assets\orbi.png')" />
-    <EmbeddedResource Include="assets\payload.zip" Condition="Exists('assets\payload.zip')" />
+    <!-- Obrigatório: sem isto o setup é compilado sem o app dentro. -->
+    <EmbeddedResource Include="assets\payload.zip" />
+  </ItemGroup>
+
+  <Target Name="ExigirPayload" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('assets\payload.zip')"
+           Text="assets\payload.zip não existe: rode 'dotnet publish' do Orbi.App e empacote antes de compilar o instalador." />
   </ItemGroup>
 
 </Project>
