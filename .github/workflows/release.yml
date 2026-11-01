@@ -60,7 +60,7 @@ jobs:
       - name: Publish (pasta)
         run: >
           dotnet publish app/Orbi.App/Orbi.App.csproj
-          -c Release -r win-x64 --self-contained true
+          -c Release -r win-x64 --self-contained false
           -o artifacts/publish
 
       # O pacote do app é publicado ao lado do setup. O setup fica pequeno e
@@ -73,16 +73,14 @@ jobs:
           Compress-Archive -Path "artifacts\publish\*" -DestinationPath "artifacts\Installer\orbi-payload-1.1.2.zip" -CompressionLevel Optimal -Force
           $zip = Get-Item "artifacts\Installer\orbi-payload-1.1.2.zip"
           Write-Host ("payload: " + [math]::Round($zip.Length/1MB,1) + " MB")
-          if ($zip.Length -lt 20MB) {
+          if ($zip.Length -lt 0.2MB) {
             $pub = (Get-ChildItem "artifacts\publish" -Recurse | Measure-Object Length -Sum)
             Write-Host "::error::payload pequeno demais: $([math]::Round($zip.Length/1MB,1)) MB; publish tem $([math]::Round($pub.Sum/1MB,1)) MB em $($pub.Count) arquivos"
             throw "payload incompleto"
           }
 
-      # Sem WPF e sem WinForms: Win32 puro compilado com NativeAOT. É isso que
-      # deixa o instalador em poucos MB e independente do .NET do PC.
-      # WPF próprio, self-contained: abre mesmo em PC sem .NET e é o mesmo
-      # formato de janela que já funcionava. O tamanho extra é aceitável.
+      # WPF próprio, self-contained: o instalador abre mesmo em PC sem .NET.
+      # Ele é maior, e tudo bem — o que precisa ser leve é o app que fica instalado.
       - name: Compilar o instalador
         shell: powershell
         run: |
@@ -177,7 +175,7 @@ jobs:
           $zip = Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1
           
           
-          if ($zip.Length -lt 20MB) { throw "payload suspeito: $([math]::Round($zip.Length/1MB,1)) MB" }
+          if ($zip.Length -lt 0.2MB) { throw "payload suspeito: $([math]::Round($zip.Length/1MB,1)) MB" }
           Write-Host "::notice::instalador $($exe.Name) com $([math]::Round($exe.Length/1MB,1)) MB · payload $([math]::Round($zip.Length/1MB,1)) MB"
 
       - uses: actions/upload-artifact@v4
@@ -206,7 +204,7 @@ jobs:
       - name: Publicar (exatamente como o instalador publica)
         run: >
           dotnet publish app/Orbi.App/Orbi.App.csproj
-          -c Release -r win-x64 --self-contained true
+          -c Release -r win-x64 --self-contained false
           -o artifacts/publish
 
       # O app abre de verdade? É isso que importa — build verde não prova nada.
@@ -291,13 +289,13 @@ jobs:
           body: |
             ## Orbi 1.1.2 — para Windows 11
 
-            Instalador leve: o app é baixado durante a instalação, já com tudo que
-            ele precisa para abrir. Sem administrador e sem instalar mais nada.
+            Instalador leve: o app é baixado durante a instalação, e o .NET Desktop 8
+            só entra se o seu PC ainda não tiver. Sem privilégio de administrador.
 
             **Baixe `OrbiSetup-1.1.2.exe`** e execute. O Orbi abre como uma barra de
             comando; aperte `Alt+Shift+O` em qualquer lugar do Windows para chamar.
 
-            - Instalador leve: baixa o app durante a instalação (nada de .NET à parte)
+            - Instalador leve: baixa o app durante a instalação
             - **121 ferramentas do Windows**: áudio, brilho, energia, painéis de
               configuração, apps, janelas, pastas, rede e acessibilidade
             - Barra fina de comando: `Enter` executa, `/` abre o catálogo, `F1` também
