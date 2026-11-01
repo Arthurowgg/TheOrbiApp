@@ -120,7 +120,7 @@ public partial class CommandBar : Window
         var menu = new ContextMenu
         {
             PlacementTarget = AccountButton,
-            Placement = PlacementMode.Bottom,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
             FontFamily = FontFamily,
         };
 
