@@ -91,6 +91,18 @@ Sem o secret, o job é ignorado e o site continua publicável pelo `npm run depl
 
 ---
 
+## Problemas? 
+
+O app registra tudo em `%APPDATA%\Orbi\crash.log` e mostra uma janela legível quando algo
+falha. Atalhos:
+
+| Sintoma | O que fazer |
+| --- | --- |
+| Abriu e não aparece nada | Olhe a **bandeja** (ícone perto do relógio) e clique nele. Ou abra de novo: a segunda instância traz a barra para frente. |
+| `Alt+Space` não abre | Consulte o rodapé da barra/bandeja: se outro app usa `Alt+Space` (PowerToys Run), o Orbi cai para `Ctrl+Alt+Space`. |
+| “Não consegui abrir X” | Confira o nome no Menu Iniciar ou cadastre um apelido em Ajustes ▸ Apelidos. |
+| App some ao clicar fora | Não some mais na 1.0.1: a barra é uma janela normal. Esc esconde, o X mantém na bandeja. |
+
 ## Publicar o site
 
 Passo a passo em [`docs/DEPLOY.md`](docs/DEPLOY.md): criar o secret
