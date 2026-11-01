@@ -88,8 +88,9 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
             </h1>
 
             <p className="mt-6 max-w-[42ch] text-[16.5px] leading-[1.65] text-ink-2">
-              Uma barra que abre sobre qualquer programa. Você escreve e ele faz: som, brilho,
-              janelas, painéis do Windows. {TOOL_COUNT} ações prontas.
+              Você escreve e ele faz. Som, brilho, janelas, arquivos — e pedidos com vários
+              passos, na ordem. {TOOL_COUNT} ações no Windows, mais uma IA que vê a tela,
+              clica e digita por você.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
