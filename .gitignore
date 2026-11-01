@@ -16,3 +16,4 @@ app/frontend/Orbi/obj
 app/frontend/Orbi/installer/OrbiSetup.exe
 coverage
 *.tgz
+ci-build.log

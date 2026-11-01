@@ -566,7 +566,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                 "Senhas e área de transferência nunca vão para a nuvem.",
                 "A presença por webcam é opcional e não grava imagem.",
                 "A chave da IA fica no Cofre de Credenciais do Windows.",
-                "No Firestore ficam só perfil, aparelhos e preferências — cada documento visível apenas para o dono.",
+                "No Firestore ficam perfil, aparelhos, apelidos, atalhos, rotinas e preferências — cada documento visível só para o dono, pelas regras do Firebase.",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3 text-[13.5px] leading-snug text-ink-2">
                   <Icon name="check" className="mt-[2px] h-4 w-4 shrink-0 text-signal" />

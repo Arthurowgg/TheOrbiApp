@@ -47,6 +47,12 @@ export const FEATURES = [
     tag: "IA",
   },
   {
+    icon: "cloud" as const,
+    title: "A mesma conta no site e no app",
+    body: "Apelidos, atalhos, rotinas e preferências ficam na sua conta (Firestore) e chegam em cada PC. Notas, área de transferência e a chave da IA continuam só no computador.",
+    tag: "conta",
+  },
+  {
     icon: "lock" as const,
     title: "Privada por padrão",
     body: "Senhas, área de transferência e webcam ficam no PC. Quando a IA é usada, vai só o texto do comando.",

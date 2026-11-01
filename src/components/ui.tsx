@@ -140,9 +140,16 @@ export type IconName =
   | "mail"
   | "github"
   | "cpu"
+  | "cloud"
   | "zap";
 
 const ICON_PATHS: Record<IconName, ReactNode> = {
+  cloud: (
+    <>
+      <path d="M7 18a4 4 0 0 1 .4-7.98A5.5 5.5 0 0 1 18 10.5a3.5 3.5 0 0 1 .5 6.96" />
+      <path d="M12 12v7M9 16l3-3 3 3" />
+    </>
+  ),
   apps: (
     <>
       <rect x="3" y="3" width="7" height="7" rx="1" />
