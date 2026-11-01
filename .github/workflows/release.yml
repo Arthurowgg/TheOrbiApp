@@ -82,6 +82,14 @@ jobs:
             throw "ISCC falhou com código $LASTEXITCODE"
           }
 
+      - name: Salvar o log do instalador
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iscc-log
+          path: iscc.log
+          retention-days: 7
+
       - name: Checksums
         shell: powershell
         run: |
