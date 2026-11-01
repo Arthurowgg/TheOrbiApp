@@ -182,7 +182,7 @@ jobs:
       - name: Conferir secret
         id: check
         env:
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
+          SA: ${{ secrets.AUTH_JSON || secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
         run: |
           if [ -z "$SA" ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"
@@ -206,13 +206,13 @@ jobs:
       - if: steps.check.outputs.available == 'true'
         name: Preparar credencial
         env:
-          A: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          B: ${{ secrets.AUTH_KEY }}
-          C: ${{ secrets.FIREBASE_KEY }}
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
+          A: ${{ secrets.AUTH_JSON }}
+          B: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          C: ${{ secrets.AUTH_KEY }}
+          SA: ${{ secrets.AUTH_JSON || secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
         shell: bash
         run: |
-          for par in "FIREBASE_SERVICE_ACCOUNT=$A" "AUTH_KEY=$B" "FIREBASE_KEY=$C"; do
+          for par in "AUTH_JSON=$A" "FIREBASE_SERVICE_ACCOUNT=$B" "AUTH_KEY=$C"; do
             nome="${par%%=*}"
             valor="${par#*=}"
             if [ -z "$valor" ]; then
@@ -221,11 +221,11 @@ jobs:
               echo "secret $nome: ${#valor} caracteres"
               printf '%s' "$valor" > /tmp/candidato.json
               if ! SAIDA=$(python3 scripts/checar-credencial.py /tmp/candidato.json 2>&1); then
-                echo "::error::$nome inválido: $(echo "$SAIDA" | head -2 | tr '\n' ' ' | cut -c1-300)"
+                MOTIVO=$(echo "$SAIDA" | head -2 | tr '\n' ' ' | cut -c1-260)
+                echo "::error::$nome inválido: $MOTIVO"
               else
                 echo "::notice::$nome ok: $(echo "$SAIDA" | head -2 | tr '\n' ' ')"
               fi
-              echo "comeca com: $(printf '%s' "$valor" | head -c 18)"
             fi
           done
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"

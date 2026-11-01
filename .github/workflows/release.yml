@@ -167,7 +167,7 @@ jobs:
       - id: auth
         name: Conferir credencial do Firebase
         env:
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
+          SA: ${{ secrets.AUTH_JSON || secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
         run: |
           if [ -z "$SA" ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"
