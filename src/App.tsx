@@ -319,9 +319,12 @@ export default function App() {
         return;
       }
       try {
+        // ensureProfile nunca falha por causa do Firestore: devolve o perfil do
+        // próprio Auth quando o banco está fechado/offline.
         const next = await ensureProfile(user);
         setAccount(next);
-      } catch {
+      } catch (error) {
+        console.warn("[orbi] não consegui montar o perfil:", error);
         setAccount(null);
       } finally {
         setAuthReady(true);
@@ -418,8 +421,11 @@ export default function App() {
   const refresh = useCallback(async () => {
     const user = auth.currentUser;
     if (!user) return;
-    const next = await ensureProfile(user);
-    setAccount(next);
+    try {
+      setAccount(await ensureProfile(user));
+    } catch (error) {
+      console.warn("[orbi] recarregar perfil:", error);
+    }
   }, []);
 
   const handleDownloaded = (record: { version: string; checksum: string; filename: string }) => {

@@ -255,9 +255,42 @@ export function userDoc(uid: string) {
   return doc(db, "users", uid);
 }
 
+/**
+ * Perfil local derivado do Firebase Authentication.
+ *
+ * Usado quando o Firestore recusa a leitura (regras ainda não publicadas, banco
+ * não criado, offline). A pessoa entra e usa o site; o aviso aparece na área da
+ * conta dizendo que a sincronização está desligada até o banco responder.
+ */
+export function accountFromAuth(user: User): Account {
+  return toAccount(user, {
+    name: user.displayName ?? user.email?.split("@")[0] ?? "Você",
+    email: user.email ?? "",
+    createdAt: new Date().toISOString(),
+    color: "#c7452a",
+    plan: "gratis",
+  });
+}
+
 /** Cria o documento `users/{uid}` na primeira entrada (idempotente). */
 export async function ensureProfile(user: User, name?: string): Promise<Account> {
   ensureConfigured();
+  try {
+    const account = await ensureProfileDocument(user, name);
+    lastProfileError = null;
+    return account;
+  } catch (error) {
+    // Banco indisponível/regra fechada: entrar continua funcionando.
+    console.warn("[orbi] perfil no Firestore indisponível:", error);
+    lastProfileError = toAuthError(error).message;
+    return accountFromAuth(user);
+  }
+}
+
+/** Erro do último acesso ao Firestore (mostrado na área da conta). */
+export let lastProfileError: string | null = null;
+
+async function ensureProfileDocument(user: User, name?: string): Promise<Account> {
   const ref = userDoc(user.uid);
   const snapshot = await getDoc(ref);
   if (!snapshot.exists()) {
@@ -294,8 +327,14 @@ export async function ensureProfile(user: User, name?: string): Promise<Account>
 export async function fetchAccount(): Promise<Account | null> {
   const user = auth.currentUser;
   if (!user || !configured) return null;
-  const snapshot = await getDoc(userDoc(user.uid));
-  return toAccount(user, snapshot.data());
+  try {
+    const snapshot = await getDoc(userDoc(user.uid));
+    lastProfileError = null;
+    return toAccount(user, snapshot.data());
+  } catch (error) {
+    lastProfileError = toAuthError(error).message;
+    return accountFromAuth(user);
+  }
 }
 
 async function patchUser(payload: Record<string, unknown>) {

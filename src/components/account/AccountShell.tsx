@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Avatar, Brand, Button, Icon, type IconName } from "../ui";
+import { lastProfileError } from "../../lib/accounts";
 import type { Account } from "../../lib/accounts";
 import type { AccountPage } from "../../lib/router";
 
@@ -50,6 +51,19 @@ type ShellProps = {
   onLogout: () => void;
   children: ReactNode;
 };
+
+/** Aviso honesto quando o banco não responde (regras/console pendentes). */
+function StorageWarning({ message }: { message: string }) {
+  return (
+    <div className="mb-5 flex items-start gap-3 border border-signal/30 bg-signal-soft/60 px-4 py-3">
+      <span className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.08em] text-signal">aviso</span>
+      <p className="text-[12.5px] leading-relaxed text-ink-2">
+        Você entrou na conta, mas o banco (Firestore) não respondeu — os dados desta página não
+        serão salvos até ele voltar. <span className="text-warm">{message}</span>
+      </p>
+    </div>
+  );
+}
 
 export default function AccountShell({
   account,
@@ -181,6 +195,7 @@ export default function AccountShell({
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-0 lg:py-8">
           <div key={page} className="animate-fade-up">
+            {lastProfileError && <StorageWarning message={lastProfileError} />}
             {children}
           </div>
         </main>

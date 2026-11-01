@@ -91,7 +91,23 @@ Sem o secret, o job é ignorado e o site continua publicável pelo `npm run depl
 
 ---
 
-## Problemas? 
+## Problemas?
+
+### A barra do app não abre
+
+Do mais simples ao mais completo:
+
+1. **Clique no ícone do Orbi na bandeja** (perto do relógio, pode estar em "mostrar ícones ocultos").
+2. **Abra o Orbi de novo** pelo menu Iniciar: a segunda instância traz a barra para frente.
+3. **Menu Iniciar ▸ Orbi ▸ "Orbi (diagnóstico)"** (ou `Orbi.exe --diag`): mostra versão, telas,
+   DPI, se a bandeja e o atalho foram registrados, se a barra foi criada e as últimas linhas do
+   `crash.log`. O botão *Copiar relatório* copia tudo.
+4. **`Orbi.exe --safe`**: abre a barra sem bandeja, sem atalho, sem Firebase e sem conta — é o
+   caminho mínimo. Se `--safe` abre e o normal não, o problema está numa integração, e o
+   diagnóstico diz qual.
+5. Se até o `--safe` falhar, o app abre uma **janela de emergência** com o caminho do log.
+
+## Problemas 
 
 O app registra tudo em `%APPDATA%\Orbi\crash.log` e mostra uma janela legível quando algo
 falha. Atalhos:
