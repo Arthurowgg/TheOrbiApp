@@ -189,6 +189,9 @@ export function saveBlob(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
+/** Acima disso, o navegador baixa sozinho em vez de carregar tudo na memória. */
+const GRANDE = 60 * 1024 * 1024;
+
 export type DownloadOutcome =
   | { kind: "installer"; filename: string; version: string; checksum: string; url: string }
   | { kind: "fallback"; filename: string; version: string; checksum: string };
@@ -209,6 +212,27 @@ export async function downloadInstaller(
 
   if (release?.installer) {
     const { url, name, size } = release.installer;
+
+    // Instalador grande: baixar como blob significaria centenas de MB na memória
+    // do navegador. Aqui o navegador baixa o arquivo direto, com a barra dele.
+    if (size > GRANDE) {
+      onProgress(100);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = name;
+      anchor.rel = "noopener";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      return {
+        kind: "installer",
+        filename: name,
+        version: release.version,
+        checksum: "veja SHA256SUMS na release",
+        url,
+      };
+    }
+
     try {
       const response = await fetch(url, { redirect: "follow" });
       if (!response.ok || !response.body) throw new Error(String(response.status));
