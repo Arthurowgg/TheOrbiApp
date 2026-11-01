@@ -94,6 +94,14 @@ internal static class App
         return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
 
+    /// <summary>Valor que vem depois de uma opção (ex.: --payload caminho.zip).</summary>
+    private static string? Flag(string[] args, string name)
+    {
+        var index = Array.FindIndex(args, a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
+        if (index < 0 || index + 1 >= args.Length) return null;
+        return args[index + 1];
+    }
+
     /* ------------------------------ silencioso ------------------------------ */
 
     private static async Task<int> ModoSilencioso(string[] args)
@@ -108,6 +116,9 @@ internal static class App
         try
         {
             Anotar($"Orbi setup {Installer.Versao} · {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+
+            var payload = Flag(args, "--payload");
+            if (payload is not null) Payload.UseLocal(payload);
             Installer.Sink = Anotar;
 
             if (args.Contains("--uninstall"))

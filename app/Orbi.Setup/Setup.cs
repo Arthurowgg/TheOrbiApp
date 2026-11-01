@@ -77,6 +77,19 @@ public static class Payload
 
     public static bool Cached => File.Exists(Cache) && new FileInfo(Cache).Length > 500L * 1024;
 
+    /// <summary>
+    /// Pacote local (usado pelos testes e por quem instala sem internet):
+    /// o caminho é copiado para o cache e nada é baixado.
+    /// </summary>
+    public static void UseLocal(string path)
+    {
+        if (!File.Exists(path)) throw new FileNotFoundException("pacote local não encontrado", path);
+        if (Cache.Equals(Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase)) return;
+        try { if (File.Exists(Cache)) File.Delete(Cache); } catch { }
+        File.Copy(path, Cache, overwrite: true);
+        Installer.Write($"Usando o pacote local ({new FileInfo(Cache).Length / 1024 / 1024} MB)");
+    }
+
     /// <summary>Baixa o pacote com progresso (0-1). Devolve o caminho no disco.</summary>
     public static async Task<string> DownloadAsync(IProgress<double> progress, CancellationToken token)
     {

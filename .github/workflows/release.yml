@@ -110,8 +110,14 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $exe = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
-          $p = Start-Process -FilePath $exe -ArgumentList "--silent" -PassThru -Wait
-          if ($p.ExitCode -ne 0) { throw "instalação silenciosa falhou ($($p.ExitCode))" }
+          $zip = (Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1).FullName
+          # Pacote local: o download público só existe depois da release publicada.
+          $p = Start-Process -FilePath $exe -ArgumentList "--silent","--payload",$zip -PassThru -Wait
+          if ($p.ExitCode -ne 0) {
+            $log = Join-Path $env:LOCALAPPDATA "Orbi-setup.log"
+            if (Test-Path $log) { Get-Content $log | ForEach-Object { Write-Host "::error::setup: $_" } }
+            throw "instalação silenciosa falhou ($($p.ExitCode))"
+          }
 
           $target = Join-Path $env:LOCALAPPDATA "Programs\Orbi"
           if (-not (Test-Path (Join-Path $target "Orbi.exe"))) { throw "Orbi.exe não foi instalado em $target" }
