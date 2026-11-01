@@ -181,9 +181,17 @@ jobs:
 
       - name: Deploy no Hosting + regras do Firestore
         if: steps.auth.outputs.available == 'true'
-        run: |
-          npx --yes firebase-tools@latest deploy \
-            --only hosting,firestore:rules \
-            --project orbi-app-auth --non-interactive
+        shell: bash
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          set -o pipefail
+          # publisher/project: o mesmo acesso que o workflow de verificação usa.
+          npx --yes firebase-tools@latest deploy \
+            --only hosting,firestore:rules \
+            --project orbi-app-auth --non-interactive 2>&1 | tee deploy.log | tail -30
+          STATUS=${PIPESTATUS[0]}
+          if [ "$STATUS" != "0" ]; then
+            tail -12 deploy.log | while IFS= read -r line; do echo "::error::$line"; done
+            exit "$STATUS"
+          fi
