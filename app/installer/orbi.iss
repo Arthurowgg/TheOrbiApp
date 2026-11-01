@@ -80,14 +80,17 @@ begin
   LimpezaOk := False;
   LerLogLimpeza;
 
-  if not ExtractTemporaryFile('limpar-antigas.ps1') then
+  Script := ExpandConstant('{tmp}\limpar-antigas.ps1');
+  { ExtractTemporaryFile é procedure: ela mesma levanta erro se o arquivo não
+    existir no setup (o [Files] usa dontcopy justamente para isso). }
+  ExtractTemporaryFile('limpar-antigas.ps1');
+  if not FileExists(Script) then
   begin
     Log('Limpeza: não consegui extrair limpar-antigas.ps1.');
     LimpezaOk := True;
     Exit;
   end;
 
-  Script := ExpandConstant('{tmp}\limpar-antigas.ps1');
   LogArquivo := ExpandConstant('{tmp}\orbi-limpeza.txt');
 
   WizardForm.StatusLabel.Caption := 'Removendo versões antigas do Orbi…';
