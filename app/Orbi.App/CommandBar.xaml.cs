@@ -41,7 +41,7 @@ public partial class CommandBar : Window
             var first = string.IsNullOrWhiteSpace(Store.Current.UserName)
                 ? ""
                 : ", " + Store.Current.UserName.Split(' ')[0];
-            return $"Oi{first}. Digite um comando, “/” para as ferramentas ou pergunte algo…";
+            return $"Oi{first}. O que você quer fazer?";
         }
     }
 
@@ -269,7 +269,7 @@ public partial class CommandBar : Window
     private void UpdateFooter()
     {
         var keys = string.IsNullOrEmpty(HotKey.Combination) ? "use o ícone na bandeja" : HotKey.Combination;
-        Footer.Text = $"{keys} abre · Enter executa · Esc esconde";
+        Footer.Text = $"{keys} · / ferramentas · Esc esconde";
     }
 
     /// <summary>
