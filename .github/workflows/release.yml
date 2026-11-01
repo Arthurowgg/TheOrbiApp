@@ -235,8 +235,8 @@ jobs:
           prerelease: false
           make_latest: true
           files: |
-            artifacts/Installer/OrbiSetup-1.1.1.exe
-            artifacts/Installer/SHA256SUMS.txt
+            artifacts/OrbiSetup-1.1.1.exe
+            artifacts/SHA256SUMS.txt
           body: |
             ## Orbi 1.1.1 — para Windows 11
 
