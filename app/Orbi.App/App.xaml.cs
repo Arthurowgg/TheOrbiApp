@@ -282,6 +282,28 @@ public partial class App : System.Windows.Application
                     Nota($"fora do meio: topo={_bar.Top:0} de {alturaTela:0} = {noTopo}");
                 }
 
+                // Tela cheia de verdade: cobre a tela e volta exatamente como estava.
+                if (_bar is not null)
+                {
+                    var antesLargura = _bar.Width;
+                    var antesAltura = _bar.Height;
+                    _bar.AlternarTelaCheia();
+                    await Task.Delay(400);
+                    var tela = System.Windows.Forms.Screen.FromPoint(
+                        System.Windows.Forms.Cursor.Position).Bounds;
+                    var dpiCheia = VisualTreeHelper.GetDpi(_bar);
+                    var cobre = _bar.Width / dpiCheia.DpiScaleX >= tela.Width - 8 &&
+                                _bar.Height / dpiCheia.DpiScaleY >= tela.Height - 8;
+                    ok &= cobre && _bar.EmTelaCheia;
+                    Nota($"tela cheia: {_bar.Width:0}x{_bar.Height:0} de {tela.Width}x{tela.Height} = {cobre}");
+
+                    _bar.AlternarTelaCheia();
+                    await Task.Delay(400);
+                    var voltou = Math.Abs(_bar.Width - antesLargura) < 2 && Math.Abs(_bar.Height - antesAltura) < 2;
+                    ok &= voltou && !_bar.EmTelaCheia;
+                    Nota($"voltou do tela cheia: {_bar.Width:0}x{_bar.Height:0} (antes {antesLargura:0}x{antesAltura:0}) = {voltou}");
+                }
+
                 _bar?.OpenMenuForTest();
                 ok &= _bar?.MenuOpen == true;
                 Nota($"menu aberto={_bar?.MenuOpen}");

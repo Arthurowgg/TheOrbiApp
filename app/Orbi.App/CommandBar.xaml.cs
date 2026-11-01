@@ -113,6 +113,8 @@ public partial class CommandBar : Window
 
     private Layout _layout = Layout.Compacta;
     private Layout _layoutSalvo = Layout.Compacta;
+    private WindowStyle _modoSalvo = WindowStyle.None;
+    public bool EmTelaCheia => _telaCheia;
     private bool _telaCheia;
 
     private void AplicarLayout()
@@ -227,17 +229,20 @@ public partial class CommandBar : Window
     {
         var screen = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Cursor.Position);
         var dpi = VisualTreeHelper.GetDpi(this);
-        var area = screen.WorkingArea;
-
         _telaCheia = !_telaCheia;
         if (_telaCheia)
         {
             RememberPlace();
             _layoutSalvo = _layout;
-            Left = area.Left / dpi.DpiScaleX;
-            Top = area.Top / dpi.DpiScaleY;
-            Width = area.Width / dpi.DpiScaleX;
-            Height = area.Height / dpi.DpiScaleY;
+            // tela cheia de verdade: bounds (cobre a barra de tarefas), não a área útil
+            var total = screen.Bounds;
+            Left = total.Left / dpi.DpiScaleX;
+            Top = total.Top / dpi.DpiScaleY;
+            Width = total.Width / dpi.DpiScaleX;
+            Height = total.Height / dpi.DpiScaleY;
+            _modoSalvo = WindowStyle;
+            WindowStyle = WindowStyle.None;
+            Topmost = true;
             FullGlyph.Data = Geometry.Parse("M6,2 L6,6 L2,6 M10,6 L14,6 L14,2 M14,10 L10,10 L10,14 M2,10 L6,10 L6,14");
             Expand();
             AplicarLayout();
@@ -246,6 +251,8 @@ public partial class CommandBar : Window
         else
         {
             FullGlyph.Data = Geometry.Parse("M2,6 L2,3 Q2,2 3,2 L6,2 M10,2 L13,2 Q14,2 14,3 L14,6 M14,10 L14,13 Q14,14 13,14 L10,14 M6,14 L3,14 Q2,14 2,13 L2,10");
+            WindowStyle = _modoSalvo;
+            Topmost = false;
             Restaurar();
         }
     }
