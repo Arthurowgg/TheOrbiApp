@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: write
+  checks: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -138,6 +139,35 @@ jobs:
           -c Release -r win-x64 --self-contained true
           -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
           -o artifacts/publish
+
+      # Publica o relatório num check-run: o log do runner não é legível pela API,
+      # mas as anotações são. É assim que o resultado chega para quem precisa dele.
+      - name: Publicar o relatório do autoteste
+        if: always()
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $relatorio = "$env:APPDATA\Orbi\selftest.txt"
+          $inicio = "$env:APPDATA\Orbi\startup.log"
+          $crash = "$env:APPDATA\Orbi\crash.log"
+          $partes = @()
+          foreach ($f in @($inicio, $crash, $relatorio)) {
+            if (Test-Path $f) {
+              $partes += "### $([System.IO.Path]::GetFileName($f))"
+              $partes += '```'
+              $partes += (Get-Content $f -Tail 60)
+              $partes += '```'
+            } else {
+              $partes += "_$([System.IO.Path]::GetFileName($f)): AUSENTE_"
+            }
+          }
+          $resumo = ($partes -join "`n")
+          $sha = "${{ github.sha }}"
+          $corpo = @{ output = @{ title = "Autoteste do Orbi"; summary = $resumo } } | ConvertTo-Json -Depth 5
+          $corpo | Out-File -FilePath corpo.json -Encoding utf8
+          gh api -X PATCH "repos/${{ github.repository }}/check-runs/${{ job.check_run_id }}" --input corpo.json 2>&1 | Out-Null
+          Write-Host $resumo
 
       - name: Rodar o Orbi com --selftest
         shell: powershell
