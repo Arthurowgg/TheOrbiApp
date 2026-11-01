@@ -1,0 +1,11 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\SettingsWindow.xaml(75,16): error MC3000: 'An XML comment cannot contain '--', and '-' cannot be the last character. Line 75, position 16.' XML is not valid. [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+
+Build FAILED.
+
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\SettingsWindow.xaml(75,16): error MC3000: 'An XML comment cannot contain '--', and '-' cannot be the last character. Line 75, position 16.' XML is not valid. [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:01.87
