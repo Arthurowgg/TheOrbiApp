@@ -134,3 +134,16 @@ chat, issue, commit ou variável pública. Se vazar:
 
 Para o dia a dia, o app **não** precisa dessa chave: ele entra com e-mail e senha
 como qualquer usuário e obedece às regras.
+
+## Checklist para o "Sincronizar agora" funcionar
+
+| Passo | Onde | Feito? |
+| --- | --- | --- |
+| E-mail/senha ativo | Authentication ▸ Sign-in method | ☐ |
+| Google ativo (opcional) | Authentication ▸ Sign-in method | ☐ |
+| Domínios autorizados | Authentication ▸ Settings | ☐ |
+| Banco criado | Firestore Database | ☐ |
+| Regras publicadas | Firestore ▸ Regras (conteúdo de `firestore.rules`) | ☐ |
+
+Depois disso: crie uma conta no site (`#/criar`), abra o app, **Conta ▸ Entrar na conta**,
+edite um apelido no site e clique em **Sincronizar agora** no app — o apelido aparece.
