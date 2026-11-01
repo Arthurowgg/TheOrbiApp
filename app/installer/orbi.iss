@@ -69,8 +69,8 @@ begin
 end;
 
 { Roda limpar-antigas.ps1 ANTES de instalar. O script precisa ser extraído para
-  {tmp} antes (ExtractTemporaryFile), porque a cópia da seção [Files] só acontece
-  depois desta etapa — era esse o motivo da limpeza nunca rodar. }
+  a pasta temporária antes (ExtractTemporaryFile), porque a cópia da seção [Files]
+  só acontece depois desta etapa — era esse o motivo da limpeza nunca rodar. }
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Script, Comando, LogArquivo: String;
