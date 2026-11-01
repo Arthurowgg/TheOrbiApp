@@ -220,9 +220,10 @@ jobs:
           }
           $resumo = ($partes -join "`n")
           $sha = "${{ github.sha }}"
+          $id = (gh api "repos/${{ github.repository }}/commits/$sha/check-runs" --jq '.check_runs[] | select(.name=="Autoteste no Windows") | .id' | Select-Object -First 1)
           $corpo = @{ output = @{ title = "Autoteste do Orbi"; summary = $resumo } } | ConvertTo-Json -Depth 5
           $corpo | Out-File -FilePath corpo.json -Encoding utf8
-          gh api -X PATCH "repos/${{ github.repository }}/check-runs/${{ job.check_run_id }}" --input corpo.json 2>&1 | Out-Null
+          if ($id) { gh api -X PATCH "repos/${{ github.repository }}/check-runs/$id" --input corpo.json 2>&1 | Out-Null }
           Write-Host $resumo
 
   release:

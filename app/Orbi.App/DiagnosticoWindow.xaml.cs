@@ -52,6 +52,21 @@ public partial class DiagnosticoWindow : Window
         Line("Bandeja", app?.TrayVisible == true ? "visível" : "não criada");
         Line("Conta", Firebase.SignedIn ? Firebase.Email ?? "(conectada)" : "sem conta — funciona local");
 
+        var marcador = Path.Combine(Store.Root, "ultima-execucao.txt");
+        Line("Última execução", File.Exists(marcador)
+            ? File.ReadAllText(marcador).Split('\n')[0].Trim()
+            : "ainda não registrada");
+
+        try
+        {
+            var tema = Application.Current?.Resources["Film2"] is not null;
+            Line("Tema (Theme.xaml)", tema ? "carregado" : "VAZIO — a interface não vai pintar");
+        }
+        catch (Exception error)
+        {
+            Line("Tema (Theme.xaml)", "FALHOU — " + error.GetType().Name);
+        }
+
         report.AppendLine();
         report.AppendLine("Passos da inicialização (startup.log)");
         report.AppendLine(new string('-', 46));
