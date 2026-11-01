@@ -55,69 +55,54 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Restore
-        run: dotnet restore app/Orbi.App/Orbi.App.csproj
-
-      - name: Build (Release)
-        run: dotnet build app/Orbi.App/Orbi.App.csproj -c Release --no-restore
-
       # Publica uma PASTA, não um exe único: nada de extração na partida (era o
       # que fazia o app morrer antes de escrever qualquer log).
       - name: Publish (pasta)
         run: >
           dotnet publish app/Orbi.App/Orbi.App.csproj
-          -c Release -r win-x64 --self-contained false -o artifacts/publish
+          -c Release -r win-x64 --self-contained false
+          -o artifacts/publish
 
-      - name: Instalar Inno Setup
-        run: choco install innosetup --no-progress -y
-
-      - name: Gerar o instalador
+      # O app é publicado "framework-dependent": o .NET vai embutido no setup,
+      # então o exe é pequeno e não extrai nada na partida.
+      - name: Empacotar o app (payload do instalador)
         shell: powershell
         run: |
-          # O runner liga $ErrorActionPreference=Stop: sem isso, qualquer linha
-          # que o ISCC escreve em stderr aborta o script antes de gravar o log.
-          $ErrorActionPreference = "Continue"
-          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-          $saida = & $iscc "app\installer\orbi.iss" *>&1 | Out-String
-          Set-Content -Path "iscc.log" -Value $saida -Encoding utf8
-          $codigo = $LASTEXITCODE
-          $linhas = $saida -split "`n"
-          $erros = $linhas | Where-Object { $_ -match "Error|error|Erro" } | Select-Object -First 4
-          if (-not $erros) { $erros = $linhas | Where-Object { $_.Trim() } | Select-Object -Last 4 }
-          $erros | ForEach-Object { Write-Host "::error::$_" }
-          if ($codigo -ne 0) { throw "ISCC falhou com codigo $codigo" }
+          $ErrorActionPreference = "Stop"
+          Compress-Archive -Path "artifacts\publish\*" -DestinationPath "app\Orbi.Setup\assets\payload.zip" -CompressionLevel Optimal -Force
+          $zip = Get-Item "app\Orbi.Setup\assets\payload.zip"
+          Write-Host ("payload: " + [math]::Round($zip.Length/1MB,1) + " MB")
 
-      - name: Salvar o log do instalador
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: iscc-log
-          path: iscc.log
-          retention-days: 7
+      - name: Compilar o instalador (WPF próprio)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          dotnet publish app/Orbi.Setup/Orbi.Setup.csproj -c Release -r win-x64 --self-contained false `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/setup
+          New-Item -ItemType Directory -Force -Path artifacts/Installer | Out-Null
+          Move-Item artifacts/setup/OrbiSetup.exe "artifacts/Installer/OrbiSetup-1.1.0.exe" -Force
 
       - name: Checksums
         shell: powershell
         run: |
-          $file = Get-ChildItem artifacts\OrbiSetup-*.exe | Select-Object -First 1
+          $file = Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1
           $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
-          "$hash  $($file.Name)" | Out-File -Encoding ascii artifacts\SHA256SUMS.txt
-          "installer=$($file.FullName)" | Out-File -Encoding utf8 -Append $env:GITHUB_OUTPUT
+          "$hash  $($file.Name)" | Out-File -Encoding ascii artifacts\Installer\SHA256SUMS.txt
           Write-Host "SHA-256: $hash"
 
-      - name: Smoke test do executável
+      - name: Smoke test do instalador
         shell: powershell
         run: |
-          # Confere que o binário publicado existe e tem tamanho plausível.
-          $exe = Get-ChildItem artifacts\publish\Orbi.exe
-          if ($exe.Length -lt 100KB) { throw "Orbi.exe suspeito: $($exe.Length) bytes" }
-          Write-Host "Orbi.exe: $([math]::Round($exe.Length/1MB,1)) MB"
+          $exe = Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1
+          if ($exe.Length -lt 3MB) { throw "instalador suspeito: $($exe.Length) bytes" }
+          Write-Host ("setups: " + $exe.Name + " · " + [math]::Round($exe.Length/1MB,1) + " MB")
 
       - uses: actions/upload-artifact@v4
         with:
           name: installer
           path: |
-            artifacts/OrbiSetup-*.exe
-            artifacts/SHA256SUMS.txt
+            artifacts/Installer/OrbiSetup-*.exe
+            artifacts/Installer/SHA256SUMS.txt
           retention-days: 14
 
   # Prova real: executa o app no Windows e lê o relatório do autoteste.
@@ -137,7 +122,8 @@ jobs:
       - name: Publicar (exatamente como o instalador publica)
         run: >
           dotnet publish app/Orbi.App/Orbi.App.csproj
-          -c Release -r win-x64 --self-contained false -o artifacts/publish
+          -c Release -r win-x64 --self-contained false
+          -o artifacts/publish
 
       - name: Rodar o Orbi com --selftest
         shell: powershell
@@ -241,8 +227,8 @@ jobs:
           prerelease: false
           make_latest: true
           files: |
-            artifacts/OrbiSetup-1.1.0.exe
-            artifacts/SHA256SUMS.txt
+            artifacts/Installer/OrbiSetup-1.1.0.exe
+            artifacts/Installer/SHA256SUMS.txt
           body: |
             ## Orbi 1.1.0 — para Windows 11
 

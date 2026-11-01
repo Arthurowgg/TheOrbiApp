@@ -19,3 +19,8 @@ coverage
 ci-build.log
 deploy-resultado.md
 relatorio-firebase.txt
+
+# payload do instalador (gerado no CI)
+app/Orbi.Setup/assets/payload.zip
+app/Orbi.Setup/bin/
+app/Orbi.Setup/obj/
