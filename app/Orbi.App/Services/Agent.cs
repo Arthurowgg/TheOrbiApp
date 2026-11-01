@@ -41,7 +41,7 @@ public static class Agent
             var (titulo, resultado, ok) = Execute(acao);
             passos.Add(new AgentStep(titulo, resultado, ok));
             resultados.Add($"{titulo} → {resultado}");
-            if (!ok && acao.Acao is "ferramenta") break;
+            if (!ok && acao.Kind is "ferramenta") break;
         }
 
         // Uma segunda passada curta: transformar o que aconteceu em resposta falada.
@@ -58,7 +58,7 @@ public static class Agent
 
     /* ------------------------------ plano ------------------------------ */
 
-    private sealed record Acao(string Acao, string? Id, string? Texto, int? X, int? Y, string? Tecla, string? Alvo);
+    private sealed record Acao(string Kind, string? Id, string? Texto, int? X, int? Y, string? Tecla, string? Alvo);
 
     private sealed record Plano(string? Resposta, List<Acao> Acoes);
 
@@ -158,7 +158,7 @@ public static class Agent
 
     private static (string Titulo, string Resultado, bool Ok) Execute(Acao acao)
     {
-        switch (acao.Acao)
+        switch (acao.Kind)
         {
             case "ver":
                 return ("olhei a tela", Control.DescribeScreen().Replace("\n", " · "), true);
