@@ -164,6 +164,9 @@ jobs:
   hosting:
     runs-on: ubuntu-latest
     needs: verify
+    concurrency:
+      group: firebase-deploy
+      cancel-in-progress: false
     steps:
       - name: Conferir secret
         id: check

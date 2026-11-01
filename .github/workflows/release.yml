@@ -154,6 +154,11 @@ jobs:
   # continua podendo ser publicado com `firebase deploy` na sua máquina.
   hosting:
     name: Firebase Hosting
+    # Mesmo grupo usado pelo workflow de verificação: os dois publicam no mesmo
+    # projeto e em paralelo a CLI falha ("another version is being released").
+    concurrency:
+      group: firebase-deploy
+      cancel-in-progress: false
     # O deploy oficial fica no workflow "Verificar Firebase", que também valida
     # o site publicado. Este job é um espelho e não deve bloquear a release.
     continue-on-error: true
@@ -189,8 +194,9 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
           set -o pipefail
+          # Regras do Firestore ficam no workflow de verificação; aqui só o site.
           npx --yes firebase-tools@latest deploy \
-            --only hosting,firestore:rules \
+            --only hosting \
             --project orbi-app-auth --non-interactive 2>&1 | tee deploy.log | tail -30
           STATUS=${PIPESTATUS[0]}
           # "Deploy complete" é o sinal real de sucesso da CLI
