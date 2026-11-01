@@ -258,19 +258,16 @@
           <!-- SOBRE -->
           <StackPanel x:Name="PageSobre" Visibility="Collapsed">
             <TextBlock Text="Sobre" Style="{StaticResource H1}"/>
-            <TextBlock Text="Orbi 1.0.0 · Windows 11 x64" Style="{StaticResource Muted}" Margin="0,4,0,18"/>
+            <TextBlock x:Name="VersionLine" Text="Orbi · Windows 11 x64" Style="{StaticResource Muted}" Margin="0,4,0,20"/>
+
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <TextBlock Text="Um assistente em português, feito para o Windows." Style="{StaticResource Body}" FontWeight="SemiBold"/>
-                <TextBlock Text="Comandos locais não usam internet. O Gemini entra só quando o assunto foge do script."
-                           Style="{StaticResource Muted}" Margin="0,6,0,0"/>
+                <TextBlock Style="{StaticResource Body}" TextWrapping="Wrap"
+                           Text="O Orbi entende o que você escreve e faz no PC: abre, ajusta, clica, digita e encadeia ferramentas quando o pedido tem mais de um passo."/>
                 <Border Style="{StaticResource Divider}"/>
-                <TextBlock Text="Verificar atualizações" Style="{StaticResource Label}"/>
-                <Button Content="Abrir a página de releases" Style="{StaticResource SecondaryButton}"
-                        HorizontalAlignment="Left" Margin="0,8,0,0" Click="OpenReleases_Click"/>
-                <Border Style="{StaticResource Divider}"/>
-                <TextBlock Text="Pasta de dados" Style="{StaticResource Label}"/>
-                <TextBlock x:Name="DataPath" Style="{StaticResource MonoText}" Margin="0,4,0,0"/>
+                <TextBlock Text="Atualizações" Style="{StaticResource Label}"/>
+                <Button Content="Ver a versão mais nova" Style="{StaticResource SecondaryButton}"
+                        HorizontalAlignment="Left" Margin="0,8,0,0" Click="OpenSiteReleases_Click"/>
               </StackPanel>
             </Border>
           </StackPanel>

@@ -297,7 +297,7 @@ public static class Installer
             Shortcut.Create(Paths.Desktop, Paths.Exe, "", Paths.Target, "Seu PC em português");
 
             progress.Report(1.0);
-            Write("Instalação concluída.");
+            Write("Pronto. A IA precisa da sua chave do Google AI Studio (gratuita): Ajustes ▸ IA.");
         }, token);
     }
 

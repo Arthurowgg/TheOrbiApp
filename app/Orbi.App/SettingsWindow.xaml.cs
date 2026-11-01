@@ -13,6 +13,8 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         Nav.SelectedIndex = 0;
+        VersionLine.Text = "Orbi " + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "?") +
+                           " · Windows 11 x64";
         Load();
     }
 
@@ -272,7 +274,7 @@ public partial class SettingsWindow : Window
 
     private void OpenSite_Click(object sender, RoutedEventArgs e) => OpenUrl(Firebase.SiteUrl);
 
-    private void OpenReleases_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/Arthurowgg/TheOrbiApp/releases");
+    private void OpenSiteReleases_Click(object sender, RoutedEventArgs e) => OpenUrl("https://orbi-app.web.app/baixar");
     private void OpenBar_Click(object sender, RoutedEventArgs e) => ((App)System.Windows.Application.Current).ShowBar();
 
     private void Exit_Click(object sender, RoutedEventArgs e)

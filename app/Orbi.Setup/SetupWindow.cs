@@ -256,7 +256,7 @@ public class SetupWindow : Window
     private void MostrarBoasVindas()
     {
         _etapa = Etapa.BoasVindas;
-        _status.Text = "Pronto para instalar. Nada de administrador, nada de cadastro.";
+        _status.Text = "Pronto para instalar.";
         _barra.Visibility = Visibility.Collapsed;
         _conteudo.Children.Clear();
 
@@ -267,6 +267,7 @@ public class SetupWindow : Window
             ("Versão", Installer.Versao),
             ("Tamanho", Tamanho()),
             ("Conta", "opcional — a mesma do site"),
+            ("IA", "precisa de uma chave gratuita do Google AI Studio"),
         };
         if (instalada is not null)
         {
@@ -300,8 +301,8 @@ public class SetupWindow : Window
 
         _conteudo.Children.Add(new TextBlock
         {
-            Text = "Você pode desinstalar quando quiser em Configurações ▸ Aplicativos. " +
-                   "Notas, lembretes e a memória do Orbi ficam neste PC e não são apagados.",
+            Text = "Para o Orbi pensar e agir ele usa a sua chave do Gemini. É gratuita, leva um minuto " +
+                   "em aistudio.google.com/apikey e fica cifrada neste PC. Sem ela, as ferramentas continuam funcionando.",
             FontSize = 12.5,
             Margin = new Thickness(0, 12, 0, 0),
             TextWrapping = TextWrapping.Wrap,
@@ -415,9 +416,8 @@ public class SetupWindow : Window
 
         _conteudo.Children.Add(new TextBlock
         {
-            Text = "O instalador é leve: o app em si é baixado aqui, durante a instalação. " +
-                   "Depois o Orbi abre como uma barra de comando, e o atalho do Menu Iniciar " +
-                   "leva direto às ferramentas e aos ajustes.",
+            Text = "Para a IA funcionar, cole a sua chave gratuita do Google AI Studio em " +
+                   "Ajustes ▸ IA. Ela fica cifrada neste PC.",
             FontSize = 12.5,
             Margin = new Thickness(0, 6, 0, 0),
             TextWrapping = TextWrapping.Wrap,

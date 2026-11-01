@@ -661,7 +661,7 @@ public static class ToolsExtra
         Add("orbi-tools", "Quantas ferramentas o Orbi tem", orbi, "ferramentas,quantas,catalogo",
             () => $"O Orbi tem {Tools.All.Count} ferramentas em {Tools.Groups.Count()} grupos.");
         Add("orbi-update", "Procurar atualização", orbi, "atualizar,versao,nova",
-            () => Open("https://github.com/Arthurowgg/TheOrbiApp/releases"));
+            () => Open("https://orbi-app.web.app/baixar"));
         Add("orbi-about", "Sobre o Orbi", orbi, "sobre,orbi,versao",
             () => "Orbi " + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "?") + " · Windows 11 · feito para português.");
         Add("orbi-bar-reset", "Voltar a barra ao centro", orbi, "barra,centro,resetar,posicao", () =>
