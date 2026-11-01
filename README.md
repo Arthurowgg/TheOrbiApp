@@ -91,6 +91,11 @@ Sem o secret, o job é ignorado e o site continua publicável pelo `npm run depl
 
 ---
 
+## Publicar o site
+
+Passo a passo em [`docs/DEPLOY.md`](docs/DEPLOY.md): criar o secret
+`FIREBASE_SERVICE_ACCOUNT`, rodar o workflow de deploy e conferir.
+
 ## Configurar o Firebase (uma vez, no console)
 
 1. **Authentication ▸ Sign-in method**
