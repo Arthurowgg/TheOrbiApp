@@ -5,6 +5,9 @@ name: Verificar Firebase (Auth + Firestore)
 # app envia, confere que uma escrita parcial não apaga os outros campos e apaga
 # tudo no fim. Usa só a apiKey pública do site (nada de credencial admin).
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
