@@ -11,7 +11,8 @@
     "deploy": "npm run build && firebase deploy --only hosting,firestore:rules",
     "emulators": "firebase emulators:start",
     "app": "dotnet run --project app/Orbi.App/Orbi.App.csproj",
-    "installer": "dotnet publish app/Orbi.App/Orbi.App.csproj -c Release -r win-x64 --self-contained true -o artifacts/publish && ISCC app/installer/orbi.iss"
+    "installer": "dotnet publish app/Orbi.App/Orbi.App.csproj -c Release -r win-x64 --self-contained true -o artifacts/publish && ISCC app/installer/orbi.iss",
+    "ligar": "bash scripts/ligar-tudo.sh"
   },
   "dependencies": {
     "clsx": "2.1.1",

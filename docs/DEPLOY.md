@@ -1,4 +1,43 @@
-# Publicar o site em orbi-app-auth.web.app
+# Publicar tudo (site + Pages) — 2 comandos
+
+## Opção A: um comando (recomendado)
+
+No seu PC, na pasta do projeto:
+
+```bash
+git clone https://github.com/Arthurowgg/TheOrbiApp && cd TheOrbiApp
+bash scripts/ligar-tudo.sh
+```
+
+Ou, se já tem o repositório: `npm run ligar`
+
+O script:
+
+1. instala dependências e compila o site (`dist/`);
+2. faz `firebase login` (abre o navegador na primeira vez);
+3. publica **Hosting + regras do Firestore** em `orbi-app-auth` → https://orbi-app-auth.web.app
+4. muda o **GitHub Pages** para publicar o *build* (hoje ele está configurado para publicar o
+   código-fonte, e por isso a página fica em branco) e dispara o workflow do Pages;
+5. mostra as URLs no final.
+
+Só uma parte? `bash scripts/ligar-tudo.sh --hosting` ou `--pages`.
+
+## Opção B: 100% pelo navegador (sem instalar nada)
+
+1. **Firebase Hosting** — [Settings ▸ Secrets ▸ Actions](https://github.com/Arthurowgg/TheOrbiApp/settings/secrets/actions)
+   → *New repository secret*:
+   - Name: `FIREBASE_SERVICE_ACCOUNT`
+   - Secret: o JSON de uma conta de serviço (Console ▸ ⚙️ ▸ Contas de serviço ▸ *Gerar nova chave*)
+2. Actions ▸ **Publicar site no Firebase Hosting** ▸ *Run workflow*
+3. **GitHub Pages** — [Settings ▸ Pages](https://github.com/Arthurowgg/TheOrbiApp/settings/pages)
+   → *Build and deployment* → **Source: GitHub Actions**
+4. Actions ▸ **Site no GitHub Pages** ▸ *Run workflow* → https://arthurowgg.github.io/TheOrbiApp/
+
+> Nos dois casos, adicione o domínio em **Authentication ▸ Settings ▸ Authorized domains**
+> (`arthurowgg.github.io`) para o login com Google funcionar por lá. E-mail/senha funciona
+> em qualquer domínio.
+
+
 
 O deploy automático precisa de **uma** coisa que só o dono do repositório pode criar:
 o secret com a conta de serviço. Leva 40 segundos e o site vai ao ar sozinho depois.
@@ -36,25 +75,3 @@ curl -s https://orbi-app-auth.web.app/ | grep -o '<title>.*</title>'
 
 O workflow `verificar-firebase.yml` já faz essa checagem no fim do deploy.
 
-## Deploy manual (do seu PC, sem secret)
-
-```bash
-npm ci
-npm run build
-npx firebase-tools login          # abre o navegador
-npx firebase-tools deploy --only hosting,firestore:rules --project orbi-app-auth
-```
-
-## Alternativa: GitHub Pages (sem secret)
-
-Se quiser o site no ar **sem** usar credencial do Firebase:
-
-1. Settings ▸ Pages ▸ **Build and deployment** ▸ Source: **GitHub Actions**
-2. Actions ▸ **Site no GitHub Pages** ▸ Run workflow
-3. Site em https://arthurowgg.github.io/TheOrbiApp/
-
-O workflow já compila com `VITE_BASE=/TheOrbiApp/` (a subpasta do Pages), então os
-assets e as imagens carregam certo. O Firebase Authentication exige que esse domínio
-esteja em **Authentication ▸ Settings ▸ Authorized domains** (adicione
-`arthurowgg.github.io`), senão o login por popup do Google é bloqueado ali — o login
-por e-mail/senha funciona de qualquer jeito.
