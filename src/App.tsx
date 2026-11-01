@@ -14,7 +14,6 @@ import { Avatar, Brand, Button, Icon, Mark, OrbitArt } from "./components/ui";
 import { NAV } from "./data/site";
 import { addDownload, ensureProfile, firstName, signOut, type Account } from "./lib/accounts";
 import { auth, initAnalytics } from "./lib/firebaseClient";
-import { BUILD } from "./lib/download";
 import {
   modePath,
   navigate,
@@ -272,9 +271,7 @@ function SiteFooter({
         </div>
 
         <div className="mt-10 flex flex-col justify-between gap-2 border-t border-paper/15 pt-4 sm:flex-row sm:items-center">
-          <p className="label text-bone/35">
-            © {new Date().getFullYear()} Orbi · v{BUILD.version} · {BUILD.channel}
-          </p>
+          <p className="label text-bone/35">© {new Date().getFullYear()} Orbi</p>
           <p className="label text-bone/35">Windows 11 é uma marca da Microsoft.</p>
         </div>
       </div>

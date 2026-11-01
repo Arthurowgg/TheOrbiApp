@@ -74,13 +74,11 @@ jobs:
         shell: powershell
         run: |
           $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-          & $iscc app\installer\orbi.iss 2>&1 | Tee-Object -FilePath iscc.log
-          if ($LASTEXITCODE -ne 0) {
-            # o log do runner não é legível pela API; a anotação é.
-            Get-Content iscc.log | Select-String -Pattern "Error|error|Line|linha|Warning" |
-              Select-Object -First 8 | ForEach-Object { Write-Host "::error::$($_.Line)" }
-            throw "ISCC falhou com código $LASTEXITCODE"
-          }
+          $saida = & $iscc app\installer\orbi.iss 2>&1 | ForEach-Object { "$_" }
+          $codigo = $LASTEXITCODE
+          $saida | Set-Content -Path iscc.log -Encoding utf8
+          $saida | Select-Object -Last 25 | ForEach-Object { Write-Host "::error::$_" }
+          if ($codigo -ne 0) { throw "ISCC falhou com codigo $codigo" }
 
       - name: Salvar o log do instalador
         if: failure()

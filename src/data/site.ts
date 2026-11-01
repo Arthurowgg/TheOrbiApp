@@ -1,131 +1,132 @@
 export const NAV = [
-  { label: "Recursos", section: "recursos" },
-  { label: "O app", section: "app" },
-  { label: "Conta", section: "conta" },
-  { label: "Segurança", section: "seguranca" },
-  { label: "Download", section: "download" },
+  { label: "O que faz", section: "faz" },
+  { label: "Exemplos", section: "exemplos" },
+  { label: "Sua conta", section: "conta" },
+  { label: "Privacidade", section: "privacidade" },
+  { label: "Baixar", section: "download" },
 ] as const;
 
-export const CAPABILITIES = [
-  "Abre seus apps",
-  "Volume e brilho",
-  "Lembretes e timers",
-  "Rotinas de um comando",
-  "Bloqueio automático",
-  "Gemini quando precisa",
+/** Frases que a pessoa realmente digita — é isso que a página vende. */
+export const EXAMPLES = [
+  {
+    saida: "abre o spotify e baixa o volume",
+    efeito: "Spotify em primeiro plano, volume em 20%.",
+  },
+  {
+    saida: "modo estudo",
+    efeito: "Abre a apostila, silencia as notificações e abre um timer de 50 minutos.",
+  },
+  {
+    saida: "lembra de pagar a conta de luz amanhã às 9",
+    efeito: "Aviso na bandeja na hora certa, mesmo com o app fechado.",
+  },
+  {
+    saida: "o que eu tava fazendo ontem à tarde?",
+    efeito: "O Orbi lembra e responde — é a memória dele sobre o seu dia.",
+  },
+  {
+    saida: "tô cansado, põe algo leve pra tocar",
+    efeito: "Abre a música, baixa o brilho e deixa o PC em modo silencioso.",
+  },
+  {
+    saida: "trava o pc quando eu sair",
+    efeito: "Bloqueio automático depois do tempo parado, com aviso antes.",
+  },
 ];
 
 export const FEATURES = [
   {
     icon: "apps" as const,
-    title: "Apps do seu jeito",
-    body: "“Abre o zap.” O Orbi entende apelidos, encontra o app no seu Windows e traz para frente — sem menu, sem atalho decorado.",
-    tag: "local",
-  },
-  {
-    icon: "sliders" as const,
-    title: "O PC na sua mão",
-    body: "Volume, brilho, Wi-Fi, energia, captura de tela. O que hoje são cinco cliques vira uma frase.",
-    tag: "local",
-  },
-  {
-    icon: "bell" as const,
-    title: "Nada some do radar",
-    body: "Lembretes, timers, notas e o histórico do que você copiou — guardado no seu PC, não numa conta qualquer.",
-    tag: "local",
+    title: "Fala como você fala",
+    body: "“abre o zap”, “aumenta o som”, “isso aí que eu abri ontem”. Sem comando decorado, sem barra de menu.",
   },
   {
     icon: "bolt" as const,
-    title: "Rotinas",
-    body: "Modo estudo, modo cinema, encerrar o dia. Abre, fecha e ajusta tudo de uma vez, com uma frase só.",
-    tag: "local",
+    title: "Um pedido, várias coisas",
+    body: "“modo cinema” abre o player, apaga a luz da tela, silencia o celular conectado e ativa o Foco.",
+  },
+  {
+    icon: "bell" as const,
+    title: "Não deixa passar nada",
+    body: "Lembretes, timers e notas que aparecem na hora marcada, mesmo quando o app está na bandeja.",
   },
   {
     icon: "sparkle" as const,
-    title: "Gemini quando ajuda",
-    body: "Comando fora do script? O Orbi pergunta ao Gemini e devolve a resposta pronta para você — sem abrir o navegador.",
-    tag: "IA",
+    title: "Memória de verdade",
+    body: "O Orbi guarda o que você fez, pediu e anotou — e usa isso para responder “o que eu tava fazendo ontem?”.",
   },
   {
     icon: "cloud" as const,
-    title: "A mesma conta no site e no app",
-    body: "Apelidos, atalhos, rotinas e preferências ficam na sua conta (Firestore) e chegam em cada PC. Notas, área de transferência e a chave da IA continuam só no computador.",
-    tag: "conta",
+    title: "Tudo na sua conta",
+    body: "Você entra uma vez. Preferências, rotinas, memória e lembretes ficam salvos na sua conta e aparecem em qualquer PC.",
   },
   {
     icon: "lock" as const,
-    title: "Privada por padrão",
-    body: "Senhas, área de transferência e webcam ficam no PC. Quando a IA é usada, vai só o texto do comando.",
-    tag: "privado",
+    title: "Nada sai sem você",
+    body: "Notas, área de transferência e a chave da IA nunca vão para a nuvem. Só o que você quer sincronizar sincroniza.",
   },
 ];
 
+export const STEPS = [
+  {
+    title: "Baixe e instale",
+    body: "Um arquivo. Ele instala, cria o atalho e abre o Orbi — sem terminal, sem administrador.",
+  },
+  {
+    title: "Entre na sua conta",
+    body: "E-mail e senha ou Google. É a mesma conta do site, então o que você já salvou está lá.",
+  },
+  {
+    title: "Aperte Alt+Shift+O",
+    body: "A barra aparece sobre qualquer programa. Escreva, ou peça em português mesmo.",
+  },
+];
+
+export const ACCOUNT_ITEMS = [
+  { label: "Memória da IA", body: "o que você pediu, o que o Orbi fez, o que você anotou." },
+  { label: "Rotinas", body: "seus atalhos de várias ações, prontos em qualquer PC." },
+  { label: "Lembretes e notas", body: "marcados no app, visíveis no site." },
+  { label: "Preferências", body: "atalho, tema, o que sincronizar." },
+];
+
+export const LOCAL_ONLY = ["Senhas", "Área de transferência", "Chave da IA", "Histórico de teclado"];
+
+export const FAQ = [
+  {
+    q: "Preciso pagar para usar?",
+    a: "Não. O app e a conta são gratuitos, sem assinatura e sem cartão.",
+  },
+  {
+    q: "Preciso de conta para instalar?",
+    a: "Para instalar, não. Mas é a conta que guarda a memória, as rotinas e os lembretes — é ela que faz o Orbi lembrar de você em qualquer PC.",
+  },
+  {
+    q: "A IA sabe tudo o que eu faço?",
+    a: "Só o texto que você escreve vai para o modelo, e apenas quando o pedido foge do que o Windows resolve sozinho. Notas, senhas e área de transferência nunca entram nesse envio.",
+  },
+  {
+    q: "Funciona sem internet?",
+    a: "Sim. Abrir apps, mexer no som, lembretes e rotinas funcionam offline. A conversa com a IA é a única parte que precisa de rede.",
+  },
+  {
+    q: "Qual Windows eu preciso?",
+    a: "Windows 11 (ou Windows 10 1809+), 64 bits. A instalação é por usuário e não pede privilégio de administrador.",
+  },
+];
+
+/** Usado pela área da conta e pelo espelho do app: o que sincroniza. */
 export const SYNC_ITEMS = [
-  { key: "preferencias" as const, label: "Preferências", hint: "tema, atalho e idioma" },
-  { key: "apelidos" as const, label: "Apelidos de apps", hint: "“zap” = WhatsApp" },
+  { key: "preferencias" as const, label: "Preferências", hint: "atalho, tema e o que sincronizar" },
+  { key: "apelidos" as const, label: "Aprendizado de apps", hint: "o Orbi reconhece o app sozinho" },
   { key: "rotinas" as const, label: "Rotinas", hint: "modo estudo, cinema…" },
   { key: "atalhos" as const, label: "Atalhos de texto", hint: "snippets que você criou" },
 ];
 
-export const LOCAL_ONLY = ["Notas", "Área de transferência", "Chave da API", "Logs de segurança"];
-
-export const DOWNLOAD_STEPS = [
-  { title: "Baixe o instalador", body: "OrbiSetup.exe, um arquivo só, para Windows 11." },
-  { title: "Execute o setup", body: "Ele instala, cria o atalho e abre o app. Sem terminal." },
-  { title: "Aperte Alt+Shift+O", body: "A barra abre em qualquer programa, sobre qualquer janela." },
-];
-
-export const LOCK_TIMELINE = [
-  { time: "0:00", title: "Você se afasta", body: "Teclado e mouse ficam parados." },
-  {
-    time: "5:00",
-    title: "Aviso na tela",
-    body: "“Vou bloquear em 15 s. Mexa o mouse para cancelar.”",
-  },
-  { time: "5:15", title: "Windows bloqueado", body: "Só a sua senha do Windows abre." },
-];
-
-export const LOCK_EXCEPTIONS = ["Vídeo em tela cheia", "Jogo", "Chamada", "Apresentação"];
-
+/** Notas da versão mostradas na área da conta. */
 export const RELEASE_NOTES = [
-  "App Windows nativo: bandeja, Alt+Shift+O e inicialização com o sistema",
+  "Conversa com memória: o Orbi lembra do que você pediu e fez",
   "Comandos em português para abrir apps, volume, brilho, energia e captura",
   "Lembretes, timers, notas e histórico de área de transferência",
-  "Rotinas e atalhos de texto sincronizados com a conta",
-  "Gemini integrado para comandos que fogem do script",
-  "Bloqueio por inatividade com aviso, exceções e senha do Windows",
-];
-
-export const FAQ = [
-  {
-    q: "O Orbi é realmente grátis?",
-    a: "Sim. O app, o site e a conta não têm assinatura nem cartão. O uso do Gemini passa pela camada gratuita do Firebase, com limites do Google — para uso pessoal, sobra.",
-  },
-  {
-    q: "Preciso de conta para usar o app?",
-    a: "Não. O app funciona sem login. A conta serve para sincronizar preferências, apelidos e rotinas entre PCs e para reencontrar seus downloads.",
-  },
-  {
-    q: "Onde ficam meus dados?",
-    a: "Notas, área de transferência, histórico e a chave da IA ficam no seu PC. Na nuvem ficam só o perfil (nome e e-mail), a lista de aparelhos e as preferências que você escolher sincronizar — no Firestore, com regras que limitam cada documento ao próprio dono.",
-  },
-  {
-    q: "Como o login funciona?",
-    a: "Firebase Authentication: e-mail e senha com hash no servidor, verificação de e-mail, redefinição por link e entrada com Google. O Orbi nunca vê sua senha.",
-  },
-  {
-    q: "Qual Windows eu preciso?",
-    a: "Windows 11 (22H2+) ou Windows 10 1809+, 64 bits. O instalador não pede privilégio de administrador para a instalação por usuário.",
-  },
-  {
-    q: "Como sei que o download é autêntico?",
-    a: "Cada release publica o SHA256SUMS.txt junto do instalador. O site mostra o hash da última versão e você pode conferir com o comando indicado no rodapé da seção de download.",
-  },
-];
-
-export const STATS = [
-  { value: "1", label: "instalador", hint: "sem Python, sem runtime extra" },
-  { value: "~40 MB", label: "em disco", hint: "app nativo, sem Electron" },
-  { value: "< 200 ms", label: "para abrir", hint: "do atalho até a barra pronta" },
-  { value: "0", label: "dados sensíveis na nuvem", hint: "notas e teclado ficam no PC" },
+  "Rotinas e preferências na sua conta, em qualquer PC",
+  "Bloqueio por inatividade com aviso e senha do Windows",
 ];
