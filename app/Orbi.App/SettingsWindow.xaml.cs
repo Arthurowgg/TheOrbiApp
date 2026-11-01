@@ -8,14 +8,12 @@ namespace Orbi;
 
 public partial class SettingsWindow : Window
 {
-    private bool _loading = true;
 
     public SettingsWindow()
     {
         InitializeComponent();
         Nav.SelectedIndex = 0;
         Load();
-        _loading = false;
     }
 
     /* ----------------------------- carregar ----------------------------- */
