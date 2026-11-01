@@ -66,10 +66,19 @@ public partial class CommandBar : Window
         Root.Background = Brushes.Transparent;
     }
 
+    /// <summary>Mostra o conteúdo sem mexer em tamanho nem posição (usado na tela cheia).</summary>
+    private void MostrarConteudo()
+    {
+        Results.Visibility = Visibility.Visible;
+        FooterBar.Visibility = Visibility.Visible;
+        AplicarLayout();
+    }
+
     private void Expand()
     {
         Results.Visibility = Visibility.Visible;
         FooterBar.Visibility = Visibility.Visible;
+        if (_telaCheia) { AplicarLayout(); return; }
         var area = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Cursor.Position).WorkingArea;
         var dpi = VisualTreeHelper.GetDpi(this);
         var areaHeight = area.Height / dpi.DpiScaleY;
@@ -236,13 +245,14 @@ public partial class CommandBar : Window
             _layoutSalvo = _layout;
             // tela cheia de verdade: bounds (cobre a barra de tarefas), não a área útil
             var total = screen.Bounds;
+            _modoSalvo = WindowStyle;
+            WindowStyle = WindowStyle.None;
+            Topmost = true;
             Left = total.Left / dpi.DpiScaleX;
             Top = total.Top / dpi.DpiScaleY;
             Width = total.Width / dpi.DpiScaleX;
             Height = total.Height / dpi.DpiScaleY;
-            _modoSalvo = WindowStyle;
-            WindowStyle = WindowStyle.None;
-            Topmost = true;
+            MostrarConteudo();
             FullGlyph.Data = Geometry.Parse("M6,2 L6,6 L2,6 M10,6 L14,6 L14,2 M14,10 L10,10 L10,14 M2,10 L6,10 L6,14");
             Expand();
             AplicarLayout();
@@ -269,11 +279,19 @@ public partial class CommandBar : Window
 
         var salva = Store.Current;
         Width = Math.Clamp(salva.BarWidth > 200 ? salva.BarWidth : 660, 420, Math.Max(420, largura - 16));
+        // a altura salva é a de antes de entrar em tela cheia; se ela era
+        // compacta, volta compacta em vez de abrir um painel vazio.
+        _travel = salva.BarHeight > CompactHeight + 40 ? salva.BarHeight : CompactHeight;
+        if (salva.BarHeight <= CompactHeight + 40)
+        {
+            Height = CompactHeight;
+            Collapse();
+            return;
+        }
         Height = Math.Clamp(salva.BarHeight > CompactHeight ? salva.BarHeight : CompactHeight, CompactHeight, Math.Max(CompactHeight, altura - 16));
         Left = Math.Clamp(salva.BarLeft ?? (esquerda + (largura - Width) / 2), esquerda + 4, Math.Max(esquerda + 4, esquerda + largura - Width - 4));
         Top = Math.Clamp(salva.BarTop ?? (topo + Math.Min(96, altura * 0.12)), topo + 4, Math.Max(topo + 4, topo + altura - Height - 4));
         AplicarLayout();
-        if (Height <= CompactHeight + 40) Collapse();
     }
 
     /* ----------------------------- espaçamento ----------------------------- */
