@@ -537,20 +537,6 @@ export async function updateProfile(patch: {
   }
 }
 
-/** Salva apelidos de apps (o app Windows importa estes). */
-export async function saveAliases(aliases: Alias[]): Promise<void> {
-  const clean = aliases
-    .map((item) => ({ alias: item.alias.trim().slice(0, 40), target: item.target.trim().slice(0, 260) }))
-    .filter((item) => item.alias && item.target)
-    .slice(0, 100);
-  if (clean.length !== aliases.length) {
-    throw new AuthError("invalid_input", "Preencha apelido e app, e mantenha até 100 itens.");
-  }
-  await patchUser({ aliases: clean }).catch((error) => {
-    throw toAuthError(error);
-  });
-}
-
 /** Salva atalhos de texto (frase que se expande no app). */
 export async function saveShortcuts(shortcuts: Shortcut[]): Promise<void> {
   const clean = shortcuts
@@ -604,61 +590,6 @@ export function setSync(sync: SyncPrefs): Promise<void> {
     throw toAuthError(error);
   });
 }
-
-/* ------------------------------------------------------------------ */
-/* Aparelhos: o app mostra um código ORBI-XXXX-XXXX; o último caractere
- * é um dígito verificador, então o site recusa erro de digitação.     */
-/* ------------------------------------------------------------------ */
-function checkChar(body: string) {
-  let sum = 0;
-  for (let i = 0; i < body.length; i += 1) sum += (i + 1) * ALPHABET.indexOf(body[i]);
-  return ALPHABET[sum % ALPHABET.length];
-}
-
-export function normalizePairingCode(input: string): string | null {
-  let clean = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (clean.startsWith("ORBI")) clean = clean.slice(4);
-  if (clean.length !== 8) return null;
-  if ([...clean].some((char) => !ALPHABET.includes(char))) return null;
-  if (checkChar(clean.slice(0, 7)) !== clean[7]) return null;
-  return `ORBI-${clean.slice(0, 4)}-${clean.slice(4)}`;
-}
-
-export function formatPairingInput(input: string): string {
-  let clean = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (clean.startsWith("ORBI")) clean = clean.slice(4);
-  clean = clean.slice(0, 8);
-  return clean.length > 4 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
-}
-
-export function generateSampleCode(): string {
-  const body = randomChars(7);
-  const full = body + checkChar(body);
-  return `ORBI-${full.slice(0, 4)}-${full.slice(4)}`;
-}
-
-export async function linkDevice(rawCode: string, name: string): Promise<void> {
-  const user = auth.currentUser;
-  if (!user) throw new AuthError("not_found", "Entre na sua conta primeiro.");
-  const code = normalizePairingCode(rawCode);
-  if (!code) throw new AuthError("invalid_code", "Código inválido. Confira os 8 caracteres exibidos no app.");
-  const snapshot = await getDoc(userDoc(user.uid));
-  const devices = (snapshot.data()?.devices as Device[] | undefined) ?? [];
-  if (devices.some((device) => device.code === code)) {
-    throw new AuthError("device_exists", "Este código já foi usado para vincular um aparelho.");
-  }
-  if (devices.length >= 20) throw new AuthError("invalid_input", "Limite de 20 aparelhos por conta.");
-  const device: Device = {
-    id: randomChars(8),
-    name: name.trim().slice(0, 60) || "Meu PC",
-    os: "Windows 11",
-    linkedAt: new Date().toISOString(),
-    code,
-  };
-  await patchUser({ devices: [device, ...devices] });
-  await pushActivity("dispositivo", `App vinculado: ${device.name}`);
-}
-
 export async function removeDevice(deviceId: string): Promise<void> {
   const user = auth.currentUser;
   if (!user) throw new AuthError("not_found", "Entre na sua conta primeiro.");
