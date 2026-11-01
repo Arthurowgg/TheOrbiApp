@@ -33,8 +33,9 @@ public static class ToolsWeb
 
         string Copia(string texto)
         {
-            try { System.Windows.Clipboard.SetText(texto); return "Copiado: " + Curto(texto); }
-            catch { return Curto(texto); }
+            var curto = texto.Length > 140 ? texto[..140] + "…" : texto;
+            try { System.Windows.Clipboard.SetText(texto); return "Copiado: " + curto; }
+            catch { return curto; }
         }
 
 
@@ -286,6 +287,14 @@ public static class ToolsWeb
         Add("ver-quem-esta-na-rede", "Ver quem está na rede", "Rede e internet", "rede,dispositivos", () => Rede("ver-quem-esta-na-rede"));
         Add("abrir-o-adaptador-de-rede", "Abrir o adaptador de rede", "Rede e internet", "adaptador,rede", () => Rede("abrir-o-adaptador-de-rede"));
         Add("desligar-o-wi-fi", "Desligar o Wi-Fi", "Rede e internet", "desligar,wifi", () => Rede("desligar-o-wi-fi"));
+    }
+
+    /* ------------------------------ texto ------------------------------ */
+    private static string ClipboardSafe()
+    {
+        try { return System.Windows.Clipboard.GetText() ?? ""; }
+        catch { return ""; }
+    }
 
     private static string Rede(string id)
     {
@@ -376,6 +385,4 @@ public static class ToolsWeb
         }
     }
 
-    /* ------------------------------ atalhos de leitura ------------------------------ */
-    }
 }
