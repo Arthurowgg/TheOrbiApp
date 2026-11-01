@@ -303,9 +303,9 @@ public partial class App : System.Windows.Application
                 var casos = new (string Id, string Dado, string Esperado)[]
                 {
                     ("somar", "2+2", "4"),
-                    ("calcular-uma-porcentagem", "% de 250", "50"),
+                    ("calcular-uma-porcentagem", "20% de 250", "50"),
                     ("converter-celsius-para-fahrenheit", "100", "212"),
-                    ("calcular-o-imc", "80 1,80", "24"),
+                    ("calcular-o-imc", "80 1,80", "24,7"),
                     ("deixar-em-maiusculas", "orbi", "ORBI"),
                     ("inverter-o-texto", "abc", "cba"),
                     ("contar-as-letras", "orbi", "4"),
