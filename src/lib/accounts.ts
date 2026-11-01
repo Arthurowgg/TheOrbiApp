@@ -163,7 +163,7 @@ function randomColor() {
   return AVATAR_COLORS[out[0] % AVATAR_COLORS.length];
 }
 
-/** Traduz os erros do Firebase para mensagens em português. */
+/** Traduz os erros de conta para mensagens em português, sem jargão interno. */
 export function toAuthError(error: unknown): AuthError {
   if (error instanceof AuthError) return error;
   const code = (error as { code?: string })?.code ?? "";
@@ -183,7 +183,7 @@ export function toAuthError(error: unknown): AuthError {
     case "auth/too-many-requests":
       return new AuthError("too_many", "Muitas tentativas. Espere um minuto e tente de novo.");
     case "auth/network-request-failed":
-      return new AuthError("network", "Sem conexão com o Firebase. Confira sua internet.");
+      return new AuthError("network", "Sem conexão. Confira sua internet.");
     case "auth/popup-closed-by-user":
     case "auth/cancelled-popup-request":
       return new AuthError("invalid_input", "A janela do Google foi fechada.");
@@ -192,7 +192,7 @@ export function toAuthError(error: unknown): AuthError {
     case "auth/operation-not-allowed":
       return new AuthError(
         "storage",
-        "Este método de login ainda não está ligado no console do Firebase.",
+        "Este método de login ainda não está ativado.",
       );
     case "auth/requires-recent-login":
       return new AuthError("requires_recent_login", "Por segurança, entre de novo antes de fazer isso.");
@@ -200,13 +200,13 @@ export function toAuthError(error: unknown): AuthError {
       return new AuthError("email_taken", "Esta conta usa outro método de login (Google ou e-mail).");
     case "permission-denied":
     case "firestore/permission-denied":
-      return new AuthError("storage", "O Firestore recusou a operação. Confira as Security Rules publicadas.");
+      return new AuthError("storage", "Não foi possível salvar agora. Tente de novo em instantes.");
     default:
       break;
   }
   if (error instanceof Error && error.message) {
     if (/offline|unavailable/i.test(error.message)) {
-      return new AuthError("network", "Sem conexão com o Firestore. Confira sua internet.");
+      return new AuthError("network", "Sem conexão. Confira sua internet.");
     }
     return new AuthError("storage", error.message);
   }
@@ -217,7 +217,7 @@ function ensureConfigured() {
   if (!configured) {
     throw new AuthError(
       "not_configured",
-      "Firebase não configurado. Preencha o arquivo .env com as chaves do projeto.",
+      "A conta ainda não está disponível neste ambiente.",
     );
   }
 }
@@ -284,7 +284,7 @@ export async function ensureProfile(user: User, name?: string): Promise<Account>
   }
 }
 
-/** Erro do último acesso ao Firestore (mostrado na área da conta). */
+/** Erro do último acesso à conta (mostrado na área da conta). */
 export let lastProfileError: string | null = null;
 
 async function ensureProfileDocument(user: User, name?: string): Promise<Account> {

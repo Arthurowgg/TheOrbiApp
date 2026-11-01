@@ -139,7 +139,7 @@ REQUISITOS
 USO
 - Alt+Shift+O abre a barra de comando em qualquer programa.
 - Esc fecha a barra.
-- A conta é a mesma do site (Firebase Authentication).
+- A conta é a mesma do site.
 
 VERIFICAÇÃO
 - Confira o hash do instalador em SHA256SUMS.txt na mesma release.
