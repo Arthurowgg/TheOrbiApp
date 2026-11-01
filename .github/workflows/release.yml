@@ -175,7 +175,8 @@ jobs:
           else
             echo "available=true" >> "$GITHUB_OUTPUT"
             printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
-            python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json" || echo "::warning::credencial do Firebase com problema"
+            python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json" \
+              || echo "::error::credencial do Firebase inválida (secret AUTH_JSON)"
           fi
 
       - name: Deploy no Hosting + regras do Firestore

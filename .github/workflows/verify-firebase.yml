@@ -206,30 +206,11 @@ jobs:
       - if: steps.check.outputs.available == 'true'
         name: Preparar credencial
         env:
-          A: ${{ secrets.AUTH_JSON }}
-          B: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          C: ${{ secrets.AUTH_KEY }}
           SA: ${{ secrets.AUTH_JSON || secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
         shell: bash
         run: |
-          for par in "AUTH_JSON=$A" "FIREBASE_SERVICE_ACCOUNT=$B" "AUTH_KEY=$C"; do
-            nome="${par%%=*}"
-            valor="${par#*=}"
-            if [ -z "$valor" ]; then
-              echo "secret $nome: ausente"
-            else
-              echo "secret $nome: ${#valor} caracteres"
-              printf '%s' "$valor" > /tmp/candidato.json
-              if ! SAIDA=$(python3 scripts/checar-credencial.py /tmp/candidato.json 2>&1); then
-                MOTIVO=$(echo "$SAIDA" | head -2 | tr '\n' ' ' | cut -c1-260)
-                echo "::error::$nome inválido: $MOTIVO"
-              else
-                echo "::notice::$nome ok: $(echo "$SAIDA" | head -2 | tr '\n' ' ')"
-              fi
-            fi
-          done
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
-          python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json" || echo "::warning::credencial do Firebase com problema"
+          python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json"
 
       - if: steps.check.outputs.available == 'true'
         name: Deploy (hosting + regras)
