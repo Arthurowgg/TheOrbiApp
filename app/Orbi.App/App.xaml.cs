@@ -211,6 +211,12 @@ public partial class App : System.Windows.Application
     }
 
     /* ----------------------------- janelas ----------------------------- */
+    /// <summary>Esconde a barra (o app continua na bandeja).</summary>
+    public void HideBar()
+    {
+        _bar?.HideBar();
+    }
+
     public void ShowBar()
     {
         try

@@ -681,7 +681,7 @@ public static class ToolsExtra
         Add("orbi-account-site", "Abrir a minha conta no site", orbi, "conta,site,navegador",
             () => Open("https://orbi-app.web.app/conta"));
         Add("orbi-quiet", "Esconder a barra", orbi, "esconder,fechar,barra",
-            () => { App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.HideBar())); return "Barra escondida."; });
+            () => { App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.Hide())); return "Barra escondida."; });
     }
 
     /* ------------------------------ utilidades ------------------------------ */
@@ -773,7 +773,7 @@ public static class ToolsExtra
         }
     }
 
-    private static void SendMessage(int msg, int wParam, int lParam) =>
+    private static void SendMessage(uint msg, int wParam, int lParam) =>
         Pc.SendMessageToWindow(IntPtr.Zero, msg, (IntPtr)wParam, (IntPtr)lParam);
 
     private static readonly DateTime Boot = DateTime.Now - TimeSpan.FromMilliseconds(Environment.TickCount64);
