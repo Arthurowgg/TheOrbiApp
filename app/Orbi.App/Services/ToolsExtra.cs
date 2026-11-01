@@ -681,7 +681,7 @@ public static class ToolsExtra
         Add("orbi-account-site", "Abrir a minha conta no site", orbi, "conta,site,navegador",
             () => Open("https://orbi-app.web.app/conta"));
         Add("orbi-quiet", "Esconder a barra", orbi, "esconder,fechar,barra",
-            () => { App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.Hide())); return "Barra escondida."; });
+            () => { App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.HideBar())); return "Barra escondida."; });
     }
 
     /* ------------------------------ utilidades ------------------------------ */
