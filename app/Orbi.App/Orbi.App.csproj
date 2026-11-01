@@ -10,18 +10,19 @@
     <AssemblyName>Orbi</AssemblyName>
     <RootNamespace>Orbi</RootNamespace>
     <ApplicationIcon>Assets/orbi.ico</ApplicationIcon>
-    <Version>1.0.8</Version>
-    <FileVersion>1.0.8.0</FileVersion>
-    <AssemblyVersion>1.0.8.0</AssemblyVersion>
+    <Version>1.1.0</Version>
+    <FileVersion>1.1.0.0</FileVersion>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
     <Product>Orbi</Product>
     <Company>Orbi</Company>
     <Description>Assistente em português para Windows 11</Description>
     <Copyright>© 2026 Orbi</Copyright>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <InvariantGlobalization>false</InvariantGlobalization>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
+    <SelfContained>false</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <PublishTrimmed>false</PublishTrimmed>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Entrada em código (App.Main): o App.xaml deixa de ser ponto de falha. -->

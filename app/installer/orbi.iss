@@ -6,7 +6,7 @@
 ; ---------------------------------------------------------------------------
 
 #define AppName "Orbi"
-#define AppVersion "1.0.8"
+#define AppVersion "1.1.0"
 #define AppPublisher "Orbi"
 #define AppURL "https://orbi-app-auth.web.app"
 #define AppExe "Orbi.exe"
@@ -31,7 +31,7 @@ OutputBaseFilename=OrbiSetup-{#AppVersion}
 SetupIconFile=..\Orbi.App\Assets\orbi.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName} {#AppVersion}
-Compression=lzma2/max
+Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 WizardImageFile=assets\banner.bmp
@@ -145,6 +145,7 @@ Name: "desktopicon"; Description: "Criar atalho na área de trabalho"; GroupDesc
 Name: "startup"; Description: "Abrir o Orbi junto com o Windows"; GroupDescription: "Inicialização:"; Flags: checkedonce
 
 [Files]
+; a pasta publish inteira: Orbi.exe + as DLLs do .NET que ele precisa
 Source: "..\..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "limpar-antigas.ps1"; DestDir: "{tmp}"; Flags: dontcopy
 

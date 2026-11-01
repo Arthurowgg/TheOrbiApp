@@ -59,14 +59,12 @@ jobs:
       - name: Build (Release)
         run: dotnet build app/Orbi.App/Orbi.App.csproj -c Release --no-restore
 
-      - name: Publish single-file self-contained
+      # Publica uma PASTA, não um exe único: nada de extração na partida (era o
+      # que fazia o app morrer antes de escrever qualquer log).
+      - name: Publish (pasta)
         run: >
           dotnet publish app/Orbi.App/Orbi.App.csproj
-          -c Release -r win-x64 --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:EnableCompressionInSingleFile=true
-          -o artifacts/publish
+          -c Release -r win-x64 --self-contained false -o artifacts/publish
 
       - name: Instalar Inno Setup
         run: choco install innosetup --no-progress -y
@@ -109,7 +107,7 @@ jobs:
         run: |
           # Confere que o binário publicado existe e tem tamanho plausível.
           $exe = Get-ChildItem artifacts\publish\Orbi.exe
-          if ($exe.Length -lt 5MB) { throw "Orbi.exe suspeito: $($exe.Length) bytes" }
+          if ($exe.Length -lt 100KB) { throw "Orbi.exe suspeito: $($exe.Length) bytes" }
           Write-Host "Orbi.exe: $([math]::Round($exe.Length/1MB,1)) MB"
 
       - uses: actions/upload-artifact@v4
@@ -137,11 +135,7 @@ jobs:
       - name: Publicar (exatamente como o instalador publica)
         run: >
           dotnet publish app/Orbi.App/Orbi.App.csproj
-          -c Release -r win-x64 --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:EnableCompressionInSingleFile=true
-          -o artifacts/publish
+          -c Release -r win-x64 --self-contained false -o artifacts/publish
 
       - name: Rodar o Orbi com --selftest
         shell: powershell
@@ -239,20 +233,20 @@ jobs:
       - name: Criar/atualizar a release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.8
-          name: Orbi 1.0.8
+          tag_name: v1.1.0
+          name: Orbi 1.1.0
           draft: false
           prerelease: false
           make_latest: true
           files: |
-            artifacts/OrbiSetup-1.0.8.exe
+            artifacts/OrbiSetup-1.1.0.exe
             artifacts/SHA256SUMS.txt
           body: |
-            ## Orbi 1.0.8 — para Windows 11
+            ## Orbi 1.1.0 — para Windows 11
 
             Instalador único, sem Python, sem privilégio de administrador.
 
-            **Baixe `OrbiSetup-1.0.8.exe`** e execute. Na primeira vez, o Orbi mostra uma
+            **Baixe `OrbiSetup-1.1.0.exe`** e execute. Na primeira vez, o Orbi mostra uma
             janela de boas-vindas (prova de que ele abriu) e o diagnóstico. Depois, aperte
             `Alt+Shift+O` em qualquer lugar do Windows.
 
@@ -273,7 +267,7 @@ jobs:
             **Verificação:** compare o SHA-256 com `SHA256SUMS.txt`.
 
             ```powershell
-            certutil -hashfile OrbiSetup-1.0.8.exe SHA256
+            certutil -hashfile OrbiSetup-1.1.0.exe SHA256
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
