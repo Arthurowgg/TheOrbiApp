@@ -189,11 +189,12 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
           set -o pipefail
-          # publisher/project: o mesmo acesso que o workflow de verificação usa.
           npx --yes firebase-tools@latest deploy \
             --only hosting,firestore:rules \
             --project orbi-app-auth --non-interactive 2>&1 | tee deploy.log | tail -30
           STATUS=${PIPESTATUS[0]}
+          # "Deploy complete" é o sinal real de sucesso da CLI
+          if grep -q "Deploy complete" deploy.log; then STATUS=0; fi
           if [ "$STATUS" != "0" ]; then
             # 3 linhas de erro + contexto (o log do runner não é legível pela API)
             grep -inE "error|forbidden|permission|invalid|fail|quota|denied|http" deploy.log | head -6 | while IFS= read -r line; do echo "::error::$line"; done
