@@ -32,6 +32,16 @@ public static class Smoke
         Line($"Orbi — autoteste · {typeof(Smoke).Assembly.GetName().Version}");
         Line($"Windows: {Environment.OSVersion.VersionString} · .NET {Environment.Version}");
         Line($"Pasta: {Store.Root}");
+
+        try
+        {
+            var tema = Application.Current?.Resources["Film2"] is not null;
+            Line($"Tema: {(tema ? "carregado" : "VAZIO")}");
+        }
+        catch (Exception error)
+        {
+            Line($"Tema: FALHOU — {error.GetType().Name}: {error.Message}");
+        }
         Line("");
 
         try
@@ -68,6 +78,17 @@ public static class Smoke
         Line($"Atalho global: {(string.IsNullOrEmpty(HotKey.Combination) ? "NÃO registrado" : HotKey.Combination)}");
         Line("");
         Line("RESULTADO: " + (log.ToString().Contains("FALHOU") ? "há falhas (veja acima)" : "tudo abriu"));
+
+        try
+        {
+            // Também no terminal: o CI lê o stdout do processo.
+            Console.WriteLine(log.ToString());
+            Console.Out.Flush();
+        }
+        catch
+        {
+            // sem console (WinExe): o arquivo continua sendo escrito
+        }
 
         try
         {

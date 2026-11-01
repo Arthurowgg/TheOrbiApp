@@ -93,6 +93,10 @@ public partial class CommandBar : Window
         Left = Math.Clamp(Left, area.Left / dpi.DpiScaleX + 8, Math.Max(area.Left / dpi.DpiScaleX + 8, maxLeft));
         Top = Math.Clamp(Top, area.Top / dpi.DpiScaleY + 8, Math.Max(area.Top / dpi.DpiScaleY + 8, maxTop));
 
+        // Confere o atalho global a cada abertura: se o handle da janela só
+        // ficou pronto depois do Attach, ele é registrado agora.
+        try { HotKey.TryRegister(); } catch { /* sem atalho ainda */ }
+
         if (!IsVisible) Show();
 
         Input.Text = "";

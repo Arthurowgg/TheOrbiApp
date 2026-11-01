@@ -189,11 +189,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: autoteste-logs
+          # Caminho fixo do runner Windows: C:\Users\runneradmin\AppData\Roaming
           path: |
-            ${{ env.APPDATA }}/Orbi/selftest.txt
-            ${{ env.APPDATA }}/Orbi/startup.log
-            ${{ env.APPDATA }}/Orbi/crash.log
-            ${{ env.APPDATA }}/Orbi/ultima-execucao.txt
+            C:/Users/runneradmin/AppData/Roaming/Orbi/selftest.txt
+            C:/Users/runneradmin/AppData/Roaming/Orbi/startup.log
+            C:/Users/runneradmin/AppData/Roaming/Orbi/crash.log
+            C:/Users/runneradmin/AppData/Roaming/Orbi/ultima-execucao.txt
           if-no-files-found: warn
           retention-days: 7
 

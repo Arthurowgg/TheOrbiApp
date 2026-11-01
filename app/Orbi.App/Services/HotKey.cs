@@ -46,6 +46,7 @@ public static class HotKey
     private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
     private static HwndSource? _source;
+    private static Window? _window;
     private static Action? _callback;
     public static bool Registered { get; private set; }
 
@@ -60,6 +61,7 @@ public static class HotKey
     public static void Attach(Window window, Action callback)
     {
         _callback = callback;
+        _window = window;
 
         void Try()
         {
@@ -78,6 +80,19 @@ public static class HotKey
 
     public static void TryRegister()
     {
+        // Se a barra ainda não tinha HWND quando Attach foi chamado, tenta agora:
+        // o atalho é conferido a cada abertura da barra, então nunca fica "sem
+        // atalho" só porque o handle demorou a existir.
+        if ((_source is null || _source.Handle == IntPtr.Zero) && _window is not null)
+        {
+            var handle = new WindowInteropHelper(_window).Handle;
+            if (handle != IntPtr.Zero)
+            {
+                _source = HwndSource.FromHwnd(handle);
+                _source?.AddHook(Hook);
+            }
+        }
+
         if (_source is null || _source.Handle == IntPtr.Zero) return;
 
         // Ordem: a combinação preferida (Ajustes) e depois as alternativas.
@@ -130,6 +145,7 @@ public static class HotKey
         UnregisterHotKey(_source.Handle, Id + 1);
         _source.RemoveHook(Hook);
         _source = null;
+        _window = null;
     }
 }
 
