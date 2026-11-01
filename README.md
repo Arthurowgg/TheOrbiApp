@@ -27,15 +27,21 @@ O instalador é **compilado e publicado automaticamente** pelo GitHub Actions a 
   seção de conta, segurança, download, FAQ e CTA.
 - **Login real com Firebase Authentication**: e-mail/senha (hash no servidor), verificação de
   e-mail, redefinição por link, entrada com Google, sessão persistente.
-- **Firestore** para perfil, aparelhos vinculados, histórico de downloads e atividade —
-  com regras que deixam cada documento visível apenas para o dono.
-- Área da conta: painel, perfil, dispositivos (código `ORBI-XXXX-XXXX`), downloads, segurança
-  (trocar senha, redefinir por e-mail, exportar dados, excluir conta).
+- **Firestore** como banco: perfil, aparelhos, downloads, atividade e — o que o app usa —
+  apelidos, atalhos de texto, rotinas e preferências, com regras que deixam cada documento
+  visível apenas para o dono.
+- Área da conta: painel, perfil, dispositivos, **sincronização** (apelidos, atalhos, rotinas e
+  preferências do app), downloads, segurança (trocar senha, redefinir por e-mail, exportar
+  dados, excluir conta).
 - O botão **Baixar** entrega o instalador real da última release do GitHub, com barra de
   progresso, nome do arquivo, tamanho e SHA-256. Se a release não existir, entrega um pacote
   com instruções — nunca um botão morto.
 
-### App Windows (C# / WPF, nativo, sem Electron)
+### App
+- **Entra na mesma conta do site** (Firebase Authentication por REST) e sincroniza pelo
+  **Firestore** (`users/{uid}`): pull ao abrir e a cada 45 s, push ao editar.
+- Rotinas criadas no site rodam no app: “modo estudo” abre o Word e ajusta o brilho.
+ Windows (C# / WPF, nativo, sem Electron)
 - Barra de comando global com **Alt+Space**, sobre qualquer janela, com sugestões e histórico.
 - Ícone na bandeja, início com o Windows, instância única.
 - Comandos locais (sem internet): abrir/fechar apps por apelido, volume, mudo, brilho, bloqueio,
