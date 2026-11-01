@@ -102,6 +102,31 @@ jobs:
           $linhas | Out-File -Encoding ascii artifacts\Installer\SHA256SUMS.txt
           $linhas | ForEach-Object { Write-Host $_ }
 
+      # Instalador silencioso de verdade: instala, confere os arquivos e desinstala.
+      # Sem isso, trocar a UI do setup por Win32 poderia quebrar a instalação sem ninguém ver.
+      - name: Instalar e desinstalar sem interface
+        shell: powershell
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
+          $p = Start-Process -FilePath $exe -ArgumentList "--silent" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "instalação silenciosa falhou ($($p.ExitCode))" }
+
+          $target = Join-Path $env:LOCALAPPDATA "Programs\Orbi"
+          if (-not (Test-Path (Join-Path $target "Orbi.exe"))) { throw "Orbi.exe não foi instalado em $target" }
+          $atalho = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Orbi.lnk"
+          if (-not (Test-Path $atalho)) { throw "atalho do menu iniciar não foi criado" }
+          Write-Host "instalado: $((Get-ChildItem $target -Recurse | Measure-Object Length -Sum).Sum / 1MB) MB em $target"
+
+          $u = Start-Process -FilePath $exe -ArgumentList "--silent","--uninstall" -PassThru -Wait
+          if ($u.ExitCode -ne 0) { throw "desinstalação silenciosa falhou ($($u.ExitCode))" }
+          if (Test-Path (Join-Path $target "Orbi.exe")) { throw "Orbi.exe continuou depois de desinstalar" }
+          $chave = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Orbi"
+          if (Test-Path $chave) { throw "a entrada de desinstalação continuou no registro" }
+          if (Test-Path $atalho) { throw "o atalho do menu iniciar continuou" }
+          Write-Host "instalação e desinstalação conferidas"
+
       - name: Smoke test do instalador
         shell: powershell
         run: |
