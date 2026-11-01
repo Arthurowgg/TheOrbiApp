@@ -49,22 +49,18 @@ export default function ToolCatalog() {
           {group.tools.map((tool) => (
             <li
               key={tool}
-              className="flex items-center justify-between gap-3 border-b border-rule py-2.5"
+              className="flex items-center gap-3 border-b border-rule py-2.5"
             >
               <span className="flex items-center gap-2.5 text-[13.5px] text-ink-2">
                 <Icon name="arrow-right" className="h-3 w-3 shrink-0 text-signal" />
                 {tool}
-              </span>
-              <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.08em] text-warm">
-                pronto
               </span>
             </li>
           ))}
         </ul>
 
         <p className="mt-4 text-[13px] leading-relaxed text-warm">
-          Na barra, digite <Keycap>/</Keycap> e o nome da ferramenta. Tudo roda no seu PC: nenhuma
-          dessas ações precisa de internet, de conta ou de administrador.
+          Na barra, digite <Keycap>/</Keycap> e o nome — ou peça do seu jeito que a IA encadeia.
         </p>
       </div>
     </div>

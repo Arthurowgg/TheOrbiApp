@@ -12,7 +12,7 @@ export type ToolGroup = {
 export const TOOL_GROUPS: ToolGroup[] = [
   {
     name: "Sistema",
-    hint: "o PC inteiro, sem abrir o painel de controle",
+    hint: "o PC inteiro sem abrir painel",
     tools: [
       "Status do PC",
       "Gerenciador de tarefas",
@@ -80,7 +80,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
   },
   {
     name: "Apps",
-    hint: "abrir o que você usa, direto",
+    hint: "abrir o que você usa",
     tools: [
       "Bloco de notas",
       "Calculadora",
@@ -458,7 +458,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
   },
   {
     name: "Produtividade",
-    hint: "o próprio Orbi e o dia a dia",
+    hint: "o Orbi e o dia a dia",
     tools: [
       "Copiar a data",
       "Copiar a hora",
