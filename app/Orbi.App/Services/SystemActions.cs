@@ -12,7 +12,7 @@ namespace Orbi.Services;
 public static class SystemActions
 {
     /* ----------------------------- áudio ----------------------------- */
-    private static void KeyPress(Keys key)
+    private static void KeyPress(Forms.Keys key)
     {
         Forms.SendKeys.SendWait(key.ToString());
     }
