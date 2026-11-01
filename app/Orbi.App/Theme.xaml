@@ -21,6 +21,7 @@
 
   <FontFamily x:Key="Sans">Segoe UI Variable Text, Segoe UI</FontFamily>
   <FontFamily x:Key="Display">Bahnschrift SemiBold, Segoe UI Semibold, Segoe UI</FontFamily>
+  <FontFamily x:Key="CondFont">Bahnschrift SemiBold, Segoe UI Semibold, Segoe UI</FontFamily>
   <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
 
   <!-- Texto -->

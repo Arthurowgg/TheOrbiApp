@@ -27,7 +27,6 @@ public partial class CommandBar : Window
 {
     private readonly ObservableCollection<ResultRow> _rows = new();
     private readonly List<(string Role, string Text)> _history = new();
-    private readonly DispatcherTimer _debounce = new() { Interval = TimeSpan.FromMilliseconds(260) };
     private bool _thinking;
     private string _panel = "menu";
     private string _sheetTitle = "menu";
@@ -58,9 +57,13 @@ public partial class CommandBar : Window
     /// <summary>Só a linha de comando: sem resultados, sem rodapé.</summary>
     private void Collapse()
     {
+        if (_telaCheia) return;
         Results.Visibility = Visibility.Collapsed;
         FooterBar.Visibility = Visibility.Collapsed;
         Height = CompactHeight;
+        _layout = Layout.Compacta;
+        Arms.Visibility = Visibility.Collapsed;
+        Root.Background = Brushes.Transparent;
     }
 
     private void Expand()
@@ -89,18 +92,181 @@ public partial class CommandBar : Window
             {
                 _travel = Height;
             }
+            AplicarLayout();
         };
+        Loaded += (_, _) => AplicarLayout();
         RefreshAccountChip();
         Results.ItemsSource = _rows;
-        _debounce.Tick += async (_, _) =>
-        {
-            _debounce.Stop();
-            await AskAiAsync(Input.Text);
-        };
         AiStatus.Text = Gemini.Mode;
         AiStatus.Foreground = Gemini.Available
             ? new SolidColorBrush(Color.FromRgb(0xC7, 0x45, 0x2A))
             : new SolidColorBrush(Color.FromArgb(0x80, 0xF1, 0xEB, 0xDF));
+    }
+
+    /* ----------------------------- layouts ----------------------------- */
+    /// <summary>
+    /// A barra não é uma barra só: conforme o tamanho, ela vira painel de chat,
+    /// e com largura e altura suficientes ganha braços dos dois lados com o
+    /// contexto. Tudo em tempo real, no gesto de redimensionar.
+    /// </summary>
+    public enum Layout { Compacta, Chat, Lados }
+
+    private Layout _layout = Layout.Compacta;
+    private Layout _layoutSalvo = Layout.Compacta;
+    private bool _telaCheia;
+
+    private void AplicarLayout()
+    {
+        var largura = ActualWidth > 0 ? ActualWidth : Width;
+        var altura = ActualHeight > 0 ? ActualHeight : Height;
+
+        var qual = largura >= 940 && altura >= 460 ? Layout.Lados
+            : largura >= 520 && altura >= 300 ? Layout.Chat
+            : Layout.Compacta;
+
+        if (qual == _layout) { AtualizarBracos(); return; }
+        _layout = qual;
+
+        // braços só quando há espaço de verdade
+        Arms.Visibility = qual == Layout.Lados ? Visibility.Visible : Visibility.Collapsed;
+        Grid.SetColumn(Results, qual == Layout.Lados ? 1 : 0);
+
+        if (qual != Layout.Compacta)
+        {
+            Results.Visibility = Visibility.Visible;
+            FooterBar.Visibility = Visibility.Visible;
+            if (qual == Layout.Lados) AtualizarBracos();
+        }
+
+        // a janela escura atrás dos braços só existe no layout largo
+        Root.Background = qual == Layout.Lados ? new SolidColorBrush(Color.FromRgb(0x0E, 0x0B, 0x08)) : Brushes.Transparent;
+    }
+
+    /// <summary>Braços: o que está em foco e o que está aberto, com 4 escolhas rápidas.</summary>
+    private void AtualizarBracos()
+    {
+        if (_layout != Layout.Lados) return;
+
+        RailLeftBody.Children.Clear();
+        RailLeftBody.Children.Add(Legenda("Agora"));
+        RailLeftBody.Children.Add(Rotulo("Janela em foco", Pc.ActiveWindowTitle() is { Length: > 0 } janela ? janela : "área de trabalho"));
+        foreach (var window in Pc.Windows().Where(w => w.Title.Length > 0).Take(3))
+        {
+            RailLeftBody.Children.Add(Rotulo(window.Process, window.Title.Length > 30 ? window.Title[..30] + "…" : window.Title));
+        }
+
+        RailRightBody.Children.Clear();
+        RailRightBody.Children.Add(Legenda("Orbi"));
+        RailRightBody.Children.Add(Rotulo("Conta", Firebase.SignedIn ? Firebase.Email ?? "conta" : "sem conta"));
+        RailRightBody.Children.Add(Rotulo("IA", Gemini.HasKey ? Gemini.Mode : "sem chave"));
+        RailRightBody.Children.Add(Rotulo("Memória", $"{Memory.All.Count} lembranças"));
+        RailRightBody.Children.Add(Rotulo("Ferramentas", $"{Tools.All.Count} ações"));
+
+        var acoes = new StackPanel { Margin = new Thickness(0, 10, 0, 0) };
+        foreach (var (titulo, acao) in new (string, Action)[]
+        {
+            ("Ajustes", () => Abrir("ajustes")),
+            ("Ferramentas", () => Abrir("ferramentas")),
+            ("IA", () => Abrir("ia")),
+            ("Perfil", () => Abrir("perfil")),
+        })
+        {
+            var botao = new Button
+            {
+                Content = titulo,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Foreground = new SolidColorBrush(Color.FromRgb(0xB9, 0xB0, 0xA2)),
+                FontFamily = (FontFamily)FindResource("Sans"),
+                FontSize = 12.5,
+                Padding = new Thickness(0, 5, 0, 5),
+                Cursor = System.Windows.Input.Cursors.Hand,
+            };
+            botao.Click += (_, _) => acao();
+            acoes.Children.Add(botao);
+        }
+        RailRightBody.Children.Add(acoes);
+    }
+
+    private static TextBlock Legenda(string texto) => new()
+    {
+        Text = texto.ToLowerInvariant(),
+        FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+        FontSize = 10,
+        Foreground = new SolidColorBrush(Color.FromRgb(0x7C, 0x74, 0x66)),
+        Margin = new Thickness(0, 0, 0, 8),
+    };
+
+    private static StackPanel Rotulo(string titulo, string detalhe)
+    {
+        var pilha = new StackPanel { Margin = new Thickness(0, 0, 0, 7) };
+        pilha.Children.Add(new TextBlock
+        {
+            Text = titulo,
+            FontSize = 12.5,
+            Foreground = new SolidColorBrush(Color.FromRgb(0xE4, 0xDE, 0xD2)),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        });
+        pilha.Children.Add(new TextBlock
+        {
+            Text = detalhe,
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 10.5,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x86, 0x7D, 0x6E)),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        });
+        return pilha;
+    }
+
+    /* ----------------------------- tela cheia ----------------------------- */
+    /// <summary>Tela cheia: a barra vira o modo lado a lado e ocupa a tela toda.</summary>
+    private void FullButton_Click(object sender, RoutedEventArgs e) => AlternarTelaCheia();
+
+    public void AlternarTelaCheia()
+    {
+        var screen = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Cursor.Position);
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var area = screen.WorkingArea;
+
+        _telaCheia = !_telaCheia;
+        if (_telaCheia)
+        {
+            RememberPlace();
+            _layoutSalvo = _layout;
+            Left = area.Left / dpi.DpiScaleX;
+            Top = area.Top / dpi.DpiScaleY;
+            Width = area.Width / dpi.DpiScaleX;
+            Height = area.Height / dpi.DpiScaleY;
+            FullGlyph.Data = Geometry.Parse("M6,2 L6,6 L2,6 M10,6 L14,6 L14,2 M14,10 L10,10 L10,14 M2,10 L6,10 L6,14");
+            Expand();
+            AplicarLayout();
+            Input.Focus();
+        }
+        else
+        {
+            FullGlyph.Data = Geometry.Parse("M2,6 L2,3 Q2,2 3,2 L6,2 M10,2 L13,2 Q14,2 14,3 L14,6 M14,10 L14,13 Q14,14 13,14 L10,14 M6,14 L3,14 Q2,14 2,13 L2,10");
+            Restaurar();
+        }
+    }
+
+    private void Restaurar()
+    {
+        var screen = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Cursor.Position);
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var area = screen.WorkingArea;
+        var esquerda = area.Left / dpi.DpiScaleX;
+        var topo = area.Top / dpi.DpiScaleY;
+        var largura = area.Width / dpi.DpiScaleX;
+        var altura = area.Height / dpi.DpiScaleY;
+
+        var salva = Store.Current;
+        Width = Math.Clamp(salva.BarWidth > 200 ? salva.BarWidth : 660, 420, Math.Max(420, largura - 16));
+        Height = Math.Clamp(salva.BarHeight > CompactHeight ? salva.BarHeight : CompactHeight, CompactHeight, Math.Max(CompactHeight, altura - 16));
+        Left = Math.Clamp(salva.BarLeft ?? (esquerda + (largura - Width) / 2), esquerda + 4, Math.Max(esquerda + 4, esquerda + largura - Width - 4));
+        Top = Math.Clamp(salva.BarTop ?? (topo + Math.Min(96, altura * 0.12)), topo + 4, Math.Max(topo + 4, topo + altura - Height - 4));
+        AplicarLayout();
+        if (Height <= CompactHeight + 40) Collapse();
     }
 
     /* ----------------------------- espaçamento ----------------------------- */
@@ -114,10 +280,11 @@ public partial class CommandBar : Window
         Header.Padding = new Thickness(16, 14, 16, 14);
         FooterBar.Padding = new Thickness(16, 9, 16, 9);
         Root.Margin = new Thickness(1);
-        Mark.Width = 28;
-        Mark.Height = 28;
+        Mark.Width = 24;
+        Mark.Height = 24;
+        Mark.Margin = new Thickness(1, 0, 11, 0);
+        Mark.Source = Brand.Icon(24);
         Mark.Margin = new Thickness(0, 0, 12, 0);
-        EscBadge.Padding = new Thickness(7, 4, 7, 4);
         Results.Padding = new Thickness(6, 4, 6, 4);
         Results.ItemContainerStyle = (Style)FindResource("ResultItem");
     }
@@ -129,15 +296,15 @@ public partial class CommandBar : Window
     /// </summary>
     public void RefreshAccountChip()
     {
-        Dots.Fill = new SolidColorBrush(Color.FromRgb(0x8C, 0x84, 0x74));
+        ProfileGlyph.Foreground = new SolidColorBrush(Color.FromRgb(0xE9, 0xE3, 0xD6));
         AccountDot.Fill = Gemini.HasKey
             ? new SolidColorBrush(Color.FromRgb(0x4E, 0x9A, 0x5C))
             : new SolidColorBrush(Color.FromRgb(0xC7, 0x45, 0x2A));
 
         var conta = Firebase.SignedIn ? Firebase.Email : null;
         AccountButton.ToolTip = string.IsNullOrWhiteSpace(conta)
-            ? "Menu — conta, IA, ajustes e ferramentas"
-            : $"Menu · {conta}";
+            ? "Perfil"
+            : $"Perfil · {conta}";
     }
 
     private void AccountButton_Click(object sender, RoutedEventArgs e)
@@ -146,7 +313,10 @@ public partial class CommandBar : Window
         else OpenMenu();
     }
 
-    /// <summary>Três pontos: conta, IA, ajustes, ferramentas e o resto.</summary>
+    /// <summary>
+    /// O p abre o painel de perfil: quem você é, a conta, o que o Orbi lembra e um
+    /// espaço embaixo para conversar sem sair da barra.
+    /// </summary>
     private void OpenMenu()
     {
         Expand();
@@ -154,18 +324,17 @@ public partial class CommandBar : Window
         FooterBar.Visibility = Visibility.Collapsed;
 
         var nome = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "Orbi" : Store.Current.UserName.Trim();
-        _sheetTitle = Firebase.SignedIn ? nome : "menu";
+        _sheetTitle = Firebase.SignedIn ? nome : "perfil";
         _sheetNote = Firebase.SignedIn
-            ? (Firebase.Email ?? "conta")
-            : (Gemini.HasKey ? Gemini.Mode : "entre na conta");
+            ? $"{Firebase.Email} · {Store.LastSyncText}"
+            : (Gemini.HasKey ? Gemini.Mode : "sem conta");
 
         SheetClose.Visibility = Visibility.Collapsed;
         SheetBody.Children.Clear();
 
         if (Firebase.SignedIn)
         {
-            SheetBody.Children.Add(SheetRow("Conta", $"{Firebase.Email} · {Store.LastSyncText}",
-                () => Abrir("perfil"), destaque: true));
+            SheetBody.Children.Add(SheetRow("Conta", Firebase.Email ?? "conta", () => Abrir("perfil")));
         }
         else
         {
@@ -177,13 +346,13 @@ public partial class CommandBar : Window
         SheetBody.Children.Add(SheetDivider());
         SheetBody.Children.Add(SheetRow("IA e chave", Gemini.HasKey ? Gemini.Mode : "cole a sua chave", () => Abrir("ia"),
             aviso: !Gemini.HasKey));
-        SheetBody.Children.Add(SheetRow("Ajustes", "atalho, Windows, segurança", () => Abrir("ajustes")));
         SheetBody.Children.Add(SheetRow("Ferramentas", $"{Tools.All.Count} ações", () => Abrir("ferramentas")));
-        SheetBody.Children.Add(SheetRow("Memória", "o que o Orbi lembra", () => Abrir("perfil")));
-        SheetBody.Children.Add(SheetDivider());
+        SheetBody.Children.Add(SheetRow("Ajustes", "", () => Abrir("ajustes")));
+        SheetBody.Children.Add(SheetRow("Memória", $"{Memory.All.Count} lembranças", () => Abrir("perfil")));
 
         if (Firebase.SignedIn)
         {
+            SheetBody.Children.Add(SheetDivider());
             SheetBody.Children.Add(SheetRow("Sair da conta", "", () =>
             {
                 Firebase.SignOut();
@@ -193,9 +362,66 @@ public partial class CommandBar : Window
             }));
         }
 
-        SheetBody.Children.Add(SheetRow("Site do Orbi", "", () => Browser.Open("https://orbi-app.web.app")));
-        SheetBody.Children.Add(SheetRow("Encerrar o Orbi", "", () => App.Instance.ExitApp()));
+        // espaço de conversa no fim do painel
+        SheetBody.Children.Add(SheetDivider());
+        SheetBody.Children.Add(Conversa());
+
         ShowSheet();
+    }
+
+    /// <summary>Últimas conversas, com um toque para repetir.</summary>
+    private StackPanel Conversa()
+    {
+        var pilha = new StackPanel { Margin = new Thickness(2, 4, 2, 2) };
+        pilha.Children.Add(new TextBlock
+        {
+            Text = "conversa",
+            FontFamily = (FontFamily)FindResource("MonoFont"),
+            FontSize = 10,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x7C, 0x74, 0x66)),
+            Margin = new Thickness(0, 0, 0, 6),
+        });
+
+        var recentes = Store.Current.Commands.Take(3).ToList();
+        if (recentes.Count == 0)
+        {
+            pilha.Children.Add(new TextBlock
+            {
+                Text = "Escreva na barra e aperte Enter para começar.",
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x86, 0x7D, 0x6E)),
+                TextWrapping = TextWrapping.Wrap,
+            });
+            return pilha;
+        }
+
+        foreach (var comando in recentes)
+        {
+            var texto = comando;
+            var botao = new Button
+            {
+                Content = texto,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Foreground = new SolidColorBrush(Color.FromRgb(0xC9, 0xC1, 0xB2)),
+                FontSize = 12.5,
+                Padding = new Thickness(0, 4, 0, 4),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                ToolTip = "Repetir",
+            };
+            botao.Click += (_, _) =>
+            {
+                CloseMenu();
+                Input.Text = texto;
+                Input.CaretIndex = texto.Length;
+                Input.Focus();
+                Run();
+            };
+            pilha.Children.Add(botao);
+        }
+
+        return pilha;
     }
 
     /// <summary>
@@ -219,8 +445,8 @@ public partial class CommandBar : Window
         SheetNote.Text = _sheetNote;
         Sheet.Visibility = Visibility.Visible;
         // cresce o suficiente para o conteúdo, sem ocupar a tela toda
-        var desejada = 300 + SheetBody.Children.Count * 34;
-        Height = Math.Min(Math.Min(TravelHeight, Math.Max(CompactHeight + 60, desejada)), 560);
+        var desejada = 260 + SheetBody.Children.Count * 32;
+        Height = Math.Min(Math.Min(TravelHeight, Math.Max(CompactHeight + 120, desejada)), 640);
     }
 
     private void CloseMenu()
@@ -485,7 +711,6 @@ public partial class CommandBar : Window
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            _debounce.Stop();
             Collapse();
             return;
         }
@@ -493,7 +718,6 @@ public partial class CommandBar : Window
         // "/" abre o catálogo: a pessoa vê as ferramentas em vez de decorar comandos.
         if (text == "/" )
         {
-            _debounce.Stop();
             Expand();
             foreach (var group in Tools.Groups)
             {
@@ -515,7 +739,6 @@ public partial class CommandBar : Window
         // "/grupo": lista as ferramentas daquele grupo. "/nome": executa direto.
         if (text.StartsWith("/", StringComparison.Ordinal) && text.Length > 1)
         {
-            _debounce.Stop();
             Expand();
             var query = text[1..].Trim();
             var tool = Tools.Find(query);
@@ -552,7 +775,6 @@ public partial class CommandBar : Window
         var preview = Interpreter.Interpret(text);
         if (preview.Kind != ReplyKind.NeedsAi)
         {
-            _debounce.Stop();
             Expand();
             Add(ToRow(preview));
 
@@ -592,18 +814,8 @@ public partial class CommandBar : Window
             return;
         }
 
-        Expand();
-        Add(new ResultRow
-        {
-            Glyph = "?",
-            Text = "Perguntar ao Gemini…",
-            Detail = "Pausa na digitação para não gastar chamadas.",
-            Badge = "IA",
-            BadgeBrush = "#FFC7452A",
-            BadgeTextBrush = "#FFFFFFFF",
-        });
-        _debounce.Stop();
-        _debounce.Start();
+        // Nada é pensado enquanto você digita: só quando apertar Enter.
+        UpdateFooter();
     }
 
     private static ResultRow ToRow(OrbiReply reply) => new()
@@ -771,6 +983,15 @@ public partial class CommandBar : Window
         }
 
         if (string.IsNullOrWhiteSpace(text)) return;
+
+        // Texto livre (não é ferramenta nem controle direto)? Aí sim pensa:
+        // só com Enter, nunca enquanto digita.
+        if (Interpreter.Interpret(text).Kind == ReplyKind.NeedsAi)
+        {
+            _ = AskAiAsync(text);
+            return;
+        }
+
         ExecuteSelected(text);
     }
 

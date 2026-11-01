@@ -44,6 +44,7 @@
 
   <ItemGroup>
     <Resource Include="Assets/orbi.ico" />
+    <Resource Include="Assets/orbi-512.png" />
   </ItemGroup>
 
   <ItemGroup>

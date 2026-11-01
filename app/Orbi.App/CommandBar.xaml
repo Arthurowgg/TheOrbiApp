@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Orbi"
         WindowStyle="None"
-        ResizeMode="CanResizeWithGrip"
+        ResizeMode="CanResize"
         MinWidth="420" MinHeight="62"
         WindowStartupLocation="Manual"
         Background="{StaticResource Film}"
@@ -22,7 +22,6 @@
 
     <!-- entrada (arrasta a janela) -->
     <Border x:Name="Header" Grid.Row="0" Background="{StaticResource Film2}"
-            BorderBrush="#24FFFFFF" BorderThickness="0,0,0,1"
             MouseLeftButtonDown="Header_MouseLeftButtonDown">
       <Grid x:Name="HeaderGrid">
         <Grid.ColumnDefinitions>
@@ -31,11 +30,8 @@
           <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <Border x:Name="Mark" Grid.Column="0" Background="{StaticResource SignalBrush}" CornerRadius="3"
-                VerticalAlignment="Center">
-          <TextBlock Text="&#x25CF;" Foreground="White" FontSize="12"
-                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
-        </Border>
+        <Image x:Name="Mark" Grid.Column="0" VerticalAlignment="Center"
+               RenderOptions.BitmapScalingMode="HighQuality"/>
 
         <Grid Grid.Column="1" x:Name="InputHost">
           <TextBox x:Name="Input"
@@ -54,28 +50,55 @@
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
           <!-- Três pontos: cai um painel com conta, ajustes e IA -->
-          <Button x:Name="AccountButton" Click="AccountButton_Click"
+          <Button x:Name="FullButton" Click="FullButton_Click"
                   Background="Transparent" BorderThickness="0" Cursor="Hand"
-                  Padding="8,4" ToolTip="Menu">
-            <Grid Width="18" Height="18">
-              <Path x:Name="Dots" Fill="#E9E3D6"
-                    Data="M4,9 A1.6,1.6 0 1,0 4,9.01 M9,9 A1.6,1.6 0 1,0 9,9.01 M14,9 A1.6,1.6 0 1,0 14,9.01"
+                  Padding="8,4" ToolTip="Tela cheia">
+            <Grid Width="16" Height="16">
+              <Path x:Name="FullGlyph" Stroke="#99F1EBDF" StrokeThickness="1.4"
+                    Data="M2,6 L2,3 Q2,2 3,2 L6,2 M10,2 L13,2 Q14,2 14,3 L14,6 M14,10 L14,13 Q14,14 13,14 L10,14 M6,14 L3,14 Q2,14 2,13 L2,10"
                     Stretch="None"/>
-              <Ellipse x:Name="AccountDot" Width="5" Height="5" Fill="#C7452A"
-                       HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-1,-1,0"/>
             </Grid>
           </Button>
 
-          <Border x:Name="EscBadge" Background="#22FFFFFF" CornerRadius="3"
-                  Margin="8,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
-            <TextBlock Text="Esc" Foreground="#99F1EBDF" FontFamily="{StaticResource MonoFont}" FontSize="10"/>
-          </Border>
+          <Button x:Name="AccountButton" Click="AccountButton_Click"
+                  Background="Transparent" BorderThickness="0" Cursor="Hand"
+                  Padding="9,4" ToolTip="Perfil">
+            <Grid Width="16" Height="16">
+              <TextBlock x:Name="ProfileGlyph" Text="p" Foreground="#E9E3D6"
+                         FontFamily="{StaticResource CondFont}" FontSize="15" FontWeight="Bold"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              <Ellipse x:Name="AccountDot" Width="5" Height="5" Fill="#C7452A"
+                       HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,-2,0"/>
+            </Grid>
+          </Button>
+
         </StackPanel>
       </Grid>
     </Border>
 
+    <!-- braços laterais: só em janela larga e alta -->
+    <Grid x:Name="Arms" Grid.Row="1" Visibility="Collapsed">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="228"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="228"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- esquerda: onde você está agora -->
+      <Border x:Name="RailLeft" Grid.Column="0" Background="{StaticResource Film}"
+              BorderBrush="#1AFFFFFF" BorderThickness="0,0,1,0">
+        <StackPanel x:Name="RailLeftBody" Margin="16,14,16,14"/>
+      </Border>
+
+      <!-- direita: o que está aberto -->
+      <Border x:Name="RailRight" Grid.Column="2" Background="{StaticResource Film}"
+              BorderBrush="#1AFFFFFF" BorderThickness="1,0,0,0">
+        <StackPanel x:Name="RailRightBody" Margin="16,14,16,14"/>
+      </Border>
+    </Grid>
+
     <!-- resultados -->
-    <ListBox x:Name="Results" Grid.Row="1"
+    <ListBox x:Name="Results" Grid.Row="1" Margin="10,0"
              Background="Transparent" BorderThickness="0"
              ItemContainerStyle="{StaticResource ResultItem}"
              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -111,8 +134,7 @@
     </ListBox>
 
     <!-- rodapé -->
-    <Border x:Name="FooterBar" Grid.Row="2" Background="{StaticResource Film2}"
-            BorderBrush="#24FFFFFF" BorderThickness="0,1,0,0">
+    <Border x:Name="FooterBar" Grid.Row="2" Background="{StaticResource Film2}">
       <Grid x:Name="FooterGrid">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*"/>

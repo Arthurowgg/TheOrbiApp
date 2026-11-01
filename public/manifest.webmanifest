@@ -1,15 +1,13 @@
 {
-  "name": "Orbi — Seu Windows, em português",
+  "name": "Orbi",
   "short_name": "Orbi",
-  "description": "Assistente para Windows 11 que abre apps, ajusta o PC, cria lembretes e protege sua sessão.",
-  "lang": "pt-BR",
+  "description": "Barra de comando em português para o Windows, com uma IA que age no PC.",
   "start_url": "/",
-  "scope": "/",
   "display": "standalone",
-  "background_color": "#f2ede3",
-  "theme_color": "#14100c",
+  "background_color": "#13100c",
+  "theme_color": "#13100c",
   "icons": [
-    { "src": "orbi-256.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    { "src": "orbi-256.png", "sizes": "256x256", "type": "image/png" },
+    { "src": "orbi-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
