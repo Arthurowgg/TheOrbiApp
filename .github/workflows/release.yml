@@ -149,25 +149,37 @@ jobs:
           Remove-Item $log, $ini -ErrorAction SilentlyContinue
 
           $p = Start-Process -FilePath $exe -ArgumentList "--selftest" -PassThru
-          Start-Sleep -Seconds 12
-          $vivo = -not $p.HasExited
-          if (-not $vivo) { Write-Host "::warning::o processo terminou com código $($p.ExitCode)" }
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) { Write-Host "::warning::o processo terminou sozinho com código $($p.ExitCode)" }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
-          Write-Host "=== ultima-execucao.txt"; if (Test-Path $ini) { Get-Content $ini } else { Write-Host "AUSENTE" }
-          Write-Host "=== selftest.txt"
-          if (-not (Test-Path $log)) { throw "O app não gerou o relatório do autoteste — ele não chegou a rodar a interface." }
-          Get-Content $log
+          # Tudo o que interessa vai para anotação: o log do runner não é legível.
+          if (Test-Path $ini) { Get-Content $ini | ForEach-Object { Write-Host "::notice::exec: $_" } }
+          if (Test-Path "$env:APPDATA\Orbi\startup.log") {
+            Get-Content "$env:APPDATA\Orbi\startup.log" | Select-Object -Last 40 | ForEach-Object { Write-Host "::notice::startup: $_" }
+          }
+          if (Test-Path "$env:APPDATA\Orbi\crash.log") {
+            Get-Content "$env:APPDATA\Orbi\crash.log" | Select-Object -Last 40 | ForEach-Object { Write-Host "::error::crash: $_" }
+          }
+
+          if (-not (Test-Path $log)) {
+            Write-Host "::error::sem selftest.txt — o app não chegou a rodar a interface"
+            exit 1
+          }
 
           $texto = Get-Content $log -Raw
+          $texto -split "`n" | ForEach-Object { if ($_.Trim()) { Write-Host "::notice::$_" } }
+
           $falhas = ($texto -split "`n") | Where-Object { $_ -match "FALHOU|SEM TAMANHO|vazia" }
           if ($falhas) {
-            $falhas | Select-Object -First 8 | ForEach-Object { Write-Host "::error::$_" }
-            throw "O autoteste encontrou falhas (veja acima)."
+            $falhas | Select-Object -First 10 | ForEach-Object { Write-Host "::error::$_" }
+            exit 1
           }
           if ($texto -notmatch "RESULTADO: tudo abriu") {
-            throw "Resultado inesperado do autoteste."
+            Write-Host "::error::resultado inesperado no autoteste"
+            exit 1
           }
+          Write-Host "Autoteste passou."
 
   release:
     name: Publicar release
