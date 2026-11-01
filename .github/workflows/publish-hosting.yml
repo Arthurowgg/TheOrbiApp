@@ -42,6 +42,12 @@ jobs:
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json"
 
+      - name: Conferir o build antes do deploy
+        shell: bash
+        run: |
+          test -f dist/index.html || { echo "::error::dist/index.html não existe"; exit 1; }
+          echo "arquivos em dist: $(find dist -type f | wc -l)"
+
       - name: Deploy (hosting + regras)
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json

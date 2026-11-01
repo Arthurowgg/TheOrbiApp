@@ -6,7 +6,7 @@
 ; ---------------------------------------------------------------------------
 
 #define AppName "Orbi"
-#define AppVersion "1.0.4"
+#define AppVersion "1.0.5"
 #define AppPublisher "Orbi"
 #define AppURL "https://orbi-app-auth.web.app"
 #define AppExe "Orbi.exe"
@@ -99,6 +99,7 @@ Name: "{group}\Ajustes do Orbi"; Filename: "{app}\{#AppExe}"; Parameters: "--set
 Name: "{group}\Orbi (diagnóstico)"; Filename: "{app}\{#AppExe}"; Parameters: "--diag"
 Name: "{group}\Orbi (abrir com terminal)"; Filename: "{cmd}"; Parameters: "/k ""{app}\{#AppExe}"" --console-keep"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExe}"
 Name: "{group}\Orbi (abrir log em arquivo)"; Filename: "{app}\{#AppExe}"; Parameters: "--console-keep"
+Name: "{group}\Orbi (autoteste)"; Filename: "{app}\{#AppExe}"; Parameters: "--selftest"
 Name: "{group}\Orbi (modo seguro)"; Filename: "{app}\{#AppExe}"; Parameters: "--safe"
 Name: "{group}\Desinstalar o Orbi"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\Orbi"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon

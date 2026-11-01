@@ -442,7 +442,7 @@ export function interpret(input: string): Resposta {
   }
 
   if (/(obrigad|valeu|brigad)/.test(text)) {
-    return { text: "De nada. Alt+Space quando precisar.", signal: "local" };
+    return { text: "De nada. Alt+Shift+O quando precisar.", signal: "local" };
   }
 
   if (/(tchau|até logo|ate logo|fecha a nova)/.test(text)) {

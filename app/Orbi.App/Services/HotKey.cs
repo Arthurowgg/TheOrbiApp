@@ -4,14 +4,40 @@ using System.Windows.Interop;
 
 namespace Orbi;
 
-/// <summary>Alt+Space global (Win32 RegisterHotKey) com fallback para teclado de baixo nível.</summary>
+/// <summary>Atalho global (Win32 RegisterHotKey), padrão Alt+Shift+O, com alternativas automáticas.</summary>
 public static class HotKey
 {
     private const int WmHotkey = 0x0312;
     private const int Id = 0xB1B1;
     private const uint ModAlt = 0x0001;
+    private const uint ModCtrl = 0x0002;
+    private const uint ModShift = 0x0004;
+    private const uint ModWin = 0x0008;
     private const uint ModNoRepeat = 0x4000;
-    private const uint VkSpace = 0x20;
+
+    /// <summary>Combinações disponíveis, na ordem em que o app tenta.</summary>
+    public sealed record Combo(string Name, uint Modifiers, uint Key)
+    {
+        public override string ToString() => Name;
+    }
+
+    private static readonly Combo[] Combos =
+    {
+        new("Alt+Shift+O", ModAlt | ModShift, 0x4F),      // O — padrão: não conflita com Windows/AI
+        new("Ctrl+Shift+O", ModCtrl | ModShift, 0x4F),
+        new("Alt+Shift+Space", ModAlt | ModShift, 0x20),
+        new("Ctrl+Shift+Space", ModCtrl | ModShift, 0x20),
+    };
+
+    public static IReadOnlyList<Combo> Available => Combos;
+
+    /// <summary>Combinação preferida (salva em Ajustes); vazia = primeira disponível.</summary>
+    public static string Preferred { get; set; } = "";
+
+    private static Combo? _active;
+
+    /// <summary>Descrição do atalho em uso, ou vazio se nenhum registrou.</summary>
+    public static string ActiveName => _active?.Name ?? "";
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -23,12 +49,12 @@ public static class HotKey
     private static Action? _callback;
     public static bool Registered { get; private set; }
 
-    /// <summary>Qual combinação está valendo: "Alt+Space", "Ctrl+Alt+Space" ou nenhuma.</summary>
+    /// <summary>Qual combinação está valendo (ex.: "Alt+Shift+O") ou vazio se nenhuma.</summary>
     public static string Combination { get; private set; } = "";
 
     /// <summary>
     /// Anexa o atalho a uma janela. O HWND só existe depois de SourceInitialized —
-    /// registrar antes disso era o motivo de Alt+Space não funcionar.
+    /// registrar antes disso era o motivo do atalho não funcionar.
     /// Se a janela já foi criada, registra imediatamente.
     /// </summary>
     public static void Attach(Window window, Action callback)
@@ -54,17 +80,37 @@ public static class HotKey
     {
         if (_source is null || _source.Handle == IntPtr.Zero) return;
 
-        Registered = RegisterHotKey(_source.Handle, Id, ModAlt | ModNoRepeat, VkSpace);
-        if (Registered)
+        // Ordem: a combinação preferida (Ajustes) e depois as alternativas.
+        var ordem = Combos
+            .OrderBy(combo => combo.Name == Preferred ? 0 : 1)
+            .ToList();
+
+        foreach (var combo in ordem)
         {
-            Combination = "Alt+Space";
-            return;
+            if (RegisterHotKey(_source.Handle, Id, combo.Modifiers | ModNoRepeat, combo.Key))
+            {
+                Registered = true;
+                _active = combo;
+                Combination = combo.Name;
+                return;
+            }
         }
 
-        // Outro app pode já usar Alt+Space (PowerToys Run, por exemplo).
-        // Nesse caso caímos para Ctrl+Alt+Space, e a bandeja continua funcionando.
-        Registered = RegisterHotKey(_source.Handle, Id + 1, 0x0002 | 0x0001 | ModNoRepeat, VkSpace);
-        Combination = Registered ? "Ctrl+Alt+Space" : "";
+        Registered = false;
+        _active = null;
+        Combination = "";
+    }
+
+    /// <summary>Troca o atalho em uso (chamado em Ajustes).</summary>
+    public static bool Change(string name)
+    {
+        if (_source is null) return false;
+        UnregisterHotKey(_source.Handle, Id);
+        _active = null;
+        Combination = "";
+        Preferred = name;
+        TryRegister();
+        return Registered;
     }
 
     private static IntPtr Hook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

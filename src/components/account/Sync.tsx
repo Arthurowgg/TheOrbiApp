@@ -374,7 +374,7 @@ export default function Sync({ account, reload, notify }: PageProps) {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-[13.5px] font-medium text-ink">Abrir com o Windows</p>
-                    <p className="text-[12px] text-warm">Inicia na bandeja, pronto para Alt+Space.</p>
+                    <p className="text-[12px] text-warm">Inicia na bandeja, pronto para Alt+Shift+O.</p>
                   </div>
                   <Switch
                     checked={prefs.startWithWindows}

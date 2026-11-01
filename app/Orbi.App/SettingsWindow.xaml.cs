@@ -30,6 +30,7 @@ public partial class SettingsWindow : Window
             ? "Chave configurada e cifrada neste PC."
             : "Sem chave: comandos locais funcionam, perguntas livres não.";
         RefreshAccount();
+        LoadHotkeys();
         DataPath.Text = Store.Root;
         ModelBox.SelectedIndex = Math.Max(0, new[] { "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b" }
             .ToList().IndexOf(settings.GeminiModel));
@@ -41,6 +42,40 @@ public partial class SettingsWindow : Window
     }
 
     /* ----------------------------- conta e sync ----------------------------- */
+    /* ----------------------------- atalho global ----------------------------- */
+    private bool _loadingHotkeys;
+
+    private void LoadHotkeys()
+    {
+        _loadingHotkeys = true;
+        HotkeyBox.Items.Clear();
+        foreach (var combo in HotKey.Available) HotkeyBox.Items.Add(combo.Name);
+
+        var atual = string.IsNullOrWhiteSpace(Store.Current.Hotkey) ? HotKey.Available[0].Name : Store.Current.Hotkey;
+        HotkeyBox.SelectedItem = atual;
+        if (HotkeyBox.SelectedIndex < 0 && HotkeyBox.Items.Count > 0) HotkeyBox.SelectedIndex = 0;
+
+        HotkeyState.Text = string.IsNullOrEmpty(HotKey.Combination)
+            ? "Nenhuma combinação disponível agora (outro app pode estar usando)."
+            : $"Em uso: {HotKey.Combination}. Troque se outro app já usa a combinação.";
+        _loadingHotkeys = false;
+    }
+
+    private void HotkeyBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingHotkeys) return;
+        if (HotkeyBox.SelectedItem is not string nome) return;
+
+        Store.Current.Hotkey = nome;
+        Store.Save();
+
+        var ok = HotKey.Change(nome);
+        HotkeyState.Text = ok
+            ? $"Pronto: aperte {nome} em qualquer programa."
+            : $"{nome} já está em uso por outro app. Escolha outra combinação.";
+        Toast(ok ? $"Atalho alterado para {nome}." : $"Não consegui registrar {nome}.");
+    }
+
     private void RefreshAccount()
     {
         var signedIn = Firebase.SignedIn;

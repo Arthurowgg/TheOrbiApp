@@ -199,6 +199,19 @@ jobs:
           python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json"
 
       - if: steps.check.outputs.available == 'true'
+        name: Conferir o build antes do deploy
+        shell: bash
+        run: |
+          # O CLI publica a pasta "public" do firebase.json (dist). Se ela não
+          # existir, o deploy "passa" e o site fica vazio: "Site Not Found".
+          echo "dist/index.html: $(test -f dist/index.html && echo ok || echo FALTA)"
+          test -f dist/index.html || { echo "::error::dist/index.html não existe"; exit 1; }
+          echo "arquivos em dist: $(find dist -type f | wc -l)"
+          echo "tamanho: $(du -sh dist | cut -f1)"
+          echo "primeira linha: $(head -c 80 dist/index.html)"
+          ls dist | head -10
+
+      - if: steps.check.outputs.available == 'true'
         name: Deploy (hosting + regras)
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
@@ -237,3 +250,11 @@ jobs:
           echo "$PAGINA" | grep -o '<title>[^<]*</title>' || true
           echo "$PAGINA" | grep -qi "orbi" && echo "::notice::site do Orbi publicado" \
             || echo "::error::a página publicada não parece o site do Orbi"
+          BUNDLE=$(echo "$PAGINA" | grep -o '/assets/[^"]*\.js' | head -1)
+          if [ -z "$BUNDLE" ]; then
+            echo "::error::o HTML publicado não referencia nenhum /assets/*.js — provavelmente o index.html foi publicado sem o build"
+          else
+            CODE_ASSET=$(curl -s -o /dev/null -w '%{http_code}' "https://orbi-app-auth.web.app$BUNDLE")
+            echo "bundle $BUNDLE → HTTP $CODE_ASSET"
+            [ "$CODE_ASSET" = "200" ] || echo "::error::o bundle do site não está acessível"
+          fi

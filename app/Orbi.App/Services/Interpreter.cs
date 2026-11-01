@@ -363,10 +363,10 @@ public static partial class Interpreter
             var name = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "" : $", {Store.Current.UserName.Split(' ')[0]}";
             return OrbiReply.Local(
                 $"Oi{name}. Estou aqui. Posso abrir apps, ajustar volume e brilho, criar lembretes, bloquear o PC e ler o status do sistema.",
-                "Alt+Space abre esta barra em qualquer programa.");
+                "Alt+Shift+O abre esta barra em qualquer programa.");
         }
 
-        if (Thanks().IsMatch(text)) return OrbiReply.Local("De nada. Alt+Space quando precisar.");
+        if (Thanks().IsMatch(text)) return OrbiReply.Local("De nada. Alt+Shift+O quando precisar.");
 
         if (HelpCmd().IsMatch(text))
         {

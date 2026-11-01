@@ -42,7 +42,7 @@ O instalador é **compilado e publicado automaticamente** pelo GitHub Actions a 
   **Firestore** (`users/{uid}`): pull ao abrir e a cada 45 s, push ao editar.
 - Rotinas criadas no site rodam no app: “modo estudo” abre o Word e ajusta o brilho.
  Windows (C# / WPF, nativo, sem Electron)
-- Barra de comando global com **Alt+Space**, sobre qualquer janela, com sugestões e histórico.
+- Barra de comando global com **Alt+Shift+O**, sobre qualquer janela, com sugestões e histórico.
 - Ícone na bandeja, início com o Windows, instância única.
 - Comandos locais (sem internet): abrir/fechar apps por apelido, volume, mudo, brilho, bloqueio,
   desligar/reiniciar com confirmação, cancelar desligamento, dormir, captura de tela, status do

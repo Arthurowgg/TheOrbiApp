@@ -72,7 +72,7 @@ export const LOCAL_ONLY = ["Notas", "Área de transferência", "Chave da API", "
 export const DOWNLOAD_STEPS = [
   { title: "Baixe o instalador", body: "OrbiSetup.exe, um arquivo só, para Windows 11." },
   { title: "Execute o setup", body: "Ele instala, cria o atalho e abre o app. Sem terminal." },
-  { title: "Aperte Alt+Space", body: "A barra abre em qualquer programa, sobre qualquer janela." },
+  { title: "Aperte Alt+Shift+O", body: "A barra abre em qualquer programa, sobre qualquer janela." },
 ];
 
 export const LOCK_TIMELINE = [
@@ -88,7 +88,7 @@ export const LOCK_TIMELINE = [
 export const LOCK_EXCEPTIONS = ["Vídeo em tela cheia", "Jogo", "Chamada", "Apresentação"];
 
 export const RELEASE_NOTES = [
-  "App Windows nativo: bandeja, Alt+Space e inicialização com o sistema",
+  "App Windows nativo: bandeja, Alt+Shift+O e inicialização com o sistema",
   "Comandos em português para abrir apps, volume, brilho, energia e captura",
   "Lembretes, timers, notas e histórico de área de transferência",
   "Rotinas e atalhos de texto sincronizados com a conta",

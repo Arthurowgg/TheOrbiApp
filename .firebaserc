@@ -1,12 +1,5 @@
 {
   "projects": {
     "default": "orbi-app-auth"
-  },
-  "targets": {
-    "orbi-app-auth": {
-      "hosting": {
-        "site": ["orbi-app-auth"]
-      }
-    }
   }
 }

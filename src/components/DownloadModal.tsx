@@ -184,7 +184,7 @@ export default function DownloadModal({
             <ol className="mt-2 space-y-1 text-[12.5px] leading-snug text-[#3d5a3f]">
               <li>1. Abra o arquivo baixado e confirme o Windows SmartScreen (“Mais informações ▸ Executar assim mesmo”).</li>
               <li>2. O setup instala em <code className="font-mono">%LOCALAPPDATA%\Orbi</code> e cria o atalho.</li>
-              <li>3. Ao abrir, aperte <kbd className="font-mono">Alt+Space</kbd> e fale com a Orbi.</li>
+              <li>3. Ao abrir, aperte <kbd className="font-mono">Alt+Shift+O</kbd> e fale com a Orbi.</li>
             </ol>
           </div>
         )}

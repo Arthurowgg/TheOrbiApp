@@ -13,7 +13,7 @@ const SCENES: {
   {
     id: "comando",
     label: "Barra de comando",
-    title: "Alt+Space em qualquer programa",
+    title: "Alt+Shift+O em qualquer programa",
     body: "Uma barra flutua sobre a janela atual. Você escreve do seu jeito e vê a ação antes de ela acontecer.",
     accent: "local",
   },

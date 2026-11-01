@@ -38,7 +38,7 @@
         </StackPanel>
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button x:Name="OpenBarButton" Content="Alt+Space" Style="{StaticResource SecondaryButton}"
+          <Button x:Name="OpenBarButton" Content="Abrir a barra" Style="{StaticResource SecondaryButton}"
                   Click="OpenBar_Click" Margin="0,0,8,0"/>
           <Button Content="Sair" Style="{StaticResource GhostButton}" Click="Exit_Click"/>
         </StackPanel>
@@ -91,8 +91,15 @@
                     <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
                   <StackPanel Grid.Column="0">
-                    <TextBlock Text="Abrir com o Windows" Style="{StaticResource Body}" FontWeight="SemiBold"/>
-                    <TextBlock Text="Fica na bandeja, pronto para Alt+Space." Style="{StaticResource Muted}"/>
+                    <StackPanel Margin="0,0,0,16">
+                    <TextBlock Text="Atalho global" Style="{StaticResource Body}" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="HotkeyState" Style="{StaticResource Muted}" Margin="0,2,0,6"/>
+                    <ComboBox x:Name="HotkeyBox" Width="240" HorizontalAlignment="Left"
+                              SelectionChanged="HotkeyBox_SelectionChanged"/>
+                  </StackPanel>
+
+                  <TextBlock Text="Abrir com o Windows" Style="{StaticResource Body}" FontWeight="SemiBold"/>
+                    <TextBlock Text="Fica na bandeja, pronto para Alt+Shift+O." Style="{StaticResource Muted}"/>
                   </StackPanel>
                   <ToggleButton x:Name="StartupToggle" Grid.Column="1" Style="{StaticResource ToggleSwitch}"
                                 VerticalAlignment="Center"/>

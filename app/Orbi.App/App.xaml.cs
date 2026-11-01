@@ -1,5 +1,8 @@
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Orbi.Services;
 using Forms = System.Windows.Forms;
@@ -98,6 +101,38 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        if (e.Args.Contains("--selftest"))
+        {
+            ConsoleLog.Step("Rodando autoteste das janelas");
+            Smoke.Run(() =>
+            {
+                _bar ??= CreateBar();
+                return _bar;
+            });
+            ConsoleLog.Step("Autoteste concluído", Smoke.ReportPath);
+
+            // mantém o relatório na tela por 20s e encerra
+            var aviso = new Window
+            {
+                Title = "Orbi — autoteste",
+                Width = 760,
+                Height = 560,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                Background = new SolidColorBrush(Color.FromRgb(0xF2, 0xED, 0xE3)),
+            };
+            var texto = new TextBlock
+            {
+                Text = File.Exists(Smoke.ReportPath) ? File.ReadAllText(Smoke.ReportPath) : "sem relatório",
+                FontFamily = new FontFamily("Consolas, Cascadia Mono"),
+                FontSize = 12,
+                Margin = new Thickness(20),
+                TextWrapping = TextWrapping.Wrap,
+            };
+            aviso.Content = new ScrollViewer { Content = texto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            aviso.Show();
+            return;
+        }
+
         if (e.Args.Contains("--diag"))
         {
             ConsoleLog.Step("Abrindo diagnóstico");
@@ -116,7 +151,7 @@ public partial class App : System.Windows.Application
         {
             // Iniciado com o Windows: fica na bandeja, com um aviso de que está vivo.
             _tray?.ShowBalloonTip(5000, "Orbi está pronto",
-                "Aperte Alt+Space para abrir. Clique com o botão direito aqui para ajustes.",
+                "Aperte {HotKey.Combination} para abrir. Clique com o botão direito aqui para ajustes.",
                 Forms.ToolTipIcon.Info);
             return;
         }
@@ -200,7 +235,7 @@ public partial class App : System.Windows.Application
 
     /* ----------------------------- atalho global ----------------------------- */
     /// <summary>
-    /// Registra Alt+Space. O hotkey do Win32 precisa de um HWND: criamos a barra
+    /// Registra o atalho global (padrão Alt+Shift+O). O hotkey do Win32 precisa de um HWND: criamos a barra
     /// (ela ainda não aparece) e reagimos ao evento SourceInitialized, que é
     /// quando a janela realmente passa a existir. Antes, TryRegister() era
     /// chamado antes do handle existir e o atalho nunca era registrado.
@@ -210,6 +245,7 @@ public partial class App : System.Windows.Application
         try
         {
             _bar = CreateBar();
+            HotKey.Preferred = Store.Current.Hotkey;
             if (_bar is not null) HotKey.Attach(_bar, () => ShowBar());
         }
         catch (Exception error)

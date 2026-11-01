@@ -359,7 +359,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                 {[
                   "OrbiSetup.exe assinado pelo build de CI",
                   "Atalho no Menu Iniciar e na bandeja",
-                  "Barra de comando global com Alt+Space",
+                  "Barra de comando global com Alt+Shift+O",
                   "Banco local para notas e lembretes",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5 text-[13px] leading-snug text-ink-2">
@@ -722,7 +722,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
               <span className="text-signal">o PC na mão.</span>
             </h2>
             <p className="mt-4 max-w-[44ch] text-[13.5px] leading-relaxed text-bone/55">
-              Baixe o instalador, aperte Alt+Space e escreva do seu jeito. Sem assinatura, sem
+              Baixe o instalador, aperte Alt+Shift+O e escreva do seu jeito. Sem assinatura, sem
               cartão e sem conta obrigatória.
             </p>
           </div>

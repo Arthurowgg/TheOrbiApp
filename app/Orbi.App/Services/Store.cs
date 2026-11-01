@@ -34,6 +34,9 @@ public sealed class OrbiSettings
     public List<string> LinkedPcs { get; set; } = new();
     public bool AskedAccount { get; set; }
 
+    // Atalho global preferido ("Alt+Shift+O", "Ctrl+Shift+O", ...). Vazio = padrão.
+    public string Hotkey { get; set; } = "Alt+Shift+O";
+
     // Marcador de que users/{uid} já existe no Firestore (evita leituras extras).
     public string RemoteCreatedAt { get; set; } = "";
 }
