@@ -1,40 +1,17 @@
-import { useState, type FormEvent } from "react";
-import { Badge, Button, Icon, Modal, Panel, Switch, TextField } from "../ui";
+import { useState } from "react";
+import { Badge, Button, Icon, Modal, Panel, Switch } from "../ui";
 import { PageHeader, type PageProps } from "./AccountShell";
-import {
-  AuthError,
-  formatDate,
-  formatPairingInput,
-  generateSampleCode,
-  linkDevice,
-  removeDevice,
-  renameDevice,
-  setSync,
-  type Device,
-  type SyncPrefs,
-} from "../../lib/accounts";
+import { formatDate, removeDevice, renameDevice, setSync, type Device, type SyncPrefs } from "../../lib/accounts";
 import { LOCAL_ONLY, SYNC_ITEMS } from "../../data/site";
 
+/**
+ * Computadores que entraram na conta. Não existe código de pareamento nem
+ * "vincular": o app entra com o mesmo e-mail e senha deste site, e aparece
+ * aqui sozinho na primeira sincronização.
+ */
 export default function Devices({ account, reload, notify, onDownload }: PageProps) {
-  const [code, setCode] = useState("");
-  const [deviceName, setDeviceName] = useState("");
-  const [codeError, setCodeError] = useState("");
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
   const [removing, setRemoving] = useState<Device | null>(null);
-
-  const link = async (event: FormEvent) => {
-    event.preventDefault();
-    setCodeError("");
-    try {
-      await linkDevice(`ORBI-${code}`, deviceName);
-      await reload();
-      setCode("");
-      setDeviceName("");
-      notify("App vinculado à sua conta.");
-    } catch (error) {
-      setCodeError(error instanceof AuthError ? error.message : "Não foi possível vincular.");
-    }
-  };
 
   const saveName = async () => {
     if (!editing) return;
@@ -52,9 +29,9 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
     try {
       await removeDevice(removing.id);
       await reload();
-      notify(`${removing.name} foi desvinculado.`);
+      notify(`${removing.name} saiu da lista.`);
     } catch (error) {
-      notify(error instanceof Error ? error.message : "Não foi possível desvincular.");
+      notify(error instanceof Error ? error.message : "Não foi possível remover.");
     }
     setRemoving(null);
   };
@@ -71,117 +48,61 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
   return (
     <>
       <PageHeader
-        title="Dispositivos"
-        description="Vincule o app instalado no Windows e escolha o que acompanha a sua conta."
+        title="Computadores"
+        description="Cada PC onde você entra com esta conta aparece aqui. É a mesma conta do site — sem código, sem vínculo."
+        actions={
+          <Button size="sm" variant="secondary" onClick={onDownload}>
+            <Icon name="download" className="h-3.5 w-3.5" />
+            Instalar em outro PC
+          </Button>
+        }
       />
 
       <div className="grid gap-5 xl:grid-cols-[1.15fr_1fr]">
         <div className="space-y-5">
-          <Panel
-            title="Vincular o app"
-            description="Leva menos de um minuto, com o Orbi aberto no seu PC."
-          >
-            <ol className="mb-5 space-y-3">
+          <Panel title="Como um PC entra" padded={false}>
+            <ol className="divide-y divide-rule">
               {[
-                "Abra o Orbi e vá em Configurações ▸ Conta ▸ Vincular ao site.",
-                "O app entra com a sua conta — não existe código.",
-                "Cada PC que entrar com esta conta aparece aqui automaticamente.",
-              ].map((text, index) => (
-                <li key={text} className="flex items-start gap-3">
-                  <span className="grid h-5 w-5 shrink-0 place-items-center bg-ink font-mono text-[10px] text-paper">
+                {
+                  title: "Instale o Orbi naquele computador",
+                  body: "O mesmo instalador, sem administrador. A barra abre e o app fica na bandeja.",
+                },
+                {
+                  title: "Entre com este e-mail e senha",
+                  body: "No app: Ajustes ▸ Conta ▸ Entrar. Nada de código para copiar de uma tela para outra.",
+                },
+                {
+                  title: "A conta se atualiza sozinha",
+                  body: "O computador entra nesta lista na primeira sincronização — e os seus dados chegam junto.",
+                },
+              ].map((step, index) => (
+                <li key={step.title} className="flex items-start gap-4 px-5 py-4">
+                  <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center bg-ink font-mono text-[10.5px] text-paper">
                     {index + 1}
                   </span>
-                  <span className="text-[13.5px] leading-snug text-ink-2">{text}</span>
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-medium text-ink">{step.title}</p>
+                    <p className="mt-0.5 text-[12.5px] leading-snug text-warm">{step.body}</p>
+                  </div>
                 </li>
               ))}
             </ol>
-
-            <form onSubmit={link} className="space-y-4 border-t border-rule pt-5" noValidate>
-              <div>
-                <div className="mb-1.5 flex items-baseline justify-between gap-3">
-                  <label htmlFor="pairing" className="label text-ink">
-                    Código do app
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCode(formatPairingInput(generateSampleCode()));
-                      setCodeError("");
-                    }}
-                    className="font-mono text-[10px] text-signal underline decoration-rule underline-offset-2 hover:decoration-signal"
-                  >
-                    Usar código de exemplo
-                  </button>
-                </div>
-                <div
-                  className={`flex h-12 items-stretch border bg-[#fbf9f3] transition-colors focus-within:border-ink ${
-                    codeError ? "border-signal" : "border-rule"
-                  }`}
-                >
-                  <span className="flex items-center border-r border-rule bg-paper-2/70 px-3.5 font-mono text-[14px] text-warm">
-                    ORBI-
-                  </span>
-                  <input
-                    id="pairing"
-                    value={code}
-                    onChange={(event) => {
-                      setCode(formatPairingInput(event.target.value));
-                      setCodeError("");
-                    }}
-                    autoComplete="off"
-                    spellCheck={false}
-                    placeholder="XXXX-XXXX"
-                    aria-invalid={Boolean(codeError)}
-                    aria-describedby={codeError ? "pairing-error" : undefined}
-                    className="min-w-0 flex-1 bg-transparent px-3.5 font-mono text-[16px] tracking-[0.14em] text-ink outline-none placeholder:text-warm/40"
-                  />
-                </div>
-                {codeError && (
-                  <p id="pairing-error" role="alert" className="mt-1.5 text-[11.5px] text-signal">
-                    {codeError}
-                  </p>
-                )}
-              </div>
-
-              <TextField
-                id="device-name"
-                label="Nome do computador"
-                value={deviceName}
-                onChange={(event) => setDeviceName(event.target.value)}
-                placeholder="Ex.: PC do escritório"
-                maxLength={32}
-              />
-
-              <div className="flex flex-wrap items-center gap-3">
-                <Button type="submit" disabled={code.length < 9}>
-                  <Icon name="link" className="h-3.5 w-3.5" />
-                  Vincular
-                </Button>
-                <button
-                  type="button"
-                  onClick={onDownload}
-                  className="text-[13px] text-warm underline decoration-rule underline-offset-2 hover:text-ink"
-                >
-                  Ainda não instalei o app
-                </button>
-              </div>
-            </form>
-
-            <p className="mt-5 flex items-start gap-2 border-t border-rule pt-4 text-[11.5px] leading-snug text-warm">
-              <Icon name="info" className="mt-[1px] h-3.5 w-3.5 shrink-0" />
-              Nesta versão do site, a conta e os vínculos ficam salvos neste navegador. O código tem um
-              dígito verificador, então erros de digitação são recusados.
-            </p>
           </Panel>
 
-          <Panel title="Aparelhos vinculados" padded={false}>
+          <Panel title="Na sua conta" padded={false}>
             {account.devices.length === 0 ? (
-              <div className="px-5 py-8 text-center">
+              <div className="px-5 py-9 text-center">
                 <span className="mx-auto grid h-11 w-11 place-items-center border border-dashed border-warm text-warm">
                   <Icon name="laptop" className="h-5 w-5" />
                 </span>
-                <p className="mt-3 text-[14px] font-medium text-ink">Nenhum aparelho ainda</p>
-                <p className="mt-1 text-[12.5px] text-warm">Quando o app entrar com esta conta, ele aparece aqui.</p>
+                <p className="mt-3 text-[14px] font-medium text-ink">Nenhum computador ainda</p>
+                <p className="mx-auto mt-1 max-w-[38ch] text-[12.5px] leading-snug text-warm">
+                  Quando o app entrar com esta conta, ele aparece aqui com o nome do PC e a data da
+                  primeira sincronização.
+                </p>
+                <Button size="sm" className="mt-4" onClick={onDownload}>
+                  Baixar o instalador
+                </Button>
               </div>
             ) : (
               <ul className="divide-y divide-rule">
@@ -205,13 +126,17 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
                             value={editing.value}
                             onChange={(event) => setEditing({ id: device.id, value: event.target.value })}
                             maxLength={32}
-                            aria-label="Novo nome do aparelho"
+                            aria-label="Novo nome do computador"
                             className="h-9 min-w-0 flex-1 border border-ink bg-[#fbf9f3] px-3 text-[13.5px] outline-none"
                           />
                           <Button size="sm" type="submit">
                             Salvar
                           </Button>
-                          <button type="button" onClick={() => setEditing(null)} className="text-[12.5px] text-warm hover:text-ink">
+                          <button
+                            type="button"
+                            onClick={() => setEditing(null)}
+                            className="text-[12.5px] text-warm hover:text-ink"
+                          >
                             Cancelar
                           </button>
                         </form>
@@ -219,10 +144,10 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
                         <>
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="truncate text-[14px] font-medium text-ink">{device.name}</p>
-                            <Badge tone="ok">Vinculado</Badge>
+                            <Badge tone="ok">Na conta</Badge>
                           </div>
                           <p className="mt-0.5 font-mono text-[11px] text-warm">
-                            {device.os} · desde {formatDate(device.linkedAt)} · código …{device.code.slice(-4)}
+                            {device.os} · desde {formatDate(device.linkedAt)}
                           </p>
                         </>
                       )}
@@ -242,7 +167,7 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
                           type="button"
                           onClick={() => setRemoving(device)}
                           className="grid h-9 w-9 place-items-center text-warm transition-colors hover:bg-signal-soft hover:text-signal-dark"
-                          aria-label={`Desvincular ${device.name}`}
+                          aria-label={`Remover ${device.name}`}
                         >
                           <Icon name="trash" className="h-4 w-4" />
                         </button>
@@ -256,7 +181,7 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
         </div>
 
         <div className="space-y-5">
-          <Panel title="O que sincroniza" description="Vale para todos os aparelhos vinculados.">
+          <Panel title="O que sincroniza" description="Vale para todos os computadores da conta.">
             <ul className="divide-y divide-rule">
               {SYNC_ITEMS.map((item) => (
                 <li key={item.key} className="py-3.5 first:pt-0">
@@ -271,9 +196,9 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
             </ul>
           </Panel>
 
-          <Panel title="Só no seu PC">
+          <Panel title="O que fica só no PC">
             <p className="text-[12.5px] leading-snug text-warm">
-              Estes itens nunca saem do computador, mesmo com o app vinculado:
+              Estes itens nunca saem do computador, nem com a conta aberta:
             </p>
             <ul className="mt-3 space-y-2">
               {LOCAL_ONLY.map((item) => (
@@ -290,12 +215,12 @@ export default function Devices({ account, reload, notify, onDownload }: PagePro
       <Modal
         open={Boolean(removing)}
         onClose={() => setRemoving(null)}
-        title={`Remover ${removing?.name ?? "este aparelho"}?`}
-        description="O app continua funcionando no PC, mas deixa de sincronizar com a sua conta."
+        title={`Remover ${removing?.name ?? "este computador"}?`}
+        description="O Orbi continua instalado e funcionando no PC; ele só deixa de sincronizar com a sua conta."
       >
         <div>
           <p className="text-[13.5px] leading-[1.6] text-ink-2">
-            Ele volta à lista quando entrar na conta de novo.
+            Ele volta para a lista quando você entrar na conta de novo por lá.
           </p>
           <div className="mt-6 flex justify-end gap-2.5">
             <Button variant="ghost" onClick={() => setRemoving(null)}>

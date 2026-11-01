@@ -3,6 +3,7 @@ import { PageHeader, type PageProps } from "./AccountShell";
 import { formatDateTime } from "../../lib/accounts";
 import { BUILD, shortChecksum } from "../../lib/download";
 import { RELEASE_NOTES } from "../../data/site";
+import { TOOL_COUNT } from "../../data/tools";
 
 export default function Downloads({ account, onDownload }: PageProps) {
   const last = account.downloads[0];
@@ -41,8 +42,8 @@ export default function Downloads({ account, onDownload }: PageProps) {
           <div className="grid gap-px bg-rule sm:grid-cols-3">
             {[
               ["Requisito", BUILD.minimum],
-              ["Instalação", "Automática"],
-              ["Conta no pacote", "orbi-conta.json"],
+              ["Instalação", "Por usuário, sem administrador"],
+              ["Ferramentas", `${TOOL_COUNT} ações no Windows`],
             ].map(([term, value]) => (
               <div key={term} className="bg-[#fbf9f3] p-4">
                 <p className="label text-warm">{term}</p>

@@ -1,6 +1,7 @@
 import { Badge, Button, Icon, Panel, type IconName } from "../ui";
 import { PageHeader, type PageProps } from "./AccountShell";
 import { firstName, formatDate, relativeTime, type ActivityType } from "../../lib/accounts";
+import { GROUP_COUNT, TOOL_COUNT } from "../../data/tools";
 
 const ACTIVITY_ICON: Record<ActivityType, IconName> = {
   conta: "user",
@@ -161,9 +162,9 @@ export default function Overview({ account, go, onDownload }: PageProps) {
                 <span className="mx-auto grid h-11 w-11 place-items-center border border-dashed border-warm text-warm">
                   <Icon name="link" className="h-5 w-5" />
                 </span>
-                <p className="mt-3 text-[13.5px] font-medium text-ink">Conecte o app</p>
+                <p className="mt-3 text-[13.5px] font-medium text-ink">Abra o app com esta conta</p>
                 <p className="mx-auto mt-1 max-w-[30ch] text-[12.5px] leading-snug text-warm">
-                  Entre com esta conta no Orbi para a memória, as rotinas e os lembretes acompanharem você.
+                  É a mesma conta: entre no app e a memória, as rotinas e os lembretes passam a acompanhar você.
                 </p>
                 <Button size="sm" className="mt-4" onClick={onDownload}>
                   Baixar o app
@@ -178,7 +179,7 @@ export default function Overview({ account, go, onDownload }: PageProps) {
           >
             <ul className="-my-1 divide-y divide-rule">
               {[
-                { label: "Apelidos de apps", value: account.aliases.length },
+                { label: "Notas e lembretes", value: account.shortcuts.length + account.routines.length },
                 { label: "Atalhos de texto", value: account.shortcuts.length },
                 { label: "Rotinas", value: account.routines.length },
                 { label: "PCs vinculados", value: account.devices.length },
@@ -197,6 +198,18 @@ export default function Overview({ account, go, onDownload }: PageProps) {
             >
               Editar o que sincroniza
               <Icon name="chevron-right" className="h-3 w-3" />
+            </Button>
+          </Panel>
+
+          <Panel title="Ferramentas no app">
+            <p className="-mt-1 text-[12.5px] leading-relaxed text-warm">
+              <span className="font-mono text-ink">{TOOL_COUNT} ações</span> em {GROUP_COUNT} grupos
+              ficam disponíveis na barra. Nada disso depende da conta: a conta serve para levar o
+              que você criou de um PC para outro.
+            </p>
+            <Button variant="ghost" size="sm" className="mt-3" onClick={onDownload}>
+              Baixar o instalador
+              <Icon name="download" className="h-3 w-3" />
             </Button>
           </Panel>
 

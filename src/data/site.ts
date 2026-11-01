@@ -1,92 +1,59 @@
 export const NAV = [
   { label: "O que faz", section: "faz" },
-  { label: "Exemplos", section: "exemplos" },
+  { label: "Ferramentas", section: "ferramentas" },
+  { label: "O app", section: "app" },
   { label: "Sua conta", section: "conta" },
-  { label: "Privacidade", section: "privacidade" },
   { label: "Baixar", section: "download" },
 ] as const;
 
 /** Frases que a pessoa realmente digita — é isso que a página vende. */
 export const EXAMPLES = [
   {
-    saida: "abre o spotify e baixa o volume",
-    efeito: "Spotify em primeiro plano, volume em 20%.",
+    saida: "volume em 30",
+    efeito: "o som do sistema desce na hora, sem abrir o mixer.",
   },
   {
-    saida: "modo estudo",
-    efeito: "Abre a apostila, silencia as notificações e abre um timer de 50 minutos.",
+    saida: "/captura de tela",
+    efeito: "salva em Imagens\\Orbi e copia para a área de transferência.",
+  },
+  {
+    saida: "limpa o dns",
+    efeito: "aquela internet estranha costuma voltar com isso.",
+  },
+  {
+    saida: "fixa essa janela à esquerda",
+    efeito: "a janela ativa vai para a metade esquerda da tela.",
   },
   {
     saida: "lembra de pagar a conta de luz amanhã às 9",
-    efeito: "Aviso na bandeja na hora certa, mesmo com o app fechado.",
+    efeito: "aviso na bandeja na hora certa, mesmo com a barra fechada.",
   },
   {
     saida: "o que eu tava fazendo ontem à tarde?",
-    efeito: "O Orbi lembra e responde — é a memória dele sobre o seu dia.",
-  },
-  {
-    saida: "tô cansado, põe algo leve pra tocar",
-    efeito: "Abre a música, baixa o brilho e deixa o PC em modo silencioso.",
-  },
-  {
-    saida: "trava o pc quando eu sair",
-    efeito: "Bloqueio automático depois do tempo parado, com aviso antes.",
-  },
-];
-
-export const FEATURES = [
-  {
-    icon: "apps" as const,
-    title: "Fala como você fala",
-    body: "“abre o zap”, “aumenta o som”, “isso aí que eu abri ontem”. Sem comando decorado, sem barra de menu.",
-  },
-  {
-    icon: "bolt" as const,
-    title: "Um pedido, várias coisas",
-    body: "“modo cinema” abre o player, apaga a luz da tela, silencia o celular conectado e ativa o Foco.",
-  },
-  {
-    icon: "bell" as const,
-    title: "Não deixa passar nada",
-    body: "Lembretes, timers e notas que aparecem na hora marcada, mesmo quando o app está na bandeja.",
-  },
-  {
-    icon: "sparkle" as const,
-    title: "Memória de verdade",
-    body: "O Orbi guarda o que você fez, pediu e anotou — e usa isso para responder “o que eu tava fazendo ontem?”.",
-  },
-  {
-    icon: "cloud" as const,
-    title: "Tudo na sua conta",
-    body: "Você entra uma vez. Preferências, rotinas, memória e lembretes ficam salvos na sua conta e aparecem em qualquer PC.",
-  },
-  {
-    icon: "lock" as const,
-    title: "Nada sai sem você",
-    body: "Notas, área de transferência e a chave da IA nunca vão para a nuvem. Só o que você quer sincronizar sincroniza.",
+    efeito: "o Orbi lê a própria memória e responde.",
   },
 ];
 
 export const STEPS = [
   {
     title: "Baixe e instale",
-    body: "Um arquivo. Ele instala, cria o atalho e abre o Orbi — sem terminal, sem administrador.",
-  },
-  {
-    title: "Entre na sua conta",
-    body: "E-mail e senha ou Google. É a mesma conta do site, então o que você já salvou está lá.",
+    body: "Um .exe. Ele instala por usuário, cria o atalho e abre a barra — sem terminal, sem administrador.",
   },
   {
     title: "Aperte Alt+Shift+O",
-    body: "A barra aparece sobre qualquer programa. Escreva, ou peça em português mesmo.",
+    body: "A barra aparece sobre qualquer programa. Enter executa; / abre o catálogo de ferramentas.",
+  },
+  {
+    title: "Entre na conta quando quiser",
+    body: "É a mesma conta do site: lembretes, notas, rotinas e memória passam a acompanhar você.",
   },
 ];
 
 export const ACCOUNT_ITEMS = [
-  { label: "Memória da IA", body: "o que você pediu, o que o Orbi fez, o que você anotou." },
-  { label: "Rotinas", body: "seus atalhos de várias ações, prontos em qualquer PC." },
-  { label: "Lembretes e notas", body: "marcados no app, visíveis no site." },
-  { label: "Preferências", body: "atalho, tema, o que sincronizar." },
+  { label: "Memória", body: "o que você pediu, o que o Orbi fez, o que você anotou." },
+  { label: "Rotinas", body: "sequências com nome, executadas no PC em um comando." },
+  { label: "Lembretes e notas", body: "criados no site ou no app — é a mesma lista." },
+  { label: "Preferências", body: "atalho global, bloqueio por inatividade, modo Cloud." },
 ];
 
 export const LOCAL_ONLY = ["Senhas", "Área de transferência", "Chave da IA", "Histórico de teclado"];
@@ -94,19 +61,23 @@ export const LOCAL_ONLY = ["Senhas", "Área de transferência", "Chave da IA", "
 export const FAQ = [
   {
     q: "Preciso pagar para usar?",
-    a: "Não. O app e a conta são gratuitos, sem assinatura e sem cartão.",
+    a: "Não. O app, as ferramentas e a conta são gratuitos. Se você quiser conversa livre com IA, pode colar uma chave gratuita do Google AI Studio (ou entrar na conta e usar a do Orbi).",
   },
   {
     q: "Preciso de conta para instalar?",
-    a: "Para instalar, não. Mas é a conta que guarda a memória, as rotinas e os lembretes — é ela que faz o Orbi lembrar de você em qualquer PC.",
+    a: "Para instalar, não. Todas as ferramentas rodam sem conta. A conta existe para levar lembretes, notas, rotinas e memória de um PC para outro.",
   },
   {
-    q: "A IA sabe tudo o que eu faço?",
-    a: "Só o texto que você escreve vai para o modelo, e apenas quando o pedido foge do que o Windows resolve sozinho. Notas, senhas e área de transferência nunca entram nesse envio.",
+    q: "O Orbi mexe no sistema sem eu mandar?",
+    a: "Não. Nada acontece por conta própria: cada ação parte de um comando seu. A única exceção é o bloqueio por inatividade, que você liga no ajuste e avisa 15 segundos antes.",
   },
   {
     q: "Funciona sem internet?",
-    a: "Sim. Abrir apps, mexer no som, lembretes e rotinas funcionam offline. A conversa com a IA é a única parte que precisa de rede.",
+    a: "Sim. O catálogo de ferramentas, os lembretes, as notas e as rotinas funcionam offline. Só a conversa livre com a IA precisa de rede.",
+  },
+  {
+    q: "Meus dados vão para onde?",
+    a: "Notas, histórico de cópia, o log do app e a chave da IA ficam só no seu PC. A conta guarda o que precisa estar nos dois lugares: lembretes, notas, rotinas, preferências e memória.",
   },
   {
     q: "Qual Windows eu preciso?",
@@ -117,16 +88,16 @@ export const FAQ = [
 /** Usado pela área da conta e pelo espelho do app: o que sincroniza. */
 export const SYNC_ITEMS = [
   { key: "preferencias" as const, label: "Preferências", hint: "atalho, tema e o que sincronizar" },
-  { key: "apelidos" as const, label: "Aprendizado de apps", hint: "o Orbi reconhece o app sozinho" },
+  { key: "memoria" as const, label: "Memória", hint: "o seu dia, para perguntar depois" },
   { key: "rotinas" as const, label: "Rotinas", hint: "modo estudo, cinema…" },
   { key: "atalhos" as const, label: "Atalhos de texto", hint: "snippets que você criou" },
 ];
 
 /** Notas da versão mostradas na área da conta. */
 export const RELEASE_NOTES = [
-  "Conversa com memória: o Orbi lembra do que você pediu e fez",
-  "Comandos em português para abrir apps, volume, brilho, energia e captura",
-  "Lembretes, timers, notas e histórico de área de transferência",
-  "Rotinas e preferências na sua conta, em qualquer PC",
-  "Bloqueio por inatividade com aviso e senha do Windows",
+  "120+ ferramentas do Windows na barra, em 11 grupos",
+  "Barra compacta: Enter executa, / abre o catálogo, F1 também",
+  "Modo Cloud opcional (Gemini 2.5), com chave cifrada ou pela conta",
+  "Lembretes, notas, histórico de cópia e memória do dia",
+  "Rotinas e preferências na conta, iguais no site e no app",
 ];

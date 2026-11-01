@@ -39,7 +39,7 @@ const COPY: Record<LoginMode, { title: string; accent: string; lead: string }> =
   signin: {
     title: "Entrar",
     accent: "na sua conta.",
-    lead: "Acesse o painel, os downloads e os aparelhos vinculados ao Orbi.",
+    lead: "Acesse o painel, os seus downloads e os computadores onde o Orbi está instalado.",
   },
   signup: {
     title: "Criar",
@@ -362,8 +362,8 @@ export default function Login({
               <span className="text-signal">numa frase.</span>
             </h2>
             <p className="mt-4 max-w-[36ch] text-[13.5px] leading-[1.7] text-bone/55">
-              Sua conta guarda o que é útil: preferências, apelidos de apps, rotinas e os PCs
-              vinculados. O resto fica com você, no Windows.
+              A conta guarda o que precisa ir junto: lembretes, notas, rotinas, preferências e a
+              memória. O resto fica com você, no Windows.
             </p>
           </div>
 

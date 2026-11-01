@@ -2,12 +2,10 @@ import { useEffect, useState } from "react";
 import { Badge, Button, Icon, Panel, Switch, TextField } from "../ui";
 import { PageHeader, type PageProps } from "./AccountShell";
 import {
-  saveAliases,
   saveAppPrefs,
   saveRoutines,
   saveShortcuts,
   setSync,
-  type Alias,
   type AppPrefs,
   type Routine,
   type Shortcut,
@@ -15,14 +13,11 @@ import {
 } from "../../lib/accounts";
 import { SYNC_ITEMS } from "../../data/site";
 
-type Tab = "apelidos" | "atalhos" | "rotinas" | "app";
+type Tab = "atalhos" | "rotinas" | "app";
 
 export default function Sync({ account, reload, notify }: PageProps) {
-  const [tab, setTab] = useState<Tab>("apelidos");
+  const [tab, setTab] = useState<Tab>("atalhos");
   const [busy, setBusy] = useState(false);
-
-  const [aliases, setAliases] = useState<Alias[]>(account.aliases);
-  const [aliasDraft, setAliasDraft] = useState<Alias>({ alias: "", target: "" });
 
   const [shortcuts, setShortcuts] = useState<Shortcut[]>(account.shortcuts);
   const [shortcutDraft, setShortcutDraft] = useState<Shortcut>({ trigger: "", expansion: "" });
@@ -35,7 +30,6 @@ export default function Sync({ account, reload, notify }: PageProps) {
 
   // A conta é recarregada depois de cada gravação: mantém os campos espelhando o Firestore.
   useEffect(() => {
-    setAliases(account.aliases);
     setShortcuts(account.shortcuts);
     setRoutines(account.routines);
     setPrefs(account.appPrefs);
@@ -57,23 +51,6 @@ export default function Sync({ account, reload, notify }: PageProps) {
     } finally {
       setBusy(false);
     }
-  };
-
-  /* ------------------------------ apelidos ------------------------------ */
-  const addAlias = () => {
-    if (!aliasDraft.alias.trim() || !aliasDraft.target.trim()) return;
-    const next = [...aliases.filter((item) => item.alias !== aliasDraft.alias), aliasDraft].slice(0, 100);
-    const previous = aliases;
-    setAliases(next);
-    setAliasDraft({ alias: "", target: "" });
-    void commit(() => saveAliases(next), "Apelido salvo na sua conta.", () => setAliases(previous));
-  };
-
-  const removeAlias = (alias: string) => {
-    const next = aliases.filter((item) => item.alias !== alias);
-    const previous = aliases;
-    setAliases(next);
-    void commit(() => saveAliases(next), "Apelido removido.", () => setAliases(previous));
   };
 
   /* ------------------------------ atalhos ------------------------------ */
@@ -140,7 +117,6 @@ export default function Sync({ account, reload, notify }: PageProps) {
   };
 
   const TABS: { id: Tab; label: string; count?: number }[] = [
-    { id: "apelidos", label: "Apelidos", count: aliases.length },
     { id: "atalhos", label: "Atalhos", count: shortcuts.length },
     { id: "rotinas", label: "Rotinas", count: routines.length },
     { id: "app", label: "App", count: undefined },
@@ -173,55 +149,6 @@ export default function Sync({ account, reload, notify }: PageProps) {
               </button>
             ))}
           </div>
-
-          {tab === "apelidos" && (
-            <Panel
-              title="Apelidos de apps"
-              description="No app, “abre o zap” passa a funcionar. O alvo pode ser um nome do Menu Iniciar, um .exe ou um caminho completo."
-            >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <TextField
-                  id="alias-name"
-                  label="Apelido"
-                  placeholder="zap"
-                  value={aliasDraft.alias}
-                  onChange={(event) => setAliasDraft({ ...aliasDraft, alias: event.target.value })}
-                />
-                <TextField
-                  id="alias-target"
-                  label="App"
-                  placeholder="WhatsApp.exe"
-                  value={aliasDraft.target}
-                  onChange={(event) => setAliasDraft({ ...aliasDraft, target: event.target.value })}
-                />
-              </div>
-              <Button className="mt-3" size="sm" onClick={addAlias} disabled={busy}>
-                <Icon name="link" className="h-3.5 w-3.5" />
-                Adicionar apelido
-              </Button>
-
-              <ul className="mt-4 divide-y divide-rule border-t border-rule">
-                {aliases.length === 0 && (
-                  <li className="py-4 text-[12.5px] text-warm">Nenhum apelido ainda.</li>
-                )}
-                {aliases.map((item) => (
-                  <li key={item.alias} className="flex items-center gap-3 py-2.5">
-                    <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink">
-                      “{item.alias}” <span className="text-warm">→</span> {item.target}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeAlias(item.alias)}
-                      className="text-warm transition-colors hover:text-signal"
-                      aria-label={`Remover apelido ${item.alias}`}
-                    >
-                      <Icon name="trash" className="h-3.5 w-3.5" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </Panel>
-          )}
 
           {tab === "atalhos" && (
             <Panel

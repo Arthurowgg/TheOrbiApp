@@ -198,7 +198,7 @@ export function actionReply(value: string): Resposta {
     return {
       text: "Abrindo o WhatsApp.",
       signal: "local",
-      detail: "Busca por apelido, sem sair do seu PC.",
+      detail: "Busca pelo nome no Menu Iniciar, sem sair do seu PC.",
     };
   }
   return {
@@ -238,7 +238,7 @@ export function interpret(input: string): Resposta {
 
   if (/(entrar|login|conta|cadastro|criar conta|vincular|sincroniz)/.test(text)) {
     return {
-      text: "A conta liga o site ao app: preferências, apelidos e rotinas acompanham você. Notas, área de transferência e chave da API ficam só no PC.",
+      text: "É a mesma conta no site e no app: lembretes, notas, rotinas, preferências e memória acompanham você. Área de transferência e chave da API ficam só no PC.",
       signal: "privado",
       actions: [{ label: "Entrar ou criar conta", value: "app:login", primary: true }],
     };
@@ -437,7 +437,7 @@ export function interpret(input: string): Resposta {
     return {
       text: `Abrindo ${app.article} ${app.name}.`,
       signal: "local",
-      detail: "Busca por apelido no seu Menu Iniciar, sem internet.",
+      detail: "Procura no Menu Iniciar do seu Windows, sem internet.",
     };
   }
 

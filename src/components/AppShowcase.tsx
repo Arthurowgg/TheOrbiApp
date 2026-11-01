@@ -93,7 +93,7 @@ function SceneCommand() {
 
         <ul className="divide-y divide-white/[0.07]">
           {[
-            { icon: "apps" as const, text: "Abrir WhatsApp", hint: "apelido “zap”", tag: "confirmado" },
+            { icon: "apps" as const, text: "Abrir WhatsApp", hint: "acha o WhatsApp sozinho", tag: "confirmado" },
             { icon: "sliders" as const, text: "Volume em 30%", hint: "áudio do Windows", tag: "confirmado" },
             { icon: "sparkle" as const, text: "Perguntar ao Gemini", hint: "se o comando fugir do script", tag: "IA" },
           ].map((row, index) => (

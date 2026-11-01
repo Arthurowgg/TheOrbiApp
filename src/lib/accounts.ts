@@ -41,7 +41,7 @@ export type ActivityType = "conta" | "login" | "download" | "dispositivo" | "per
 
 export type SyncPrefs = {
   preferencias: boolean;
-  apelidos: boolean;
+  memoria: boolean;
   rotinas: boolean;
   atalhos: boolean;
 };
@@ -104,7 +104,7 @@ export const AVATAR_COLORS = ["#17120e", "#c7452a", "#2f5d62", "#6b4e9b", "#9a6a
 
 export const DEFAULT_SYNC: SyncPrefs = {
   preferencias: true,
-  apelidos: true,
+  memoria: true,
   rotinas: true,
   atalhos: true,
 };

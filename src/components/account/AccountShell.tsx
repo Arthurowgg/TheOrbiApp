@@ -165,7 +165,7 @@ export default function AccountShell({
                 <>
                   <p className="mt-2 flex items-center gap-2 text-[13px] font-medium text-ink">
                     <span className="h-2 w-2 rounded-full bg-signal" aria-hidden />
-                    Vinculado
+                    Na conta
                   </p>
                   <p className="mt-0.5 truncate font-mono text-[11px] text-warm">
                     {device.name}
@@ -174,13 +174,13 @@ export default function AccountShell({
                 </>
               ) : (
                 <>
-                  <p className="mt-2 text-[13px] font-medium text-ink">Nenhum app vinculado</p>
+                  <p className="mt-2 text-[13px] font-medium text-ink">Nenhum PC entrou ainda</p>
                   <button
                     type="button"
                     onClick={() => go("/conta/dispositivos")}
                     className="mt-1.5 inline-flex items-center gap-1.5 text-[12.5px] text-signal hover:text-signal-dark"
                   >
-                    Vincular agora
+                    Como entrar no app
                     <Icon name="arrow-right" className="h-3 w-3" />
                   </button>
                 </>

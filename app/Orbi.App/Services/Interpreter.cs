@@ -391,7 +391,7 @@ public static partial class Interpreter
     /// </summary>
     private static Tool? MatchTool(string text)
     {
-        var best = (Tool? Tool, int Score)null;
+        (Tool Tool, int Score)? best = null;
         foreach (var tool in Tools.All)
         {
             foreach (var key in tool.Keywords.Append(tool.Name))
@@ -410,10 +410,10 @@ public static partial class Interpreter
                 if (!atStart && text.Length > needle.Length + 24) continue;
 
                 var score = needle.Length + (atStart ? 40 : 0);
-                if (best.Tool is null || score > best.Score) best = (tool, score);
+                if (best is null || score > best.Value.Score) best = (tool, score);
             }
         }
-        return best.Tool;
+        return best is { } found ? found.Tool : null;
     }
 
     /* ----------------------------- padrões ----------------------------- */
