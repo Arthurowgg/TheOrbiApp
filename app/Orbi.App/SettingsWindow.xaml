@@ -58,12 +58,9 @@
                  ItemContainerStyle="{StaticResource NavButton}"
                  SelectionChanged="Nav_SelectionChanged" Padding="8">
           <ListBoxItem Content="Geral" Tag="geral"/>
-          <ListBoxItem Content="Ferramentas" Tag="ferramentas"/>
-          <ListBoxItem Content="IA (Gemini)" Tag="ia"/>
+          <ListBoxItem Content="IA" Tag="ia"/>
           <ListBoxItem Content="Conta" Tag="conta"/>
-          <ListBoxItem Content="Lembretes" Tag="lembretes"/>
-          <ListBoxItem Content="Notas" Tag="notas"/>
-          <ListBoxItem Content="Atalhos de texto" Tag="atalhos"/>
+          <ListBoxItem Content="Ferramentas" Tag="ferramentas"/>
           <ListBoxItem Content="Memória" Tag="memoria"/>
           <ListBoxItem Content="Segurança" Tag="seguranca"/>
           <ListBoxItem Content="Sobre" Tag="sobre"/>
@@ -76,13 +73,12 @@
           <!-- GERAL -->
           <StackPanel x:Name="PageGeral">
             <TextBlock Text="Geral" Style="{StaticResource H1}"/>
-            <TextBlock Text="Como o Orbi se comporta no seu Windows." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
+            <TextBlock Text="Como o Orbi se comporta no Windows." Style="{StaticResource Muted}" Margin="0,4,0,20"/>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
                 <TextBlock Text="Seu nome" Style="{StaticResource Label}"/>
                 <TextBox x:Name="NameBox" Style="{StaticResource Field}" Margin="0,6,0,0"/>
-                <TextBlock Text="Usado nas saudações da barra." Style="{StaticResource Muted}" Margin="0,4,0,0"/>
 
                 <Border Style="{StaticResource Divider}"/>
 
@@ -91,17 +87,8 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
-                  <StackPanel Grid.Column="0">
-                    <StackPanel Margin="0,0,0,16">
-                    <TextBlock Text="Atalho global" Style="{StaticResource Body}" FontWeight="SemiBold"/>
-                    <TextBlock x:Name="HotkeyState" Style="{StaticResource Muted}" Margin="0,2,0,6"/>
-                    <ComboBox x:Name="HotkeyBox" Width="240" HorizontalAlignment="Left"
-                              SelectionChanged="HotkeyBox_SelectionChanged"/>
-                  </StackPanel>
-
-                  <TextBlock Text="Abrir com o Windows" Style="{StaticResource Body}" FontWeight="SemiBold"/>
-                    <TextBlock Text="Fica na bandeja, pronto para Alt+Shift+O." Style="{StaticResource Muted}"/>
-                  </StackPanel>
+                  <TextBlock Grid.Column="0" Text="Abrir com o Windows" Style="{StaticResource Body}"
+                             FontWeight="SemiBold" VerticalAlignment="Center"/>
                   <ToggleButton x:Name="StartupToggle" Grid.Column="1" Style="{StaticResource ToggleSwitch}"
                                 VerticalAlignment="Center"/>
                 </Grid>
@@ -109,7 +96,9 @@
                 <Border Style="{StaticResource Divider}"/>
 
                 <TextBlock Text="Atalho global" Style="{StaticResource Label}"/>
-                <TextBlock Text="Alt + Space abre a barra em qualquer programa." Style="{StaticResource Body}" Margin="0,4,0,0"/>
+                <ComboBox x:Name="HotkeyBox" Width="220" HorizontalAlignment="Left" Margin="0,6,0,0"
+                          SelectionChanged="HotkeyBox_SelectionChanged"/>
+                <TextBlock x:Name="HotkeyState" Style="{StaticResource Muted}" Margin="0,6,0,0"/>
               </StackPanel>
             </Border>
 
@@ -152,9 +141,9 @@
           </StackPanel>
 
           <StackPanel x:Name="PageIa" Visibility="Collapsed">
-            <TextBlock Text="IA (Gemini)" Style="{StaticResource H1}"/>
-            <TextBlock Text="O Orbi pensa com o Gemini. Cole a sua chave gratuita do Google AI Studio — ela fica cifrada neste PC e é usada só por você."
-                       Style="{StaticResource Muted}" Margin="0,4,0,18" TextWrapping="Wrap"/>
+            <TextBlock Text="IA" Style="{StaticResource H1}"/>
+            <TextBlock Text="O Orbi pensa e age com o Gemini. Cole a sua chave do Google AI Studio."
+                       Style="{StaticResource Muted}" Margin="0,4,0,20" TextWrapping="Wrap"/>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
@@ -162,17 +151,12 @@
 
                 <Border Style="{StaticResource Divider}"/>
 
-                <TextBlock Text="Chave da API" Style="{StaticResource Label}"/>
-                <PasswordBox x:Name="ApiKeyBox" Style="{StaticResource PasswordField}" Margin="0,6,0,0"/>
-                <TextBlock Text="Crie a sua em aistudio.google.com/apikey (leva um minuto, é gratuita). Ela fica cifrada neste PC com DPAPI: só este usuário do Windows consegue ler."
-                           Style="{StaticResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                <Button x:Name="OpenKeyPage" Content="Abrir a página da chave" Style="{StaticResource GhostButton}"
+                <PasswordBox x:Name="ApiKeyBox" Style="{StaticResource PasswordField}"/>
+                <Button x:Name="OpenKeyPage" Content="Pegar uma chave gratuita" Style="{StaticResource GhostButton}"
                         HorizontalAlignment="Left" Margin="0,8,0,0" Click="OpenKeyPage_Click"/>
-                <TextBlock Text="A chave não entra na conta nem é enviada para o Orbi: fica só neste computador."
-                           Style="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap"/>
 
-                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                  <Button Content="Salvar chave" Style="{StaticResource PrimaryButton}" Click="SaveKey_Click"/>
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                  <Button Content="Salvar" Style="{StaticResource PrimaryButton}" Click="SaveKey_Click"/>
                   <Button Content="Testar" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="TestKey_Click"/>
                   <Button Content="Remover" Style="{StaticResource GhostButton}" Margin="4,0,0,0" Click="RemoveKey_Click"/>
                 </StackPanel>
@@ -194,121 +178,51 @@
           <!-- CONTA -->
           <StackPanel x:Name="PageConta" Visibility="Collapsed">
             <TextBlock Text="Conta" Style="{StaticResource H1}"/>
-            <TextBlock Text="A mesma conta do site, no Firebase. O app sincroniza pelo Firestore."
-                       Style="{StaticResource Muted}" Margin="0,4,0,18"/>
+            <TextBlock Text="A mesma conta do site. O que você cria lá aparece aqui."
+                       Style="{StaticResource Muted}" Margin="0,4,0,20" TextWrapping="Wrap"/>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <Grid>
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                  </Grid.ColumnDefinitions>
-                  <StackPanel Grid.Column="0">
-                    <TextBlock Text="Status" Style="{StaticResource Label}"/>
-                    <TextBlock x:Name="AccountBox" Style="{StaticResource Body}" FontWeight="SemiBold"
-                               Margin="0,4,0,0" TextWrapping="Wrap"/>
-                    <TextBlock x:Name="SyncStatus" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
-                  </StackPanel>
-                  <Border Grid.Column="1" VerticalAlignment="Top" Background="#22140F0C"
-                          CornerRadius="3" Padding="8,4">
-                    <TextBlock x:Name="UidBox" Style="{StaticResource Label}"/>
-                  </Border>
-                </Grid>
+                <TextBlock x:Name="AccountBox" Style="{StaticResource Body}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <TextBlock x:Name="SyncStatus" Style="{StaticResource Muted}" Margin="0,4,0,0"/>
 
-                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                  <Button x:Name="LoginButton" Content="Entrar na conta" Style="{StaticResource PrimaryButton}"
+                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                  <Button x:Name="LoginButton" Content="Entrar" Style="{StaticResource PrimaryButton}"
                           Click="AccountLogin_Click"/>
-                  <Button Content="Sincronizar agora" Style="{StaticResource SecondaryButton}"
+                  <Button Content="Sincronizar" Style="{StaticResource SecondaryButton}"
                           Margin="8,0,0,0" Click="SyncNow_Click"/>
-                  <Button Content="Enviar deste PC" Style="{StaticResource GhostButton}"
-                          Margin="4,0,0,0" Click="PushNow_Click"/>
                   <Button Content="Sair" Style="{StaticResource GhostButton}" Click="AccountSignOut_Click"/>
                 </StackPanel>
 
                 <TextBlock x:Name="AccountHint" Style="{StaticResource Muted}" Margin="0,10,0,0" TextWrapping="Wrap"/>
-
-                <Border Style="{StaticResource Divider}"/>
-
-                <TextBlock Text="O que sincroniza pelo Firestore" Style="{StaticResource Label}"/>
-                <TextBlock Style="{StaticResource Body}" Margin="0,6,0,0"
-                           Text="Memória do Orbi · atalhos de texto · rotinas · preferências (abrir com o Windows, volume, bloqueio) · nome"/>
-                <Border Style="{StaticResource Divider}"/>
-                <TextBlock Text="O que fica só neste PC" Style="{StaticResource Label}"/>
-                <TextBlock Style="{StaticResource Body}" Margin="0,6,0,0"
-                           Text="Notas · área de transferência · lembretes · chave do Gemini · histórico de comandos"/>
-              </StackPanel>
-            </Border>
-          </StackPanel>
-
-          <!-- LEMBRETES -->
-          <StackPanel x:Name="PageLembretes" Visibility="Collapsed">
-            <TextBlock Text="Lembretes" Style="{StaticResource H1}"/>
-            <TextBlock Text="Avisos que continuam valendo mesmo depois de reiniciar o PC." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
-            <Border Style="{StaticResource Card}">
-              <ListBox x:Name="RemindersList" BorderThickness="0" Background="Transparent" MaxHeight="420"/>
-            </Border>
-          </StackPanel>
-
-          <!-- NOTAS -->
-          <StackPanel x:Name="PageNotas" Visibility="Collapsed">
-            <TextBlock Text="Notas" Style="{StaticResource H1}"/>
-            <TextBlock Text="Ficam neste PC. Nunca vão para a nuvem." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
-            <Border Style="{StaticResource Card}">
-              <StackPanel>
-                <TextBox x:Name="NoteBox" Style="{StaticResource Field}" AcceptsReturn="True" Height="70"
-                         VerticalContentAlignment="Top" TextWrapping="Wrap"/>
-                <Button Content="Anotar" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
-                        Margin="0,8,0,0" Click="AddNote_Click"/>
-                <Border Style="{StaticResource Divider}"/>
-                <ItemsControl x:Name="NotesList"/>
-              </StackPanel>
-            </Border>
-          </StackPanel>
-
-          <!-- ATALHOS -->
-          <StackPanel x:Name="PageAtalhos" Visibility="Collapsed">
-            <TextBlock Text="Atalhos de texto" Style="{StaticResource H1}"/>
-            <TextBlock Text="Frase que se expande no comando: “expande assinatura”." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
-            <Border Style="{StaticResource Card}">
-              <StackPanel>
-                <TextBlock Text="Gatilho" Style="{StaticResource Label}"/>
-                <TextBox x:Name="ShortcutTrigger" Style="{StaticResource Field}" Margin="0,6,0,0"/>
-                <TextBlock Text="Texto" Style="{StaticResource Label}" Margin="0,10,0,0"/>
-                <TextBox x:Name="ShortcutText" Style="{StaticResource Field}" Margin="0,6,0,0"
-                         AcceptsReturn="True" Height="60" TextWrapping="Wrap" VerticalContentAlignment="Top"/>
-                <Button Content="Adicionar" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
-                        Margin="0,8,0,0" Click="AddShortcut_Click"/>
-                <Border Style="{StaticResource Divider}"/>
-                <ItemsControl x:Name="ShortcutsList"/>
               </StackPanel>
             </Border>
           </StackPanel>
 
           <!-- MEMÓRIA -->
           <StackPanel x:Name="PageMemoria" Visibility="Collapsed">
-            <TextBlock Text="Memória do Orbi" Style="{StaticResource H1}"/>
-            <TextBlock Text="O que você pediu, o que foi feito e o que você anotou. É daqui que saem as respostas para “o que eu fiz hoje?”." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
-            <Border Style="{StaticResource Card}">
+            <TextBlock Text="Memória" Style="{StaticResource H1}"/>
+
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
               <StackPanel>
                 <TextBlock x:Name="MemoriaResumo" Style="{StaticResource Muted}"/>
                 <Border Style="{StaticResource Divider}"/>
-                <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
                   <ItemsControl x:Name="MemoriaList"/>
                 </ScrollViewer>
-                <Border Style="{StaticResource Divider}"/>
-                <StackPanel Orientation="Horizontal">
-                  <Button Content="Esquecer tudo" Style="{StaticResource PrimaryButton}" Click="ForgetMemory_Click"/>
-                  <TextBlock x:Name="MemoriaStatus" Style="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                </StackPanel>
               </StackPanel>
             </Border>
+
+            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+              <Button Content="Esquecer tudo" Style="{StaticResource PrimaryButton}" Click="ForgetMemory_Click"/>
+              <TextBlock x:Name="MemoriaStatus" Style="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
           </StackPanel>
 
           <!-- SEGURANÇA -->
           <StackPanel x:Name="PageSeguranca" Visibility="Collapsed">
             <TextBlock Text="Segurança" Style="{StaticResource H1}"/>
-            <TextBlock Text="O que fica no PC, o que vai para a conta e o bloqueio automático." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
+            <TextBlock Text="Bloqueio automático e a sua chave." Style="{StaticResource Muted}" Margin="0,4,0,20"/>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
@@ -317,36 +231,24 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
-                  <StackPanel Grid.Column="0">
-                    <TextBlock Text="Bloquear por inatividade" Style="{StaticResource Body}" FontWeight="SemiBold"/>
-                    <TextBlock Text="Avisa na tela e bloqueia o Windows com a sua senha." Style="{StaticResource Muted}"/>
-                  </StackPanel>
+                  <TextBlock Grid.Column="0" Text="Bloquear por inatividade" Style="{StaticResource Body}"
+                             FontWeight="SemiBold" VerticalAlignment="Center"/>
                   <ToggleButton x:Name="LockToggle" Grid.Column="1" Style="{StaticResource ToggleSwitch}"
                                 VerticalAlignment="Center"/>
                 </Grid>
 
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                   <TextBlock Text="Depois de" Style="{StaticResource Body}" VerticalAlignment="Center"/>
-                  <TextBox x:Name="LockMinutes" Width="56" Style="{StaticResource Field}" Margin="8,0"/>
-                  <TextBlock Text="minutos sem teclado nem mouse." Style="{StaticResource Body}" VerticalAlignment="Center"/>
+                  <TextBox x:Name="LockMinutes" Width="52" Style="{StaticResource Field}" Margin="8,0" TextAlignment="Center"/>
+                  <TextBlock Text="minutos" Style="{StaticResource Body}" VerticalAlignment="Center"/>
                 </StackPanel>
               </StackPanel>
             </Border>
 
             <Border Style="{StaticResource Card}" Margin="0,12,0,0">
-              <StackPanel>
-                <TextBlock Text="O que nunca sai deste PC" Style="{StaticResource Label}"/>
-                <TextBlock Text="Notas · histórico da área de transferência · chave do Gemini · lembretes · logs"
-                           Style="{StaticResource Body}" Margin="0,6,0,0"/>
-                <Border Style="{StaticResource Divider}"/>
-                <TextBlock Text="O que pode ir para a sua conta" Style="{StaticResource Label}"/>
-                <TextBlock Text="Nome, e-mail, memória do Orbi, atalhos de texto, preferências e a lista de PCs"
-                           Style="{StaticResource Body}" Margin="0,6,0,0"/>
-                <Border Style="{StaticResource Divider}"/>
-                <TextBlock Text="Chave do Gemini" Style="{StaticResource Label}"/>
-                <TextBlock Text="Cifrada com DPAPI, vinculada ao seu usuário do Windows. Nem outro usuário do mesmo PC consegue ler."
-                           Style="{StaticResource Body}" Margin="0,6,0,0"/>
-              </StackPanel>
+              <TextBlock Style="{StaticResource Body}"
+                         Text="A chave da IA fica cifrada neste PC, presa ao seu usuário do Windows."
+                         TextWrapping="Wrap"/>
             </Border>
 
             <Button Content="Salvar" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
@@ -377,10 +279,5 @@
       </ScrollViewer>
     </Grid>
 
-    <!-- rodapé -->
-    <Border Grid.Row="2" Background="#FFF7F2E8" BorderBrush="{StaticResource Rule}"
-            BorderThickness="0,1,0,0" Padding="16,8">
-      <TextBlock Text="Orbi · dados locais em %APPDATA%\Orbi · conta no Firebase" Style="{StaticResource Label}"/>
-    </Border>
   </Grid>
 </Window>

@@ -47,10 +47,6 @@
       <Button Content="Esqueci minha senha" Style="{StaticResource GhostButton}"
               HorizontalAlignment="Left" Margin="0,6,0,0" Click="Forgot_Click"/>
 
-      <Border Height="1" Background="{StaticResource Rule}" Margin="0,18,0,14"/>
-
-      <TextBlock Style="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap"
-                 Text="A conta é a mesma do site orbi-app-auth.web.app (Firebase Authentication). O app sincroniza pelo Firestore: apelidos, atalhos, rotinas e preferências. Notas, área de transferência e a chave do Gemini ficam só neste PC."/>
     </StackPanel>
 
     <!-- rodapé -->

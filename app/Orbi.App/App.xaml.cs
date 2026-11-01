@@ -154,8 +154,8 @@ public partial class App : System.Windows.Application
         };
         menu.Items.Add("Abrir o Orbi", null, (_, _) => ShowBar());
         menu.Items.Add("Ajustes…", null, (_, _) => ShowSettings());
-        menu.Items.Add(Firebase.SignedIn ? "Conta e sincronização…" : "Entrar na conta…", null, (_, _) => ShowAccount());
-        menu.Items.Add("Ferramentas do Windows…", null, (_, _) => ShowSettings("ferramentas"));
+        menu.Items.Add(Firebase.SignedIn ? "Conta…" : "Entrar na conta…", null, (_, _) => ShowAccount());
+        menu.Items.Add("Ferramentas…", null, (_, _) => ShowSettings("ferramentas"));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Bloquear o Windows", null, (_, _) => SystemActions.Lock());
         menu.Items.Add("Status do PC", null, (_, _) =>

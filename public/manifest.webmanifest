@@ -9,6 +9,7 @@
   "background_color": "#f2ede3",
   "theme_color": "#14100c",
   "icons": [
+    { "src": "orbi-256.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

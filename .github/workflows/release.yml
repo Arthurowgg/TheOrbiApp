@@ -296,11 +296,12 @@ jobs:
             comando; aperte `Alt+Shift+O` em qualquer lugar do Windows para chamar.
 
             - Instalador leve: baixa o app durante a instalação
-            - **121 ferramentas do Windows**: áudio, brilho, energia, painéis de
-              configuração, apps, janelas, pastas, rede e acessibilidade
+            - **384 ferramentas do Windows**: áudio, energia, painéis, apps,
+              janelas, arquivos, rede, acessibilidade, texto e desenvolvimento
             - Barra fina de comando: `Enter` executa, `/` abre o catálogo, `F1` também
-            - **IA (Gemini)** com a sua chave gratuita do Google AI Studio, guardada
-              cifrada com DPAPI neste PC
+            - **IA que usa o PC**: vê a tela, clica em um ponto, digita, aperta
+              atalhos e encadeia ferramentas para pedidos com vários passos
+            - Chave gratuita do Google AI Studio, guardada cifrada neste PC
             - Lembretes, notas, histórico de cópia e memória do dia
             - **Conta única com o site**: o que você cria no site aparece no app
 

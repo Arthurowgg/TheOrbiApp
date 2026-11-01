@@ -18,16 +18,17 @@ import { MIN_PASSWORD, passwordStrength } from "../lib/accounts";
 export function Mark({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden>
-      <circle cx="12" cy="12" r="3.1" fill="currentColor" />
-      <path
-        d="M12 4.2c4.3 0 7.8 3.5 7.8 7.8s-3.5 7.8-7.8 7.8S4.2 16.3 4.2 12 7.7 4.2 12 4.2Z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeDasharray="5.4 3.4"
-        opacity="0.92"
-      />
-      <circle cx="19.1" cy="7.4" r="1.5" fill="currentColor" />
+      <g stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" opacity="0.95">
+        <path d="M9.3 4.3 11.2 5.4" />
+        <path d="M14.9 5.4 16.9 4.3" />
+        <path d="M18.6 9.1 19.4 11.4" />
+        <path d="M19.4 15 18.6 17.3" />
+        <path d="M14.9 19.7 12 19.9" />
+        <path d="M9.3 19.7 6.4 18.3" />
+        <path d="M4.8 14.3 4.6 11.8" />
+        <path d="M6.4 6.9 8.2 5.3" />
+      </g>
+      <circle cx="12" cy="12.2" r="2.9" fill="currentColor" />
     </svg>
   );
 }

@@ -61,6 +61,9 @@ public partial class CommandBar : Window
         var dpi = VisualTreeHelper.GetDpi(this);
         var areaHeight = area.Height / dpi.DpiScaleY;
         Height = Math.Min(ExpandedHeight, Math.Max(CompactHeight + 80, areaHeight - 40));
+        // Cresce para baixo: se não couber, sobe só o necessário para não sair da tela.
+        var limite = area.Top / dpi.DpiScaleY + areaHeight - Height - 8;
+        if (Top > limite) Top = Math.Max(area.Top / dpi.DpiScaleY + 8, limite);
     }
 
     public CommandBar()
@@ -178,6 +181,11 @@ public partial class CommandBar : Window
         AiStatus.Text = Gemini.Mode;
     }
 
+    /// <summary>
+    /// Abre a barra. Se ela já esteve aberta antes, volta exatamente para onde
+    /// estava e com o tamanho que você deixou (arrastou ou redimensionou).
+    /// Sem posição salva, abre no centro, um pouco acima do meio.
+    /// </summary>
     public void ShowBar()
     {
         // WorkingArea vem em pixels físicos; Left/Top/Width do WPF em DIPs.
@@ -186,23 +194,25 @@ public partial class CommandBar : Window
         var screen = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Cursor.Position);
         var area = screen.WorkingArea;
         var dpi = VisualTreeHelper.GetDpi(this);
+        var areaLeft = area.Left / dpi.DpiScaleX;
+        var areaTop = area.Top / dpi.DpiScaleY;
         var areaWidth = area.Width / dpi.DpiScaleX;
         var areaHeight = area.Height / dpi.DpiScaleY;
 
-        // Sempre define tamanho (nunca deixa NaN/Auto) — foi isso que já deixou
-        // a janela com 0 de altura em telas com escala alta.
-        // Altura compacta: a janela é uma barra, não um painel.
-        Width = Math.Max(420, Math.Min(760, areaWidth - 24));
+        var salva = Store.Current;
+        Width = Math.Clamp(salva.BarWidth > 200 ? salva.BarWidth : 660, 420, Math.Max(420, areaWidth - 16));
         Height = CompactHeight;
 
-        Left = area.Left / dpi.DpiScaleX + (areaWidth - Width) / 2;
-        Top = area.Top / dpi.DpiScaleY + areaHeight * 0.22;
-
-        // Nunca deixa o topo passar do fim da tela.
-        var maxLeft = area.Left / dpi.DpiScaleX + areaWidth - Width - 8;
-        var maxTop = area.Top / dpi.DpiScaleY + areaHeight - Height - 8;
-        Left = Math.Clamp(Left, area.Left / dpi.DpiScaleX + 8, Math.Max(area.Left / dpi.DpiScaleX + 8, maxLeft));
-        Top = Math.Clamp(Top, area.Top / dpi.DpiScaleY + 8, Math.Max(area.Top / dpi.DpiScaleY + 8, maxTop));
+        if (salva.BarLeft is { } left && salva.BarTop is { } top)
+        {
+            Left = Math.Clamp(left, areaLeft + 4, Math.Max(areaLeft + 4, areaLeft + areaWidth - Width - 4));
+            Top = Math.Clamp(top, areaTop + 4, Math.Max(areaTop + 4, areaTop + areaHeight - Height - 4));
+        }
+        else
+        {
+            Left = areaLeft + (areaWidth - Width) / 2;
+            Top = areaTop + (areaHeight - Height) / 2 - areaHeight * 0.14;
+        }
 
         // Confere o atalho global a cada abertura: se o handle da janela só
         // ficou pronto depois do Attach, ele é registrado agora.
@@ -233,13 +243,26 @@ public partial class CommandBar : Window
             {
                 Glyph = "\u2022",
                 Text = "Cole a sua chave do Gemini para o Orbi pensar.",
-                Detail = "Ajustes ▸ Modo Cloud. A chave é gratuita e fica cifrada neste PC.",
+                Detail = "Ajustes ▸ IA. A chave é gratuita e fica cifrada neste PC.",
                 Command = "conta",
                 Badge = "configurar",
                 BadgeBrush = "#FFC7452A",
                 BadgeTextBrush = "#FFFFFFFF",
             });
         }
+    }
+
+    /// <summary>Guarda posição e largura para a próxima vez que a barra abrir.</summary>
+    private void RememberPlace()
+    {
+        if (WindowState != WindowState.Normal) return;
+        if (double.IsNaN(Left) || double.IsNaN(Top) || Width < 100) return;
+        var dados = Store.Current;
+        dados.BarLeft = Left;
+        dados.BarTop = Top;
+        dados.BarWidth = Width;
+        dados.BarHeight = CompactHeight;
+        Store.Save();
     }
 
     /// <summary>Mostra o atalho que está realmente funcionando.</summary>
@@ -266,6 +289,7 @@ public partial class CommandBar : Window
 
     public void HideBar()
     {
+        RememberPlace();
         Hide();
     }
 
@@ -285,6 +309,7 @@ public partial class CommandBar : Window
         if (e.Key == Key.Escape)
         {
             // Esc esconde a barra; o app continua vivo na bandeja.
+            RememberPlace();
             Hide();
             e.Handled = true;
         }
@@ -468,40 +493,45 @@ public partial class CommandBar : Window
     }
 
     /* ----------------------------- IA ----------------------------- */
+    /// <summary>
+    /// Texto livre: o Orbi planeja e age. Cada passo aparece na barra, e no fim
+    /// vem a resposta em uma frase.
+    /// </summary>
     private async Task AskAiAsync(string prompt)
     {
         if (_thinking || string.IsNullOrWhiteSpace(prompt)) return;
         _thinking = true;
-        Footer.Text = "consultando o Gemini…";
+        Expand();
+        Footer.Text = "pensando…";
         try
         {
-            var answer = await Gemini.AskAsync(prompt, _history, Memory.TodaySummary());
+            var (answer, steps) = await Agent.RunAsync(prompt, _history, Memory.TodaySummary());
             _rows.Clear();
-            Expand();
-            if (answer is null)
+
+            foreach (var passo in steps.TakeLast(6))
             {
                 Add(new ResultRow
                 {
-                    Glyph = "!",
-                    Text = "Não consegui falar com o Gemini agora.",
-                    Detail = "A chave está certa? Os comandos locais seguem funcionando.",
-                    Badge = "offline",
+                    Glyph = passo.Ok ? "\u2713" : "!",
+                    Text = passo.Title,
+                    Detail = passo.Detail,
+                    Badge = passo.Ok ? "" : "erro",
                 });
             }
-            else
+
+            Add(new ResultRow
             {
-                Add(new ResultRow
-                {
-                    Glyph = "\u2726",
-                    Text = answer,
-                    Detail = "Respondido pelo Gemini.",
-                    Badge = "IA",
-                    BadgeBrush = "#FFC7452A",
-                    BadgeTextBrush = "#FFFFFFFF",
-                });
+                Glyph = "\u2726",
+                Text = answer,
+                Badge = Gemini.Available ? "IA" : "sem chave",
+                BadgeBrush = Gemini.Available ? "#FFC7452A" : "#1FFFFFFF",
+                BadgeTextBrush = Gemini.Available ? "#FFFFFFFF" : "#99F1EBDF",
+            });
+
+            if (Gemini.Available)
+            {
                 _history.Add(("user", prompt));
                 _history.Add(("assistant", answer));
-                Memory.Remember(prompt, "ia", answer);
                 if (_history.Count > 12) _history.RemoveRange(0, _history.Count - 12);
             }
         }
@@ -579,6 +609,63 @@ public partial class CommandBar : Window
         ExecuteSelected(text);
     }
 
+    /// <summary>
+    /// Atalhos diretos de controle do PC, sem passar pela IA: são o que a pessoa
+    /// pede com mais pressa. Devolve null quando não é um deles.
+    /// </summary>
+    private static ResultRow? DirectControl(string text)
+    {
+        var t = Interpreter.Simplify(text);
+
+        var digitar = System.Text.RegularExpressions.Regex.Match(
+            text, @"^(?:orbi[, ]+)?(?:digite|digitar|escreva|escrever)\s*:?\s+(?<t>.+)$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (digitar.Success)
+        {
+            var conteudo = digitar.Groups["t"].Value.Trim().Trim('"');
+            Control.Type(conteudo);
+            return new ResultRow { Glyph = "\u2713", Text = "Digitei.", Detail = conteudo, Badge = "digitado" };
+        }
+
+        var clicar = System.Text.RegularExpressions.Regex.Match(
+            t, @"^(?:clique|clicar|click)(?:\s+em)?\s+(?<p>.+)$");
+        if (clicar.Success && Control.ParsePoint(clicar.Groups["p"].Value) is { } ponto)
+        {
+            Control.Click(ponto.X, ponto.Y);
+            return new ResultRow { Glyph = "\u2713", Text = $"Cliquei em {ponto.X},{ponto.Y}.", Badge = "clique" };
+        }
+
+        var atalho = System.Text.RegularExpressions.Regex.Match(
+            t, @"^(?:atalho|aperte|tecla|pressione|hotkey)\s+(?<k>[a-z0-9+ ]+)$");
+        if (atalho.Success)
+        {
+            var combo = atalho.Groups["k"].Value.Trim();
+            Control.Hotkey(combo);
+            return new ResultRow { Glyph = "\u2713", Text = $"Atalho {combo} enviado.", Badge = "teclas" };
+        }
+
+        if (t is "ver a tela" or "ver tela" or "o que esta na tela" or "olhe a tela" or "olhar a tela")
+        {
+            return new ResultRow { Glyph = "\u25C9", Text = Control.DescribeScreen(), Badge = "tela" };
+        }
+
+        var focar = System.Text.RegularExpressions.Regex.Match(
+            t, @"^(?:traga|trazer|focar|foca|ative|ativar)\s+(?:o |a |os |as )?(?<j>.+?)(?:\s+para a frente)?$");
+        if (focar.Success)
+        {
+            var janela = focar.Groups["j"].Value.Trim();
+            var ok = Control.Focus(janela);
+            return new ResultRow
+            {
+                Glyph = ok ? "\u2713" : "!",
+                Text = ok ? $"Trouxe {janela} para a frente." : $"Não achei uma janela de {janela}.",
+                Badge = "janela",
+            };
+        }
+
+        return null;
+    }
+
     private void ExecuteSelected(string text)
     {
         Store.PushCommand(text);
@@ -590,6 +677,21 @@ public partial class CommandBar : Window
             AccountButton_Click(AccountButton, new RoutedEventArgs());
             return;
         }
+        // controle direto tem prioridade: "digite:", "clique em 640,400",
+        // "atalho ctrl+t", "traga o chrome", "ver a tela".
+        // números soltos de "30" ou "50%" são volume, não clique: só trata
+        // como clique quando vier a palavra.
+        if (!System.Text.RegularExpressions.Regex.IsMatch(Interpreter.Simplify(text), @"^(clique|clicar|click)\b")
+            && DirectControl(text) is { } direct)
+        {
+            _rows.Clear();
+            Expand();
+            Add(direct);
+            Input.Text = "";
+            Input.Focus();
+            return;
+        }
+
         var reply = Interpreter.Execute(text);
         Remember(text, reply);
 

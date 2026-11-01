@@ -41,6 +41,12 @@ public sealed class OrbiSettings
     // Atalho global preferido ("Alt+Shift+O", "Ctrl+Shift+O", ...). Vazio = padrão.
     public string Hotkey { get; set; } = "Alt+Shift+O";
 
+    // Onde a barra ficou da última vez (DIP). Null = ainda não posicionada.
+    public double? BarLeft { get; set; }
+    public double? BarTop { get; set; }
+    public double BarWidth { get; set; } = 660;
+    public double BarHeight { get; set; } = 62;
+
     // Marcador de que users/{uid} já existe no Firestore (evita leituras extras).
     public string RemoteCreatedAt { get; set; } = "";
 }

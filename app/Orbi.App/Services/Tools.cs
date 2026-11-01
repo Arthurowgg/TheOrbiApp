@@ -375,6 +375,34 @@ public static class Tools
         Add("orbi-version", "Versão do Orbi", "Produtividade", "versao,update,atualizar", () =>
             "Orbi " + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "?") + " · " + (Firebase.SignedIn ? Firebase.Email ?? "" : "sem conta"));
 
+        // segundo bloco: mais 200 ferramentas (área de trabalho, teclado e mouse,
+        // captura de tela, arquivos, rede, energia, acessibilidade, dev, texto…)
+        ToolsExtra.Register(tools);
+
+        // o controle do PC entra por último: são as ferramentas que a IA usa
+        // quando precisa ver a tela, clicar, digitar ou mexer em uma janela.
+        Add("control-see", "Ver a tela e o que está aberto", "Controle do PC",
+            "ver tela,capturar tela,o que esta na tela,ler tela",
+            () => Control.DescribeScreen());
+        Add("control-shot", "Salvar uma foto da tela", "Controle do PC",
+            "foto da tela,capturar tela,screenshot,print",
+            () => "Captura salva em " + Control.Capture());
+        Add("control-click", "Clicar em um ponto da tela", "Controle do PC",
+            "clicar,ponto,posicao,mouse",
+            () => "Me diga: “clicar em 640,400”.");
+        Add("control-type", "Digitar em qualquer lugar", "Controle do PC",
+            "digitar,escrever,texto,teclado",
+            () => "Me diga: “digite: olá, tudo bem?”.");
+        Add("control-keys", "Apertar um atalho", "Controle do PC",
+            "atalho,teclas,combinacao",
+            () => "Me diga: “atalho ctrl + t”.");
+        Add("control-focus", "Trazer uma janela para a frente", "Controle do PC",
+            "janela,focar,trazer,ativar",
+            () => "Me diga o app: “traga o Chrome para a frente”.");
+        Add("control-window-list", "Listar as janelas abertas", "Controle do PC",
+            "janelas,abertas,listar",
+            () => Control.DescribeScreen());
+
         return tools;
     }
 

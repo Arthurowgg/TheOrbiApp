@@ -30,13 +30,9 @@ public partial class SettingsWindow : Window
             : "Nenhuma chave ainda: o Orbi não responde perguntas livres sem ela.";
         RefreshAccount();
         LoadHotkeys();
-        DataPath.Text = Store.Root;
         ModelBox.SelectedIndex = Math.Max(0, Gemini.Models.ToList().IndexOf(settings.GeminiModel));
 
         LoadTools();
-        RenderReminders();
-        RenderNotes();
-        RenderShortcuts();
         RenderMemory();
     }
 
@@ -55,7 +51,7 @@ public partial class SettingsWindow : Window
     /* ----------------------------- ferramentas ----------------------------- */
     private void LoadTools()
     {
-        ToolsCount.Text = $"{Tools.All.Count} ações no seu Windows — sem administrador, sem internet.";
+        ToolsCount.Text = $"{Tools.All.Count} ações";
         RenderTools(Tools.All);
     }
 
@@ -127,20 +123,14 @@ public partial class SettingsWindow : Window
     private void RefreshAccount()
     {
         var signedIn = Firebase.SignedIn;
-        AccountLine.Text = signedIn ? Firebase.Email ?? "conta conectada" : "Sem conta vinculada";
+        AccountLine.Text = signedIn ? Firebase.Email ?? "conta" : "sem conta";
         AccountBox.Text = signedIn
             ? $"{Store.Current.UserName} · {Firebase.Email}"
             : "Sem conta vinculada";
-        SyncStatus.Text = signedIn
-            ? Sync.LastStatus
-            : "Os comandos funcionam sem conta. Entrar só serve para sincronizar.";
-        UidBox.Text = Firebase.Uid is { Length: > 8 } uid
-            ? $"uid {uid[..8]}…"
-            : "sem sessão";
-        LoginButton.Content = signedIn ? "Trocar de conta" : "Entrar na conta";
-        AccountHint.Text = signedIn
-            ? "Sessão salva com DPAPI: só este usuário do Windows continua conectado."
-            : "Use a mesma conta do site. Se ainda não tem, crie aqui mesmo.";
+        SyncStatus.Text = signedIn ? Sync.LastStatus : "O Orbi funciona sem conta.";
+
+        LoginButton.Content = signedIn ? "Trocar" : "Entrar";
+        AccountHint.Text = signedIn ? "" : "Use a mesma conta do site.";
     }
 
     private void AccountLogin_Click(object sender, RoutedEventArgs e)
@@ -153,7 +143,7 @@ public partial class SettingsWindow : Window
 
     private async void SyncNow_Click(object sender, RoutedEventArgs e)
     {
-        SyncStatus.Text = "Buscando no Firestore…";
+        SyncStatus.Text = "Sincronizando…";
         await Sync.PullAsync(true);
         RefreshAccount();
         Load();
@@ -181,7 +171,7 @@ public partial class SettingsWindow : Window
     {
         if (Pages is null) return;
         var tag = (Nav.SelectedItem as ListBoxItem)?.Tag as string ?? "geral";
-        foreach (var page in new[] { PageGeral, PageFerramentas, PageIa, PageConta, PageLembretes, PageNotas, PageAtalhos, PageMemoria, PageSeguranca, PageSobre })
+        foreach (var page in new[] { PageGeral, PageFerramentas, PageIa, PageConta, PageMemoria, PageSeguranca, PageSobre })
         {
             page.Visibility = Visibility.Collapsed;
         }
@@ -190,10 +180,7 @@ public partial class SettingsWindow : Window
             "ferramentas" => PageFerramentas,
             "ia" => PageIa,
             "conta" => PageConta,
-            "lembretes" => PageLembretes,
-            "notas" => PageNotas,
-            "atalhos" => PageAtalhos,
-            "memoria" => PageMemoria,
+            "memoria" or "lembretes" or "notas" or "atalhos" => PageMemoria,
             "seguranca" => PageSeguranca,
             "sobre" => PageSobre,
             _ => PageGeral,
@@ -294,30 +281,6 @@ public partial class SettingsWindow : Window
         ((App)System.Windows.Application.Current).ExitApp();
     }
 
-    private void AddNote_Click(object sender, RoutedEventArgs e)
-    {
-        var text = NoteBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(text)) return;
-        Store.Current.Notes.Insert(0, new Note { Text = text });
-        Store.Save();
-        NoteBox.Text = "";
-        RenderNotes();
-    }
-
-    private void AddShortcut_Click(object sender, RoutedEventArgs e)
-    {
-        var trigger = ShortcutTrigger.Text.Trim();
-        var text = ShortcutText.Text.Trim();
-        if (string.IsNullOrWhiteSpace(trigger) || string.IsNullOrWhiteSpace(text)) return;
-        Store.Current.Shortcuts.RemoveAll(item => item.Trigger.Equals(trigger, StringComparison.OrdinalIgnoreCase));
-        Store.Current.Shortcuts.Add(new TextShortcut { Trigger = trigger, Expansion = text });
-        Store.Save();
-        ShortcutTrigger.Text = "";
-        ShortcutText.Text = "";
-        RenderShortcuts();
-        _ = Sync.PushAsync();
-    }
-
     private void ForgetMemory_Click(object sender, RoutedEventArgs e)
     {
         Memory.Forget();
@@ -326,117 +289,6 @@ public partial class SettingsWindow : Window
     }
 
     /* ----------------------------- listas ----------------------------- */
-    private void RenderReminders()
-    {
-        RemindersList.Items.Clear();
-        var pending = Store.Current.Reminders.OrderBy(item => item.DueAt).ToList();
-        if (pending.Count == 0)
-        {
-            RemindersList.Items.Add(new TextBlock { Text = "Nenhum lembrete. Peça: “me lembra em 20 min de beber água”.", Foreground = (Brush)FindResource("Warm") });
-            return;
-        }
-        foreach (var reminder in pending)
-        {
-            var panel = new Grid { Margin = new Thickness(0, 4, 0, 4) };
-            panel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            panel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var text = new StackPanel();
-            text.Children.Add(new TextBlock
-            {
-                Text = reminder.Text,
-                FontWeight = reminder.Done ? FontWeights.Normal : FontWeights.SemiBold,
-                TextDecorations = reminder.Done ? TextDecorations.Strikethrough : null,
-                Foreground = (Brush)FindResource("Ink"),
-            });
-            text.Children.Add(new TextBlock
-            {
-                Text = reminder.DueAt.ToString("dd/MM HH:mm"),
-                FontFamily = (FontFamily)FindResource("Mono"),
-                FontSize = 10.5,
-                Foreground = (Brush)FindResource("Warm"),
-            });
-            Grid.SetColumn(text, 0);
-            panel.Children.Add(text);
-
-            var remove = new Button
-            {
-                Content = "remover",
-                Style = (Style)FindResource("GhostButton"),
-                Tag = reminder.Id,
-            };
-            remove.Click += (_, _) =>
-            {
-                Store.Current.Reminders.RemoveAll(item => item.Id == reminder.Id);
-                Store.Save();
-                RenderReminders();
-            };
-            Grid.SetColumn(remove, 1);
-            panel.Children.Add(remove);
-
-            RemindersList.Items.Add(panel);
-        }
-    }
-
-    private void RenderNotes()
-    {
-        NotesList.Items.Clear();
-        foreach (var note in Store.Current.Notes.Take(20).ToList())
-        {
-            var panel = new Grid { Margin = new Thickness(0, 6, 0, 6) };
-            panel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            panel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var text = new StackPanel();
-            text.Children.Add(new TextBlock
-            {
-                Text = note.Text,
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("Ink"),
-            });
-            text.Children.Add(new TextBlock
-            {
-                Text = note.CreatedAt.ToString("dd/MM HH:mm"),
-                FontFamily = (FontFamily)FindResource("Mono"),
-                FontSize = 10.5,
-                Foreground = (Brush)FindResource("Warm"),
-            });
-            Grid.SetColumn(text, 0);
-            panel.Children.Add(text);
-
-            var remove = new Button { Content = "remover", Style = (Style)FindResource("GhostButton") };
-            remove.Click += (_, _) =>
-            {
-                Store.Current.Notes.RemoveAll(item => item.Id == note.Id);
-                Store.Save();
-                RenderNotes();
-            };
-            Grid.SetColumn(remove, 1);
-            panel.Children.Add(remove);
-            NotesList.Items.Add(panel);
-        }
-    }
-
-    private void RenderShortcuts()
-    {
-        ShortcutsList.Items.Clear();
-        foreach (var shortcut in Store.Current.Shortcuts.ToList())
-        {
-            var row = new TextBlock
-            {
-                Margin = new Thickness(0, 4, 0, 4),
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("Ink2"),
-                Text = $"“{shortcut.Trigger}” → {shortcut.Expansion}",
-            };
-            ShortcutsList.Items.Add(row);
-        }
-        if (ShortcutsList.Items.Count == 0)
-        {
-            ShortcutsList.Items.Add(new TextBlock { Text = "Nenhum atalho ainda.", Foreground = (Brush)FindResource("Warm") });
-        }
-    }
-
     private void RenderMemory()
     {
         var entradas = Memory.All;

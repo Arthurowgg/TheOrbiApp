@@ -64,8 +64,46 @@ public static class Gemini
         return null;
     }
 
+    /// <summary>
+    /// Uma chamada de texto livre para o modelo, usada pelo agente (planejar e
+    /// resumir). Devolve null quando a chave não existe ou o Google não responde.
+    /// </summary>
+    public static async Task<string?> CompleteAsync(string prompt, string? system, bool json = false,
+        int maxTokens = 400, CancellationToken token = default)
+    {
+        var key = Store.LoadApiKey();
+        if (string.IsNullOrWhiteSpace(key)) return null;
+
+        foreach (var model in Ordem())
+        {
+            var texto = await CallAsync(model, key.Trim(), prompt, null, system, json, maxTokens, token);
+            if (texto is not null)
+            {
+                if (Store.Current.GeminiModel != model)
+                {
+                    Store.Current.GeminiModel = model;
+                    Store.Save();
+                }
+                return texto;
+            }
+        }
+        return null;
+    }
+
+    private static List<string> Ordem()
+    {
+        var preferido = Store.Current.GeminiModel;
+        return Models.Where(m => m != preferido).Prepend(preferido)
+            .Where(m => !string.IsNullOrWhiteSpace(m)).Distinct().ToList();
+    }
+
     private static async Task<string?> CallAsync(string model, string key, string prompt,
         IEnumerable<(string Role, string Text)>? history, string? memory)
+        => await CallAsync(model, key, prompt, history, memory is null ? null : System(memory), false, 400, default);
+
+    private static async Task<string?> CallAsync(string model, string key, string prompt,
+        IEnumerable<(string Role, string Text)>? history, string? system, bool json, int maxTokens,
+        CancellationToken token)
     {
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent" +
                   $"?key={Uri.EscapeDataString(key)}";
@@ -82,15 +120,20 @@ public static class Gemini
 
         var payload = new
         {
-            systemInstruction = new { parts = new[] { new { text = System(memory) } } },
+            systemInstruction = new { parts = new[] { new { text = system ?? System(null) } } },
             contents,
-            generationConfig = new { temperature = 0.5, maxOutputTokens = 400 },
+            generationConfig = new
+            {
+                temperature = 0.4,
+                maxOutputTokens = maxTokens,
+                responseMimeType = json ? "application/json" : "text/plain",
+            },
         };
 
         try
         {
             using var body = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            using var response = await Client.PostAsync(url, body);
+            using var response = await Client.PostAsync(url, body, token);
             if (!response.IsSuccessStatusCode)
             {
                 Log.Add("gemini recusou", model + " " + (int)response.StatusCode);
