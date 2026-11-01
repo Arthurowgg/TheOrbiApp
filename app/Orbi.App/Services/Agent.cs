@@ -43,9 +43,9 @@ public static class Agent
                 break;
             }
 
-            if (decisao.Resposta is { Length: > 0 } resposta && decisao.Acoes.Count == 0)
+            if (decisao.Resposta is { Length: > 0 } pronta && decisao.Acoes.Count == 0)
             {
-                respostaFinal = resposta;
+                respostaFinal = pronta;
                 break;
             }
 
@@ -71,12 +71,12 @@ public static class Agent
             respostaFinal = await ResumirAsync(goal, roteiro, memory, token);
         }
 
-        var resposta = string.IsNullOrWhiteSpace(respostaFinal)
+        var fala = string.IsNullOrWhiteSpace(respostaFinal)
             ? roteiro.Count == 0 ? "Não precisei mexer no PC." : "Feito."
             : respostaFinal!.Trim();
 
-        if (roteiro.Count > 0) Memory.Remember(goal, "ação", resposta);
-        return (resposta, passos);
+        if (roteiro.Count > 0) Memory.Remember(goal, "ação", fala);
+        return (fala, passos);
     }
 
     /* ------------------------------ decisão ------------------------------ */
