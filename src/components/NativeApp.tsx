@@ -14,9 +14,9 @@ const ROWS: Record<Panel, { title: string; detail: string; badge: string }[]> = 
   barra: [
     { title: "volume em 30", detail: "ajusta o som do sistema", badge: "local" },
     { title: "/captura de tela", detail: "Tela · salva em Imagens\\Orbi", badge: "ferramenta" },
-    { title: "bloqueia o pc", detail: "usa o bloqueio do Windows", badge: "local" },
-    { title: "abre o bloco de notas", detail: "procura no seu Windows", badge: "local" },
-    { title: "o que eu anotei ontem?", detail: "responde da sua memória", badge: "memória" },
+    { title: "deixa pronto pra aula", detail: "Word + som baixo + pasta aberta", badge: "5 passos" },
+    { title: "clique em 640,400", detail: "o Orbi usa o mouse por você", badge: "pc" },
+    { title: "o que eu fiz hoje?", detail: "responde da sua memória", badge: "memória" },
   ],
   ferramentas: [
     { title: "Sistema", detail: "Gerenciador de tarefas · Serviços · Eventos…", badge: "39" },

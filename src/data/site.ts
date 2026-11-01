@@ -25,8 +25,8 @@ export const EXAMPLES = [
     efeito: "a janela ativa vai para a metade esquerda da tela.",
   },
   {
-    saida: "lembra de pagar a conta de luz amanhã às 9",
-    efeito: "aviso na bandeja na hora certa, mesmo com a barra fechada.",
+    saida: "deixa pronto pra aula",
+    efeito: "abre o Word, baixa o som, ajusta o brilho e abre a pasta do material — na ordem.",
   },
   {
     saida: "o que eu tava fazendo ontem à tarde?",
