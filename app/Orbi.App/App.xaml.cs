@@ -260,6 +260,18 @@ public partial class App : System.Windows.Application
                 ok &= _bar is { IsVisible: true };
                 Nota($"barra visível={_bar?.IsVisible} largura={_bar?.Width:0} altura={_bar?.Height:0}");
 
+                // A barra não pode nascer no meio da tela.
+                if (_bar is not null)
+                {
+                    var area = System.Windows.Forms.Screen.FromPoint(
+                        System.Windows.Forms.Cursor.Position).WorkingArea;
+                    var dpi = VisualTreeHelper.GetDpi(_bar);
+                    var alturaTela = area.Height / dpi.DpiScaleY;
+                    var noTopo = _bar.Top < alturaTela / 3;
+                    ok &= noTopo;
+                    Nota($"fora do meio: topo={_bar.Top:0} de {alturaTela:0} = {noTopo}");
+                }
+
                 _bar?.OpenMenuForTest();
                 ok &= _bar?.MenuOpen == true;
                 Nota($"menu aberto={_bar?.MenuOpen}");

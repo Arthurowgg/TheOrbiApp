@@ -318,8 +318,10 @@ public partial class CommandBar : Window
         }
         else
         {
+            // Sem posição salva: centralizada na horizontal, encostada no topo da
+            // área de trabalho. Nunca no meio da tela.
             Left = areaLeft + (areaWidth - Width) / 2;
-            Top = areaTop + (areaHeight - Height) / 2 - areaHeight * 0.14;
+            Top = areaTop + Math.Min(96, areaHeight * 0.12);
         }
 
         // Confere o atalho global a cada abertura: se o handle da janela só
