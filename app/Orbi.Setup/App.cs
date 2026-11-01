@@ -63,6 +63,22 @@ public class App : Application
         catch { }
     }
 
+    /// <summary>Valor de uma opção: --payload=caminho ou --payload caminho.</summary>
+    private static string? Flag(string[] args, string name)
+    {
+        foreach (var arg in args)
+        {
+            if (arg.StartsWith(name + "=", StringComparison.OrdinalIgnoreCase))
+            {
+                return arg[(name.Length + 1)..].Trim('"');
+            }
+        }
+
+        var index = Array.FindIndex(args, a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
+        if (index < 0 || index + 1 >= args.Length) return null;
+        return args[index + 1].Trim('"');
+    }
+
     /// <summary>
     /// Instala (ou desinstala) sem mostrar nada. Exit code 0 = deu certo.
     /// Sem isso, a única forma de conferir o instalador seria abrir uma janela.
@@ -80,6 +96,15 @@ public class App : Application
         {
             try { File.Delete(SilentLog); } catch { }
             Anotar($"Orbi setup {Installer.Versao} · {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            Anotar("argumentos: " + string.Join(" ", args));
+
+            // Pacote local (CI e instalação sem internet): nada é baixado.
+            var local = Flag(args, "--payload") ?? Environment.GetEnvironmentVariable("ORBI_PAYLOAD");
+            if (!string.IsNullOrWhiteSpace(local))
+            {
+                if (File.Exists(local)) Payload.UseLocal(local!);
+                else Anotar("pacote local não encontrado: " + local);
+            }
 
             if (args.Contains("--uninstall"))
             {
