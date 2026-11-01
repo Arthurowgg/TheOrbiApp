@@ -415,11 +415,4 @@ public partial class SettingsWindow : Window
 
     public void Refresh() => Load();
 
-    /// <summary>Abre os ajustes já numa aba específica ("conta", "geral", ...).</summary>
-    public void SelectTab(string tab)
-    {
-        var item = Nav.Items.OfType<ListBoxItem>()
-            .FirstOrDefault(entry => (entry.Tag as string) == tab);
-        if (item is not null) Nav.SelectedItem = item;
-    }
 }
