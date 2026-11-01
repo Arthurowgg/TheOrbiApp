@@ -1,8 +1,8 @@
 Projeto: orbi-app-auth
-Conta de teste: orbi-ci-1793504623@orbi-test.dev
-Data: 2026-11-01T03:43:43Z
+Conta de teste: orbi-ci-1793504897@orbi-test.dev
+Data: 2026-11-01T03:48:17Z
 
-PASS  criar conta (uid ICUoD1nd…)
+PASS  criar conta (uid WkFNNjt4…)
 PASS  gravar users/{uid} (create)
 PASS  PATCH parcial com updateMask
 PASS  PATCH parcial do site (sync/devices/…) 
