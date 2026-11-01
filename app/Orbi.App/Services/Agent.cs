@@ -14,7 +14,7 @@ public sealed record AgentStep(string Title, string Detail, bool Ok = true);
 /// </summary>
 public static class Agent
 {
-    private const int MaxSteps = 8;
+    private const int MaxSteps = 14;
 
     /// <summary>
     /// Entende pedidos que precisam de mais de uma ferramenta, em uma ordem
@@ -81,7 +81,7 @@ public static class Agent
 
     /* ------------------------------ decisão ------------------------------ */
 
-    private sealed record Acao(string Kind, string? Id, string? Texto, int? X, int? Y, string? Tecla, string? Alvo);
+    private sealed record Acao(string Kind, string? Id, string? Texto, int? X, int? Y, string? Tecla, string? Alvo, string? Dado);
 
     private sealed record Decisao(string? Resposta, List<Acao> Acoes, bool Fim);
 
@@ -107,17 +107,22 @@ public static class Agent
             "Ferramentas disponíveis (use exatamente estes ids em \"ferramenta\"):\n" + catalogo + "\n\n" +
             "Ações de controle do PC:\n" +
             "  {\"acao\":\"ver\"}                      lê a tela, as janelas e o cursor\n" +
-            "  {\"acao\":\"ferramenta\",\"id\":\"...\"}   executa uma ferramenta do catálogo\n" +
+            "  {\"acao\":\"ferramenta\",\"id\":\"...\",\"dado\":\"...\"} executa uma ferramenta (dado = o que ela pede)\n" +
             "  {\"acao\":\"focar\",\"alvo\":\"chrome\"}   traz a janela para a frente\n" +
             "  {\"acao\":\"clicar\",\"x\":640,\"y\":400}  clique na posição da tela\n" +
             "  {\"acao\":\"digitar\",\"texto\":\"...\"}   digita no campo em foco\n" +
-            "  {\"acao\":\"atalho\",\"tecla\":\"ctrl+t\"} atalho de teclado\n\n" +
+            "  {\"acao\":\"atalho\",\"tecla\":\"ctrl+t\"} atalho de teclado\n" +
+            "  {\"acao\":\"pesquisar\",\"dado\":\"...\"} pesquisa na web e devolve os resultados\n" +
+            "  {\"acao\":\"abrir\",\"dado\":\"https://...\"} abre o resultado no navegador\n\n" +
             "Responda APENAS com JSON:\n" +
             "{\"acoes\":[{\"acao\":\"ver\"}],\"fim\":false,\"resposta\":\"só quando terminar\"}\n\n" +
             "Regras: uma ação por passo quando o próximo depende do resultado (depois de \"ver\", " +
             "use as coordenadas e os títulos que voltaram); várias ações juntas só quando são independentes; " +
             "use \"fim\":true e escreva \"resposta\" quando o pedido estiver resolvido ou for só uma pergunta; " +
-            "se não souber onde clicar, peça {\"acao\":\"ver\"} primeiro; nada de texto fora do JSON.";
+            "se não souber onde clicar, peça {\"acao\":\"ver\"} primeiro; " +
+            "quando o pedido precisar de informação de fora (preço, notícia, clima, documentação), use " +
+            "{\"acao\":\"pesquisar\"} e leia os resultados antes de responder; " +
+            "sempre que uma ferramenta pedir um dado, preencha \"dado\"; nada de texto fora do JSON.";
 
         var bruto = await Gemini.CompleteAsync(pedido, SystemPrompt(memory), json: true, maxTokens: 700, token);
         if (string.IsNullOrWhiteSpace(bruto)) return null;
@@ -189,14 +194,15 @@ public static class Agent
             acao = "ferramenta";
         }
         if (acao != "ferramenta" && acao != "ver" && acao != "clicar" && acao != "digitar" &&
-            acao != "atalho" && acao != "focar")
+            acao != "atalho" && acao != "focar" && acao != "pesquisar" && acao != "abrir")
         {
             // nomes de ferramentas vieram direto no campo "acao"
             id ??= acao;
             acao = "ferramenta";
         }
 
-        return new Acao(acao!, id, Str("texto"), Num("x"), Num("y"), Str("tecla") ?? Str("atalho"), Str("alvo") ?? Str("janela"));
+        return new Acao(acao!, id, Str("texto"), Num("x"), Num("y"), Str("tecla") ?? Str("atalho"),
+            Str("alvo") ?? Str("janela"), Str("dado") ?? Str("arg") ?? Str("valor"));
     }
 
     private static string Extrair(string texto)
@@ -215,6 +221,21 @@ public static class Agent
         {
             case "ver":
                 return ("olhei a tela", Pc.DescribeScreen().Replace("\n", " · "), true);
+
+            case "pesquisar":
+            {
+                var consulta = acao.Dado ?? acao.Texto ?? "";
+                if (consulta.Length == 0) return ("pesquisar", "sem consulta", false);
+                var (titulo, trecho, ok) = Web.PesquisarAsync(consulta).GetAwaiter().GetResult();
+                return ($"pesquisei “{consulta}”", ok ? $"{titulo} — {trecho}" : trecho, ok);
+            }
+
+            case "abrir":
+            {
+                var link = acao.Dado ?? acao.Texto ?? "";
+                if (link.Length == 0) return ("abrir", "sem endereço", false);
+                return ("abri no navegador", Browser.Open(link), true);
+            }
 
             case "clicar":
             {
@@ -250,7 +271,11 @@ public static class Agent
                 var id = acao.Id ?? "";
                 var ferramenta = Tools.Find(id) ?? Tools.Search(id).FirstOrDefault();
                 if (ferramenta is null) return ("ferramenta " + id, "não existe no catálogo", false);
-                var resultado = Tools.Run(ferramenta.Id);
+                if (ferramenta.NeedsArg && string.IsNullOrWhiteSpace(acao.Dado))
+                {
+                    return (ferramenta.Name, "faltou o dado: " + (ferramenta.Placeholder ?? "o complemento"), false);
+                }
+                var resultado = Tools.Run(ferramenta.Id, acao.Dado);
                 return (ferramenta.Name, resultado, !resultado.StartsWith("Não consegui", StringComparison.OrdinalIgnoreCase));
             }
         }

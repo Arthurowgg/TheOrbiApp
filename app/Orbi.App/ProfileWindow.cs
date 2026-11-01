@@ -95,7 +95,7 @@ public sealed class ProfileWindow : Window
         else
         {
             _acoes.Children.Add(Panel.Primary("Entrar", () => { App.Instance.ShowLogin(); Refresh(); }));
-            _acoes.Children.Add(Panel.Ghost("Criar conta", () => Browser.Open("https://orbi-app.web.app/conta")));
+            _acoes.Children.Add(Panel.Ghost("Criar conta", () => { Browser.Open("https://orbi-app.web.app/conta"); }));
         }
     }
 

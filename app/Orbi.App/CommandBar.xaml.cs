@@ -340,7 +340,7 @@ public partial class CommandBar : Window
         {
             SheetBody.Children.Add(SheetRow("Entrar na conta", "a memória acompanha você",
                 () => App.Instance.ShowLogin(), destaque: true));
-            SheetBody.Children.Add(SheetRow("Criar conta", "", () => Browser.Open("https://orbi-app.web.app/conta")));
+            SheetBody.Children.Add(SheetRow("Criar conta", "", () => { Browser.Open("https://orbi-app.web.app/conta"); }));
         }
 
         SheetBody.Children.Add(SheetDivider());
@@ -741,10 +741,13 @@ public partial class CommandBar : Window
         {
             Expand();
             var query = text[1..].Trim();
-            var tool = Tools.Find(query);
+            // "/site youtube.com" → ferramenta + dado
+            var partes = query.Split(' ', 2, StringSplitOptions.TrimEntries);
+            var tool = Tools.Find(partes[0]) ?? Tools.Search(partes[0]).FirstOrDefault();
             if (tool is not null)
             {
-                Add(ToRow(OrbiReply.Local(Tools.Run(tool.Id), $"{tool.Group} · {tool.Name}")));
+                var dado = partes.Length > 1 ? partes[1] : null;
+                Add(ToRow(OrbiReply.Local(Tools.Run(tool.Id, dado), $"{tool.Group} · {tool.Name}")));
                 Results.SelectedIndex = 0;
                 UpdateFooter();
                 return;

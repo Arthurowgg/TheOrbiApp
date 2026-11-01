@@ -2,15 +2,27 @@ using System.Diagnostics;
 using System.IO;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Forms = System.Windows.Forms;
 using Microsoft.Win32;
 
 namespace Orbi.Services;
 
 /// <summary>Uma ferramenta do Orbi: nome curto, grupo, palavras-chave e o que ela faz.</summary>
-public sealed record Tool(string Id, string Name, string Group, string[] Keywords, Func<string> Run)
+/// <summary>O dado que a pessoa (ou a IA) passou junto do pedido, tipo "abrir site youtube.com".</summary>
+public static class Args
+{
+    private static readonly AsyncLocal<string> Atual = new();
+    public static string Current { get => Atual.Value ?? ""; set => Atual.Value = value; }
+}
+
+public sealed record Tool(string Id, string Name, string Group, string[] Keywords, Func<string> Run,
+    string? Arg = null, string? Placeholder = null)
 {
     public string Label => $"{Group.Split(' ')[0]} · {Name}";
+
+    /// <summary>A ferramenta precisa de um dado (site, texto, caminho…)?</summary>
+    public bool NeedsArg => Arg is not null;
 }
 
 /// <summary>
@@ -379,6 +391,10 @@ public static class Tools
         // captura de tela, arquivos, rede, energia, acessibilidade, dev, texto…)
         ToolsExtra.Register(tools);
 
+        // terceiro bloco: web, arquivos, texto, cálculo, datas, rede — com dado.
+
+        ToolsWeb.Register(tools);
+
         // o controle do PC entra por último: são as ferramentas que a IA usa
         // quando precisa ver a tela, clicar, digitar ou mexer em uma janela.
         Add("control-see", "Ver a tela e o que está aberto", "Controle do PC",
@@ -420,23 +436,34 @@ public static class Tools
     public static Tool? Find(string id) =>
         All.FirstOrDefault(tool => string.Equals(tool.Id, id, StringComparison.OrdinalIgnoreCase));
 
-    public static string Run(string id)
+    public static string Run(string id, string? arg = null)
     {
         var tool = Find(id);
-        if (tool is null) return "Ferramenta não encontrada: " + id;
-        try
+        if (tool is { NeedsArg: true } && string.IsNullOrWhiteSpace(arg))
         {
-            var result = tool.Run();
-            Memory.Remember($"usei {tool.Name}", "ferramenta");
-            Log.Add("ferramenta", tool.Id);
-            return result;
+            return "Preciso do dado: " + (tool.Placeholder ?? "o complemento");
         }
-        catch (Exception error)
+        Args.Current = arg?.Trim() ?? "";
+        try { return RunArgh(tool); }
+        finally { Args.Current = ""; }
+
+        string RunArgh(Tool? alvo)
         {
-            Log.Error("ferramenta " + tool.Id, error);
-            return $"Não consegui {tool.Name.ToLowerInvariant()}: {error.Message}";
+            if (alvo is null) return "Ferramenta não encontrada: " + id;
+            try
+            {
+                var result = alvo.Run();
+                Log.Add($"ferramenta {id}: {result}");
+                return result;
+            }
+            catch (Exception error)
+            {
+                Log.Error("ferramenta " + id, error);
+                return "Não consegui agora: " + error.Message;
+            }
         }
     }
+
 
     /// <summary>Encontra ferramentas por texto livre (nome, grupo ou palavra-chave).</summary>
     public static IReadOnlyList<Tool> Search(string query)
@@ -452,7 +479,13 @@ public static class Tools
 
     public static IEnumerable<string> Groups => All.Select(tool => tool.Group).Distinct();
 
-    /// <summary>Lista curta para o Gemini saber o que pode ser executado.</summary>
-    public static string ForAi(int limit = 90) =>
-        string.Join(", ", All.Take(limit).Select(tool => tool.Id));
+    /// <summary>
+    /// O catálogo inteiro para a IA, com o dado que cada ferramenta espera.
+    /// É isso que permite pedidos de vários passos com argumento.
+    /// </summary>
+    public static string ForAi(int limit = int.MaxValue) =>
+        string.Join("\n", All.Take(limit).Select(tool =>
+            tool.NeedsArg
+                ? $"{tool.Id} — {tool.Name} (dado: {tool.Placeholder ?? "texto"})"
+                : $"{tool.Id} — {tool.Name}"));
 }
