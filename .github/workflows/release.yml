@@ -126,21 +126,21 @@ jobs:
           $exe = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
           $zip = (Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1).FullName
           $target = Join-Path $env:LOCALAPPDATA "Programs\Orbi"
-          $atalho = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Orbi.lnk"
 
           # Pacote local: o download público só existe depois da release publicada.
           $p = Start-Process -FilePath $exe -ArgumentList "--silent","--payload=$zip" -PassThru -Wait
           if ($p.ExitCode -ne 0) { Falhar "instalação silenciosa falhou ($($p.ExitCode))" }
 
           if (-not (Test-Path (Join-Path $target "Orbi.exe"))) { Falhar "Orbi.exe não foi instalado em $target" }
-          if (-not (Test-Path $atalho)) { Falhar "atalho do menu iniciar não foi criado" }
+          $lnk = Get-ChildItem (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Orbi") -Filter *.lnk -ErrorAction SilentlyContinue
+          if (-not $lnk) { Falhar "atalhos do menu iniciar não foram criados" }
           $tamanho = [math]::Round((Get-ChildItem $target -Recurse | Measure-Object Length -Sum).Sum / 1MB, 1)
           Write-Host "instalado: $tamanho MB em $target"
 
           $u = Start-Process -FilePath $exe -ArgumentList "--silent","--uninstall" -PassThru -Wait
           if ($u.ExitCode -ne 0) { Falhar "desinstalação silenciosa falhou ($($u.ExitCode))" }
           if (Test-Path (Join-Path $target "Orbi.exe")) { Falhar "Orbi.exe continuou depois de desinstalar" }
-          if (Test-Path $atalho) { Falhar "o atalho do menu iniciar continuou" }
+          if (Test-Path (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Orbi")) { Falhar "os atalhos do menu iniciar continuaram" }
           $chave = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Orbi"
           if (Test-Path $chave) { Falhar "a entrada de desinstalação continuou no registro" }
           Write-Host "::notice::instalação e desinstalação conferidas ($tamanho MB instalados)"

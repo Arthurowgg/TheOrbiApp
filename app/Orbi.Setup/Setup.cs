@@ -21,11 +21,16 @@ public static class Paths
     public static string Exe => Path.Combine(Target, "Orbi.exe");
     public static string Uninstaller => Path.Combine(Target, "Desinstalar.exe");
 
+    /// <summary>Pasta do Orbi no Menu Iniciar (por usuário, sem administrador).</summary>
     public static string StartMenu =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "Orbi");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Microsoft", "Windows", "Start Menu", "Programs", "Orbi");
 
     public static string Desktop =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Orbi.lnk");
+
+    /// <summary>Atalho principal, o que fica no Menu Iniciar.</summary>
+    public static string StartMenuShortcut => Path.Combine(StartMenu, "Orbi.lnk");
 
     public static string Startup =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "Orbi.lnk");
@@ -281,6 +286,7 @@ public static class Installer
             Write("Criando os atalhos…");
             progress.Report(0.92);
             Directory.CreateDirectory(Paths.StartMenu);
+            Directory.CreateDirectory(Path.GetDirectoryName(Paths.Desktop)!);
             Shortcut.Create(Path.Combine(Paths.StartMenu, "Orbi.lnk"), Paths.Exe, "", Paths.Target,
                 "Seu PC em português");
             Shortcut.Create(Path.Combine(Paths.StartMenu, "Orbi (ajustes e ferramentas).lnk"), Paths.Exe,
