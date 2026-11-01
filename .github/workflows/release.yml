@@ -36,6 +36,11 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # O site anuncia o mesmo catálogo que o app executa. Se divergir, falha aqui.
+      - name: Catálogo do site igual ao do app
+        run: node scripts/tools-catalog.mjs --check
+
       - run: npx tsc --noEmit
       - run: npm run build
 

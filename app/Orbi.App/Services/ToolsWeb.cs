@@ -216,7 +216,7 @@ public static class ToolsWeb
         Add("calcular-um-desconto", "Calcular um desconto", "Cálculos", "desconto,off", () => Calculo("desconto", Args.Current), "250 - 15%");
         Add("dividir-uma-conta", "Dividir uma conta", "Cálculos", "dividir,conta,rachar", () => Calculo("rachar", Args.Current), "120/4");
         Add("calcular-a-media", "Calcular a média", "Cálculos", "media,media de", () => Calculo("media", Args.Current), "10, 8, 6");
-        Add("calcular-o-imc", "Calcular o IMC", "Cálculos", "imc,peso,altura", () => Conversao("calcular-o-imc", Args.Current), "80 1.80");
+        Add("calcular-o-imc", "Calcular o IMC", "Cálculos", "imc,peso,altura", () => Conversao("calcular-o-imc", Args.Current), "80 1,80");
         Add("converter-celsius-para-fahrenheit", "Converter Celsius para Fahrenheit", "Cálculos", "celsius,fahrenheit", () => Conversao("converter-celsius-para-fahrenheit", Args.Current), "30");
         Add("converter-fahrenheit-para-celsius", "Converter Fahrenheit para Celsius", "Cálculos", "fahrenheit,celsius", () => Conversao("converter-fahrenheit-para-celsius", Args.Current), "86");
         Add("converter-quilometros-para-milhas", "Converter quilômetros para milhas", "Cálculos", "km,milhas", () => Conversao("converter-quilometros-para-milhas", Args.Current), "42");
@@ -534,12 +534,13 @@ public static class ToolsWeb
     /* ------------------------------ conversões ------------------------------ */
     private static string Conversao(string id, string dado)
     {
-        var numeros = Regex.Matches(dado.Replace(",", " "), @"-?\d+([.,]\d+)?")
-            .Select(m => double.TryParse(m.Value.Replace(',', '.'), NumberStyles.Any, Cultura, out var n) ? n : 0)
+        var numeros = Regex.Matches(dado, @"-?\d+(?:[.,]\d+)?")
+            .Select(m => double.TryParse(m.Value.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out var n) ? n : 0)
             .ToList();
         if (numeros.Count == 0) return "Preciso dos números.";
         double Um(Func<double, double> conta) => conta(numeros[0]);
         var imc = numeros.Count >= 2 ? numeros[0] / Math.Pow(numeros[1], 2) : 0;
+        if (numeros.Count >= 2 && imc < 3 && numeros[1] > 3) imc = numeros[1] / Math.Pow(numeros[0], 2); // "1,80 80"
 
         return id switch
         {
@@ -567,9 +568,9 @@ public static class ToolsWeb
     /* ------------------------------ cálculo ------------------------------ */
     private static string Calculo(string tipo, string dado)
     {
-        var numeros = Regex.Matches(dado.Replace(",", " "), @"-?\d+([.,]\d+)?")
-            .Select(m => double.TryParse(m.Value.Replace(',', '.'), NumberStyles.Any, Cultura, out var n) ? n : 0)
-            .Where(n => true).ToList();
+        var numeros = Regex.Matches(dado, @"-?\d+(?:[.,]\d+)?")
+            .Select(m => double.TryParse(m.Value.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out var n) ? n : 0)
+            .ToList();
         if (numeros.Count == 0) return "Preciso dos números.";
 
         double resultado;

@@ -25,7 +25,7 @@ public class SetupWindow : Window
     private enum Etapa { BoasVindas, Removendo, Instalando, Pronto, Erro }
     private Etapa _etapa = Etapa.BoasVindas;
     private string _erro = "";
-    private const string TOOLS = "575";
+    private const string TOOLS = "597";
 
     public SetupWindow(string[] args)
     {
