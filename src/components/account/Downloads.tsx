@@ -83,6 +83,17 @@ export default function Downloads({ account, onDownload }: PageProps) {
                   </div>
                   <p className="mt-1 truncate font-mono text-[11px] text-warm">{item.filename}</p>
                   <p className="mt-0.5 font-mono text-[10.5px] text-warm/80">SHA-256 {shortChecksum(item.checksum)}</p>
+                  {item.url && (
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="label mt-1 inline-flex items-center gap-1 text-signal hover:text-signal-dark"
+                    >
+                      baixar este arquivo de novo
+                      <Icon name="arrow-up-right" className="h-3 w-3" />
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

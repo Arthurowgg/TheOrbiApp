@@ -10,9 +10,9 @@
     <AssemblyName>Orbi</AssemblyName>
     <RootNamespace>Orbi</RootNamespace>
     <ApplicationIcon>Assets\orbi.ico</ApplicationIcon>
-    <Version>1.0.6</Version>
-    <FileVersion>1.0.6.0</FileVersion>
-    <AssemblyVersion>1.0.6.0</AssemblyVersion>
+    <Version>1.0.7</Version>
+    <FileVersion>1.0.7.0</FileVersion>
+    <AssemblyVersion>1.0.7.0</AssemblyVersion>
     <Product>Orbi</Product>
     <Company>Orbi</Company>
     <Description>Assistente em português para Windows 11</Description>

@@ -6,7 +6,7 @@
 ; ---------------------------------------------------------------------------
 
 #define AppName "Orbi"
-#define AppVersion "1.0.6"
+#define AppVersion "1.0.7"
 #define AppPublisher "Orbi"
 #define AppURL "https://orbi-app-auth.web.app"
 #define AppExe "Orbi.exe"
@@ -34,6 +34,9 @@ UninstallDisplayName={#AppName} {#AppVersion}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+WizardImageFile=assets\banner.bmp
+WizardSmallImageFile=assets\wizard.bmp
+WizardImageStretch=no
 MinVersion=10.0.17763
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -115,6 +118,14 @@ procedure CurPageChanged(CurPageID: Integer);
 var
   Resumo: String;
 begin
+  if CurPageID = wpFinished then
+  begin
+    { O que fazer agora, sem precisar procurar nada. }
+    WizardForm.FinishedLabel.Caption :=
+      'O Orbi está no Menu Iniciar e na bandeja, perto do relógio.' + #13#10 +
+      'Aperte Alt+Shift+O em qualquer programa para abrir a barra.';
+  end;
+
   if (CurPageID = wpFinished) and (LimpezaTexto <> '') then
   begin
     Resumo := Trim(LimpezaTexto);

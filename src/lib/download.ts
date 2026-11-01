@@ -16,13 +16,13 @@ import type { Account } from "./accounts";
 
 export const BUILD = {
   product: "Orbi",
-  version: "1.0.6",
+  version: "1.0.7",
   channel: "estável",
   os: "Windows 11",
   arch: "x64",
   minimum: "Windows 11 22H2 ou superior (Windows 10 1809+)",
-  installer: "OrbiSetup-1.0.6.exe",
-  packageName: "Orbi-1.0.6",
+  installer: "OrbiSetup-1.0.7.exe",
+  packageName: "Orbi-1.0.7",
   sizeHint: "≈ 64 MB",
   repo: "Arthurowgg/TheOrbiApp",
 };
@@ -33,48 +33,71 @@ export type Release = {
   version: string;
   publishedAt: string;
   notes: string;
+  prerelease: boolean;
   installer: ReleaseAsset | null;
   checksumsUrl: string | null;
 };
 
-const API = `https://api.github.com/repos/${BUILD.repo}/releases/latest`;
+const API = `https://api.github.com/repos/${BUILD.repo}/releases?per_page=30`;
 
-/** Lê a última release publicada. Cacheado em memória por 10 min. */
-let cache: { at: number; value: Release | null } | null = null;
+type ApiAsset = { name: string; browser_download_url: string; size: number };
+type ApiRelease = {
+  tag_name?: string;
+  name?: string;
+  published_at?: string;
+  created_at?: string;
+  body?: string;
+  draft?: boolean;
+  prerelease?: boolean;
+  assets?: ApiAsset[];
+};
 
-export async function fetchLatestRelease(force = false): Promise<Release | null> {
+function toRelease(data: ApiRelease): Release {
+  const assets = data.assets ?? [];
+  const installer =
+    assets.find((asset) => /setup.*\.exe$/i.test(asset.name)) ??
+    assets.find((asset) => /\.exe$/i.test(asset.name)) ??
+    null;
+
+  return {
+    tag: data.tag_name ?? "latest",
+    version: (data.tag_name ?? "").replace(/^v/, "") || BUILD.version,
+    publishedAt: data.published_at ?? data.created_at ?? "",
+    notes: data.body ?? "",
+    prerelease: Boolean(data.prerelease),
+    installer: installer
+      ? { name: installer.name, url: installer.browser_download_url, size: installer.size }
+      : null,
+    checksumsUrl: assets.find((asset) => /sha256/i.test(asset.name))?.browser_download_url ?? null,
+  };
+}
+
+/** Todas as versões publicadas, da mais nova para a mais antiga. */
+let cache: { at: number; value: Release[] } | null = null;
+
+export async function fetchReleases(force = false): Promise<Release[]> {
   if (!force && cache && Date.now() - cache.at < 600_000) return cache.value;
   try {
     const response = await fetch(API, { headers: { Accept: "application/vnd.github+json" } });
     if (!response.ok) throw new Error(String(response.status));
-    const data = (await response.json()) as {
-      tag_name?: string;
-      name?: string;
-      published_at?: string;
-      body?: string;
-      assets?: { name: string; browser_download_url: string; size: number }[];
-    };
-    const assets = data.assets ?? [];
-    const installer =
-      assets.find((asset) => /setup.*\.exe$/i.test(asset.name)) ??
-      assets.find((asset) => /\.exe$/i.test(asset.name)) ??
-      null;
-    const value: Release = {
-      tag: data.tag_name ?? "latest",
-      version: (data.tag_name ?? "").replace(/^v/, "") || BUILD.version,
-      publishedAt: data.published_at ?? "",
-      notes: data.body ?? "",
-      installer: installer
-        ? { name: installer.name, url: installer.browser_download_url, size: installer.size }
-        : null,
-      checksumsUrl: assets.find((asset) => /sha256/i.test(asset.name))?.browser_download_url ?? null,
-    };
+    const data = (await response.json()) as ApiRelease[];
+    const value = data
+      .filter((item) => !item.draft)
+      .map(toRelease)
+      .filter((item) => item.installer || item.checksumsUrl)
+      .sort((a, b) => (b.publishedAt > a.publishedAt ? 1 : -1));
     cache = { at: Date.now(), value };
     return value;
   } catch {
-    cache = { at: Date.now(), value: null };
-    return null;
+    cache = { at: Date.now(), value: [] };
+    return [];
   }
+}
+
+/** A release mais recente (a primeira da lista). */
+export async function fetchLatestRelease(force = false): Promise<Release | null> {
+  const releases = await fetchReleases(force);
+  return releases.find((item) => item.installer) ?? releases[0] ?? null;
 }
 
 /** URL direta do instalador: release real ou página de releases. */
@@ -179,8 +202,9 @@ export type DownloadOutcome =
 export async function downloadInstaller(
   account: Pick<Account, "name" | "email"> | null,
   onProgress: (percent: number) => void,
+  chosen?: Release | null,
 ): Promise<DownloadOutcome> {
-  const release = await fetchLatestRelease();
+  const release = chosen?.installer ? chosen : await fetchLatestRelease();
   onProgress(6);
 
   if (release?.installer) {

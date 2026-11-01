@@ -4,6 +4,7 @@ import AppShowcase from "./AppShowcase";
 import { Button, Eyebrow, Icon, Reveal } from "./ui";
 import { ACCOUNT_ITEMS, EXAMPLES, FAQ, FEATURES, LOCAL_ONLY, STEPS } from "../data/site";
 import { fetchLatestRelease, type Release } from "../lib/download";
+import Versions, { formatDate, useReleases } from "./Versions";
 import type { Account } from "../lib/accounts";
 
 type HomeProps = {
@@ -83,6 +84,7 @@ function Faq() {
 /* ------------------------------------------------------------------ */
 export default function Home({ account, onDownload, onLogin, onSignup, onAccount }: HomeProps) {
   const release = useRelease();
+  const { releases, loading: versionsLoading } = useReleases();
 
   return (
     <main id="inicio">
@@ -333,14 +335,16 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
       {/* ------------------------------ DOWNLOAD ------------------------------ */}
       <section id="download" className="scroll-mt-16 border-t border-rule bg-paper-2/25 py-20 lg:py-24">
         <div className="mx-auto max-w-[1100px] px-5 sm:px-8">
-          <div className="grid gap-12 lg:grid-cols-[1fr_0.85fr] lg:gap-16">
-            <Reveal>
-              <Eyebrow>Download</Eyebrow>
-              <h2 className="display mt-4 text-[clamp(2.2rem,4.6vw,3.3rem)] text-ink">
-                Leva <span className="display-serif">um minuto.</span>
-              </h2>
+          <Reveal>
+            <Eyebrow>Download</Eyebrow>
+            <h2 className="display mt-4 text-[clamp(2.2rem,4.6vw,3.3rem)] text-ink">
+              Leva <span className="display-serif">um minuto.</span>
+            </h2>
+          </Reveal>
 
-              <ol className="mt-8 border-t border-rule">
+          <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:gap-14">
+            <div>
+              <ol className="border-t border-rule">
                 {STEPS.map((step, index) => (
                   <li key={step.title} className="flex gap-5 border-b border-rule py-4">
                     <span className="label tnum mt-1 text-signal">0{index + 1}</span>
@@ -352,26 +356,62 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
                 ))}
               </ol>
 
-              <div className="mt-8 flex flex-wrap items-center gap-4">
+              <div className="mt-7 flex flex-wrap items-center gap-4">
                 <Button size="lg" onClick={onDownload}>
                   <Icon name="download" className="h-4 w-4" />
-                  Baixar o Orbi
+                  {release?.installer ? `Baixar o Orbi ${release.version}` : "Baixar o Orbi"}
                 </Button>
                 <span className="font-mono text-[11px] leading-relaxed text-warm">
-                  {release?.installer ? `${release.installer.name}` : "instalador .exe"}
+                  {release?.installer ? release.installer.name : "instalador .exe"}
                   <br />
                   Windows 10/11 · 64 bits
                 </span>
               </div>
-            </Reveal>
 
-            <Reveal delay={60}>
-              <div className="border border-rule bg-[#fbf9f3] p-6">
-                <p className="label text-warm">Antes de baixar</p>
-                <Faq />
+              <p className="mt-4 text-[12.5px] leading-snug text-warm">
+                A conta não é obrigatória para baixar — só para o Orbi lembrar de você.
+              </p>
+            </div>
+
+            <div>
+              <p className="label text-warm">Todas as versões</p>
+              <div className="mt-2">
+                <Versions
+                  releases={releases}
+                  loading={versionsLoading}
+                  selected={release?.tag ?? null}
+                  onSelect={() => onDownload()}
+                />
               </div>
-            </Reveal>
+              <p className="mt-2.5 font-mono text-[10px] leading-relaxed text-warm">
+                A mais recente vem selecionada. Os arquivos são os mesmos instaladores publicados
+                no GitHub, com SHA-256 em cada versão.
+              </p>
+            </div>
           </div>
+
+          <div className="mt-12 border-t border-rule pt-6">
+            {releases[0]?.publishedAt && (
+              <p className="font-mono text-[10px] uppercase tracking-[0.13em] text-warm">
+                última versão publicada em {formatDate(releases[0].publishedAt)}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------ PERGUNTAS ------------------------------ */}
+      <section className="border-t border-rule py-16 lg:py-20">
+        <div className="mx-auto grid max-w-[1100px] gap-10 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+          <Reveal>
+            <Eyebrow>Perguntas</Eyebrow>
+            <h2 className="display mt-4 text-[clamp(2rem,4.2vw,3rem)] text-ink">
+              Antes de <span className="display-serif">instalar.</span>
+            </h2>
+          </Reveal>
+          <Reveal delay={60}>
+            <Faq />
+          </Reveal>
         </div>
       </section>
 

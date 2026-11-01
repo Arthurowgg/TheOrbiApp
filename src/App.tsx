@@ -425,7 +425,12 @@ export default function App() {
     }
   }, []);
 
-  const handleDownloaded = (record: { version: string; checksum: string; filename: string }) => {
+  const handleDownloaded = (record: {
+    version: string;
+    checksum: string;
+    filename: string;
+    url?: string;
+  }) => {
     if (account) {
       void addDownload(record).then(() => refresh());
     } else {

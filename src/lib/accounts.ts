@@ -60,6 +60,8 @@ export type DownloadRecord = {
   at: string;
   checksum: string;
   filename: string;
+  /** Link direto do instalador no GitHub (algumas versões são anteriores a isso). */
+  url?: string;
 };
 
 export type Activity = {
@@ -684,6 +686,7 @@ export async function addDownload(record: {
   version: string;
   checksum: string;
   filename: string;
+  url?: string;
 }): Promise<void> {
   const user = auth.currentUser;
   if (!user) return; // visitante baixa sem conta, sem erro.
