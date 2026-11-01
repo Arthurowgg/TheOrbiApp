@@ -218,7 +218,7 @@ public static class Tools
         Add("wifi", "Wi-Fi", "Painéis", "wifi,wi-fi,internet,rede sem fio", () => Panel("ms-settings:network-wifi", "o Wi-Fi"));
         Add("network", "Rede e internet", "Painéis", "rede,internet,ethernet", () => Panel("ms-settings:network", "a rede"));
         Add("apps-installed", "Apps instalados", "Painéis", "apps,instalados,desinstalar,programas", () => Panel("ms-settings:appsfeatures", "os apps instalados"));
-        Add("printers", "Impressoras", "Painéis", "imprimir,impressora,papel", () => Shell("control.exe", "printers") == "Feito." ? "Impressoras abertas." : "Não abri.");
+        Add("printers", "Impressoras", "Painéis", "imprimir,impressora,papel", () => Shell("control.exe printers") == "Feito." ? "Impressoras abertas." : "Não abri.");
         Add("privacy", "Privacidade", "Painéis", "privacidade,permissao,camera,microfone", () => Panel("ms-settings:privacy", "a privacidade"));
         Add("accounts-settings", "Contas do Windows", "Painéis", "conta windows,usuario,senha", () => Panel("ms-settings:yourinfo", "as contas do Windows"));
         Add("time-settings", "Data e hora", "Painéis", "hora,data,fuso,relogio", () => Panel("ms-settings:dateandtime", "data e hora"));
@@ -227,7 +227,7 @@ public static class Tools
         Add("mouse", "Mouse", "Painéis", "mouse,ponteiro,velocidade", () => Shell("main.cpl") == "Feito." ? "Configurações do mouse abertas." : "Não abri.");
         Add("keyboard", "Teclado", "Painéis", "teclado,digitar,repeticao", () => Panel("ms-settings:keyboard", "o teclado"));
         Add("fonts", "Fontes", "Painéis", "fonte,tipografia,instalar fonte", () => Panel("ms-settings:fonts", "as fontes"));
-        Add("firewall", "Firewall", "Painéis", "firewall,bloqueio,porta", () => Shell("control.exe", "firewall.cpl") == "Feito." ? "Firewall aberto." : "Não abri.");
+        Add("firewall", "Firewall", "Painéis", "firewall,bloqueio,porta", () => Shell("control.exe firewall.cpl") == "Feito." ? "Firewall aberto." : "Não abri.");
         Add("control-panel", "Painel de controle", "Painéis", "painel de controle,control", () => Shell("control.exe") == "Feito." ? "Painel de controle aberto." : "Não abri.");
         Add("programs-features", "Programas e recursos", "Painéis", "desinstalar,remover,programa", () => Shell("appwiz.cpl") == "Feito." ? "Programas e recursos abertos." : "Não abri.");
 
