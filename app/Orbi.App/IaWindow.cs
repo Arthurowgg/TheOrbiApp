@@ -24,7 +24,6 @@ public sealed class IaWindow : Window
     private readonly ComboBox _modelo = new() { Width = 220, HorizontalAlignment = HorizontalAlignment.Left };
     private readonly TextBlock _estado = Panel.Body("");
     private readonly TextBlock _status = Panel.Body("");
-    private bool _carregando;
 
     public IaWindow()
     {
@@ -109,15 +108,13 @@ public sealed class IaWindow : Window
 
     private void Load()
     {
-        _carregando = true;
         _chave.Password = Store.LoadApiKey() ?? "";
         var indice = Gemini.Models.ToList().IndexOf(Store.Current.GeminiModel);
         _modelo.SelectedIndex = indice >= 0 ? indice : 0;
         _estado.Text = Estado();
-        _carregando = false;
     }
 
-    private void Salvar(object? sender = null, RoutedEventArgs? e = null)
+    private void Salvar()
     {
         var chave = _chave.Password.Trim();
         if (string.IsNullOrWhiteSpace(chave))
@@ -137,7 +134,7 @@ public sealed class IaWindow : Window
         App.Instance.ReturnBar();
     }
 
-    private async void Testar(object? sender = null, RoutedEventArgs? e = null)
+    private async void Testar()
     {
         _status.Text = "Testando…";
         var chave = string.IsNullOrWhiteSpace(_chave.Password) ? Store.LoadApiKey() : _chave.Password.Trim();
@@ -147,7 +144,7 @@ public sealed class IaWindow : Window
         if (ok) App.Instance.RefreshAfterKey();
     }
 
-    private void Remover(object? sender = null, RoutedEventArgs? e = null)
+    private void Remover()
     {
         Store.SaveApiKey(null);
         _chave.Password = "";

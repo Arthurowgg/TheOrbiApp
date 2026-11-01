@@ -36,7 +36,6 @@ public static class Panel
             Background = Paper,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
             UseLayoutRounding = true,
-            TextOptions = { TextFormattingMode = TextFormattingMode.Ideal },
             FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI"),
         };
     }

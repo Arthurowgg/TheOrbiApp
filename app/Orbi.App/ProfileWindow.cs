@@ -120,7 +120,7 @@ public sealed class ProfileWindow : Window
         }
     }
 
-    private void SalvarNome(object? sender = null, RoutedEventArgs? e = null)
+    private void SalvarNome()
     {
         var nome = _nome.Text.Trim();
         if (string.IsNullOrWhiteSpace(nome)) return;
@@ -130,21 +130,21 @@ public sealed class ProfileWindow : Window
         Refresh();
     }
 
-    private void Sincronizar(object? sender = null, RoutedEventArgs? e = null)
+    private void Sincronizar()
     {
         Sync.Now();
         _status.Text = "Sincronizando…";
         Refresh();
     }
 
-    private void Sair(object? sender = null, RoutedEventArgs? e = null)
+    private void Sair()
     {
         Firebase.SignOut();
         _status.Text = "Você saiu da conta.";
         Refresh();
     }
 
-    private void Esquecer(object? sender = null, RoutedEventArgs? e = null)
+    private void Esquecer()
     {
         Memory.Forget();
         _status.Text = "Memória apagada.";

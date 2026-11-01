@@ -82,26 +82,26 @@ public sealed class ToolsWindow : Window
     private static DataTemplate Linha()
     {
         var template = new DataTemplate(typeof(Tool));
-        var grade = new FrameworkElementFactory(typeof(Grid));
-        var colunaGrupo = new FrameworkElementFactory(typeof(TextBlock));
-        colunaGrupo.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(Tool.Group)));
-        colunaGrupo.SetValue(TextBlock.WidthProperty, 132.0);
-        colunaGrupo.SetValue(TextBlock.FontFamilyProperty, new FontFamily("Cascadia Mono, Consolas"));
-        colunaGrupo.SetValue(TextBlock.FontSizeProperty, 10.0);
-        colunaGrupo.SetValue(TextBlock.ForegroundProperty, Panel.Warm);
-        colunaGrupo.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
-        grade.AppendChild(colunaGrupo);
+        var pilha = new FrameworkElementFactory(typeof(StackPanel));
+        pilha.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
 
-        var colunaNome = new FrameworkElementFactory(typeof(TextBlock));
-        colunaNome.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(Tool.Name)));
-        colunaNome.SetValue(TextBlock.FontSizeProperty, 13.0);
-        colunaNome.SetValue(TextBlock.ForegroundProperty, Panel.Ink);
-        colunaNome.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
-        colunaNome.SetValue(Grid.ColumnProperty, 1);
-        grade.AppendChild(colunaNome);
+        var grupo = new FrameworkElementFactory(typeof(TextBlock));
+        grupo.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(Tool.Group)));
+        grupo.SetValue(FrameworkElement.WidthProperty, 132.0);
+        grupo.SetValue(TextBlock.FontFamilyProperty, new FontFamily("Cascadia Mono, Consolas"));
+        grupo.SetValue(TextBlock.FontSizeProperty, 10.0);
+        grupo.SetValue(TextBlock.ForegroundProperty, Panel.Warm);
+        grupo.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        pilha.AppendChild(grupo);
 
-        var colunas = new FrameworkElementFactory(typeof(ColumnDefinitions));
-        template.VisualTree = grade;
+        var nome = new FrameworkElementFactory(typeof(TextBlock));
+        nome.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(Tool.Name)));
+        nome.SetValue(TextBlock.FontSizeProperty, 13.0);
+        nome.SetValue(TextBlock.ForegroundProperty, Panel.Ink);
+        nome.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        pilha.AppendChild(nome);
+
+        template.VisualTree = pilha;
         return template;
     }
 

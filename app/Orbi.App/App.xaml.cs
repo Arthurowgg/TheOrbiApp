@@ -34,7 +34,6 @@ public partial class App : System.Windows.Application
 
     private Forms.NotifyIcon? _tray;
     private CommandBar? _bar;
-    private SettingsWindow? _settings;
     private Window? _panel;
     private string? _panelName;
     private bool _barShouldReturn;
