@@ -102,10 +102,13 @@ Do mais simples ao mais completo:
 3. **Menu Iniciar ▸ Orbi ▸ "Orbi (diagnóstico)"** (ou `Orbi.exe --diag`): mostra versão, telas,
    DPI, se a bandeja e o atalho foram registrados, se a barra foi criada e as últimas linhas do
    `crash.log`. O botão *Copiar relatório* copia tudo.
-4. **`Orbi.exe --safe`**: abre a barra sem bandeja, sem atalho, sem Firebase e sem conta — é o
+4. **`Orbi.exe --console-keep`** (ou o atalho *Orbi (abrir com terminal)*): abre um terminal com
+   o log de cada etapa da inicialização — tema, instância, bandeja, atalho, criação da barra,
+   exibição e posição. O mesmo texto fica em `%APPDATA%\Orbi\startup.log`.
+5. **`Orbi.exe --safe`**: abre a barra sem bandeja, sem atalho, sem Firebase e sem conta — é o
    caminho mínimo. Se `--safe` abre e o normal não, o problema está numa integração, e o
    diagnóstico diz qual.
-5. Se até o `--safe` falhar, o app abre uma **janela de emergência** com o caminho do log.
+6. Se até o `--safe` falhar, o app abre uma **janela de emergência** com o caminho do log.
 
 ## Problemas 
 

@@ -23,11 +23,11 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         // --console: log de cada etapa no terminal (para descobrir onde para).
-        var console = e.Args.Contains("--console");
-        if (console)
+        var console = e.Args.Contains("--console") || e.Args.Contains("--console-keep");
+        if (console && !ConsoleWindow.Attach())
         {
-            ConsoleWindow.Attach();
-            ConsoleLog.EnableConsole(true);
+            // Sem console: pelo menos o log em arquivo continua.
+            ConsoleLog.EnableConsole(false);
         }
 
         ConsoleLog.EnableConsole(console);
@@ -122,6 +122,9 @@ public partial class App : System.Windows.Application
         }
 
         ShowBar();
+
+        ConsoleLog.Step("Inicialização concluída", "app pronto");
+        ConsoleLog.Step("Se o terminal fechar, rode: Orbi.exe --console-keep");
 
         // Primeiro uso sem conta: pergunta DEPOIS que a barra já apareceu,
         // para o app nunca parecer "travado".
@@ -453,6 +456,11 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        if (Environment.GetCommandLineArgs().Contains("--console-keep"))
+        {
+            ConsoleLog.Step("Pressione ENTER para fechar o terminal");
+            try { Console.ReadLine(); } catch { }
+        }
         Store.Save();
         _tray?.Dispose();
         base.OnExit(e);

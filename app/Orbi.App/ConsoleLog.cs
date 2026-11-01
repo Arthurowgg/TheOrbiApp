@@ -49,15 +49,9 @@ public static class ConsoleLog
 
         if (_echo)
         {
-            try
-            {
-                Console.WriteLine(line);
-                Console.Out.Flush();
-            }
-            catch
-            {
-                // app sem console anexado
-            }
+            // Escreve no CONOUT$ (via ConsoleWindow), não em Console.Out: num app
+            // WinExe o stdout herdado é inválido e o terminal ficava vazio.
+            ConsoleWindow.Write(line);
         }
     }
 

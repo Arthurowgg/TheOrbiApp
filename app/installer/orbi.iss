@@ -6,7 +6,7 @@
 ; ---------------------------------------------------------------------------
 
 #define AppName "Orbi"
-#define AppVersion "1.0.3"
+#define AppVersion "1.0.4"
 #define AppPublisher "Orbi"
 #define AppURL "https://orbi-app-auth.web.app"
 #define AppExe "Orbi.exe"
@@ -97,7 +97,8 @@ Source: "limpar-antigas.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Name: "{group}\Orbi"; Filename: "{app}\{#AppExe}"
 Name: "{group}\Ajustes do Orbi"; Filename: "{app}\{#AppExe}"; Parameters: "--settings"
 Name: "{group}\Orbi (diagnóstico)"; Filename: "{app}\{#AppExe}"; Parameters: "--diag"
-Name: "{group}\Orbi (abrir com terminal)"; Filename: "{cmd}"; Parameters: "/k ""{app}\{#AppExe}"" --console"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExe}"
+Name: "{group}\Orbi (abrir com terminal)"; Filename: "{cmd}"; Parameters: "/k ""{app}\{#AppExe}"" --console-keep"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExe}"
+Name: "{group}\Orbi (abrir log em arquivo)"; Filename: "{app}\{#AppExe}"; Parameters: "--console-keep"
 Name: "{group}\Orbi (modo seguro)"; Filename: "{app}\{#AppExe}"; Parameters: "--safe"
 Name: "{group}\Desinstalar o Orbi"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\Orbi"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
@@ -105,7 +106,7 @@ Name: "{userstartup}\Orbi"; Filename: "{app}\{#AppExe}"; Parameters: "--tray"; T
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Abrir o Orbi agora"; Flags: nowait postinstall skipifsilent
-Filename: "{cmd}"; Parameters: "/k ""{app}\{#AppExe}"" --console"; Description: "Abrir com terminal (mostra o log ao vivo)"; Flags: postinstall unchecked nowait skipifsilent
+Filename: "{cmd}"; Parameters: "/k ""{app}\{#AppExe}"" --console-keep"; Description: "Abrir com terminal (mostra o log ao vivo)"; Flags: postinstall unchecked nowait skipifsilent
 Filename: "{app}\{#AppExe}"; Parameters: "--diag"; Description: "Abrir o diagnóstico (se a barra não aparecer)"; Flags: postinstall unchecked nowait skipifsilent
 
 [UninstallRun]
