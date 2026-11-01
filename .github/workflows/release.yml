@@ -114,29 +114,36 @@ jobs:
         timeout-minutes: 10
         run: |
           $ErrorActionPreference = "Stop"
-          $exe = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
-          $zip = (Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1).FullName
-          # Pacote local: o download público só existe depois da release publicada.
-          $p = Start-Process -FilePath $exe -ArgumentList "--silent","--payload=$zip" -PassThru -Wait
-          if ($p.ExitCode -ne 0) {
+          function Falhar($msg) {
+            Write-Host "::error::$msg"
             $log = Join-Path $env:LOCALAPPDATA "Orbi-setup.log"
             if (Test-Path $log) { Get-Content $log | ForEach-Object { Write-Host "::error::setup: $_" } }
-            throw "instalação silenciosa falhou ($($p.ExitCode))"
+            $target = Join-Path $env:LOCALAPPDATA "Programs\Orbi"
+            if (Test-Path $target) { Get-ChildItem $target -Recurse | ForEach-Object { Write-Host "::error::arquivo: $($_.FullName)" } }
+            exit 1
           }
 
+          $exe = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
+          $zip = (Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1).FullName
           $target = Join-Path $env:LOCALAPPDATA "Programs\Orbi"
-          if (-not (Test-Path (Join-Path $target "Orbi.exe"))) { throw "Orbi.exe não foi instalado em $target" }
           $atalho = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Orbi.lnk"
-          if (-not (Test-Path $atalho)) { throw "atalho do menu iniciar não foi criado" }
-          Write-Host "instalado: $((Get-ChildItem $target -Recurse | Measure-Object Length -Sum).Sum / 1MB) MB em $target"
+
+          # Pacote local: o download público só existe depois da release publicada.
+          $p = Start-Process -FilePath $exe -ArgumentList "--silent","--payload=$zip" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { Falhar "instalação silenciosa falhou ($($p.ExitCode))" }
+
+          if (-not (Test-Path (Join-Path $target "Orbi.exe"))) { Falhar "Orbi.exe não foi instalado em $target" }
+          if (-not (Test-Path $atalho)) { Falhar "atalho do menu iniciar não foi criado" }
+          $tamanho = [math]::Round((Get-ChildItem $target -Recurse | Measure-Object Length -Sum).Sum / 1MB, 1)
+          Write-Host "instalado: $tamanho MB em $target"
 
           $u = Start-Process -FilePath $exe -ArgumentList "--silent","--uninstall" -PassThru -Wait
-          if ($u.ExitCode -ne 0) { throw "desinstalação silenciosa falhou ($($u.ExitCode))" }
-          if (Test-Path (Join-Path $target "Orbi.exe")) { throw "Orbi.exe continuou depois de desinstalar" }
+          if ($u.ExitCode -ne 0) { Falhar "desinstalação silenciosa falhou ($($u.ExitCode))" }
+          if (Test-Path (Join-Path $target "Orbi.exe")) { Falhar "Orbi.exe continuou depois de desinstalar" }
+          if (Test-Path $atalho) { Falhar "o atalho do menu iniciar continuou" }
           $chave = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Orbi"
-          if (Test-Path $chave) { throw "a entrada de desinstalação continuou no registro" }
-          if (Test-Path $atalho) { throw "o atalho do menu iniciar continuou" }
-          Write-Host "instalação e desinstalação conferidas"
+          if (Test-Path $chave) { Falhar "a entrada de desinstalação continuou no registro" }
+          Write-Host "::notice::instalação e desinstalação conferidas ($tamanho MB instalados)"
 
       - name: Smoke test do instalador
         shell: powershell
