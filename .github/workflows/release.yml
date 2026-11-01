@@ -136,7 +136,10 @@ jobs:
             - Status do PC (CPU, memória, disco, bateria)
             - Bloqueio por inatividade com aviso e exceções
             - Gemini opcional (chave gratuita do AI Studio, cifrada com DPAPI)
-            - Conta Orbi: Firebase Authentication + Firestore, vínculo por código
+            - **Conta única com o site** (Firebase Authentication) e sincronização de apelidos,
+              atalhos, rotinas e preferências pelo Firestore — notas, área de transferência e a
+              chave do Gemini continuam só neste PC
+            - Rotinas criadas no site executadas no app ("modo estudo")
 
             **Verificação:** compare o SHA-256 com `SHA256SUMS.txt`.
 
