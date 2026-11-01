@@ -58,6 +58,17 @@ jobs:
       - name: Build (Release)
         run: dotnet build app/Orbi.App/Orbi.App.csproj -c Release --no-restore
 
+      - name: Log do build (diagnóstico)
+        if: failure()
+        shell: bash
+        run: |
+          dotnet build app/Orbi.App/Orbi.App.csproj -c Release 2>&1 | tail -120 > ci-build.log || true
+          git config user.name "orbi-ci"
+          git config user.email "ci@orbi.local"
+          git add -f ci-build.log
+          git commit -m "ci: log do build [skip ci]" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}" || true
+
       - name: Publish single-file self-contained
         run: >
           dotnet publish app/Orbi.App/Orbi.App.csproj
