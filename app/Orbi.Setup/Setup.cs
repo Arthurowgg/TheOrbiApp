@@ -169,10 +169,23 @@ public static class Installer
 {
     public static readonly List<string> Log = new();
 
+    /// <summary>Quem escuta o log: a janela ou o modo silencioso.</summary>
+    public static Action<string>? Sink;
+
     internal static void Write(string line)
     {
         Log.Add(line);
-        App.Current.Dispatcher.BeginInvoke(() => (App.Current as App)?.AppendLog(line));
+        try { Sink?.Invoke(line); } catch { /* log nunca derruba a instalação */ }
+    }
+
+    /// <summary>Abre o Orbi depois de instalar.</summary>
+    public static void Launch()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(Paths.Exe) { UseShellExecute = true });
+        }
+        catch { }
     }
 
     public static async Task RunAsync(IProgress<double> progress, CancellationToken token)
