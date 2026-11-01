@@ -33,6 +33,7 @@ public partial class CommandBar : Window
     public CommandBar()
     {
         InitializeComponent();
+        ApplySpacing();
         Results.ItemsSource = _rows;
         _debounce.Tick += async (_, _) =>
         {
@@ -43,6 +44,25 @@ public partial class CommandBar : Window
         AiStatus.Foreground = Gemini.Available
             ? new SolidColorBrush(Color.FromRgb(0xC7, 0x45, 0x2A))
             : new SolidColorBrush(Color.FromArgb(0x80, 0xF1, 0xEB, 0xDF));
+    }
+
+    /* ----------------------------- espaçamento ----------------------------- */
+    /// <summary>
+    /// Todo o respiro fica em código (nada de Padding no XAML): evita
+    /// ContentPresenter de ListBoxItem com padding duplicado e qualquer chance
+    /// da janela abrir com área útil zero (tela "em branco").
+    /// </summary>
+    private void ApplySpacing()
+    {
+        Header.Padding = new Thickness(16, 14, 16, 14);
+        FooterBar.Padding = new Thickness(16, 9, 16, 9);
+        Root.Margin = new Thickness(1);
+        Mark.Width = 28;
+        Mark.Height = 28;
+        Mark.Margin = new Thickness(0, 0, 12, 0);
+        EscBadge.Padding = new Thickness(7, 4, 7, 4);
+        Results.Padding = new Thickness(6, 4, 6, 4);
+        Results.ItemContainerStyle = (Style)FindResource("ResultItem");
     }
 
     /* ----------------------------- abrir / fechar ----------------------------- */
@@ -59,8 +79,10 @@ public partial class CommandBar : Window
         var areaWidth = area.Width / dpi.DpiScaleX;
         var areaHeight = area.Height / dpi.DpiScaleY;
 
-        Width = Math.Max(360, Math.Min(Width > 0 ? Width : 700, areaWidth - 32));
-        Height = Math.Max(240, Math.Min(Height > 0 ? Height : 430, areaHeight - 32));
+        // Sempre define tamanho (nunca deixa NaN/Auto) — foi isso que já deixou
+        // a janela com 0 de altura em telas com escala alta.
+        Width = Math.Max(380, Math.Min(720, areaWidth - 24));
+        Height = Math.Max(260, Math.Min(440, areaHeight - 24));
 
         Left = area.Left / dpi.DpiScaleX + (areaWidth - Width) / 2;
         Top = area.Top / dpi.DpiScaleY + areaHeight * 0.22;

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Threading;
 using Orbi.Services;
@@ -16,6 +17,9 @@ public partial class App : System.Windows.Application
 
     public static App Instance => (App)System.Windows.Application.Current;
 
+    public bool BarCreated => _bar is not null;
+    public bool TrayVisible => _tray?.Visible == true;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -28,17 +32,35 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        // --safe: só a interface. Sem bandeja, sem atalho, sem sincronização,
+        // sem leitura de conta — o caminho mais curto entre clicar e ver algo.
+        if (e.Args.Contains("--safe"))
+        {
+            ShowBar();
+            return;
+        }
+
         try
         {
             BuildTray();
             RegisterHotkey();
             SingleInstance.Listen(ShowBar, () => ShowSettings());
+        }
+        catch (Exception error)
+        {
+            Diagnostics.Report(error, "Bandeja/atalho", fatal: false);
+        }
+
+        // Sincronização: se o Firebase estiver inacessível (sem internet, regra
+        // errada, projeto fora do ar), o app segue 100% local.
+        try
+        {
             Sync.Start();
         }
         catch (Exception error)
         {
-            // Sem bandeja/atalho o app ainda deve abrir: registra e segue.
-            Diagnostics.Report(error, "Startup", fatal: false);
+            // Sem sincronização o app continua funcionando com os dados locais.
+            Diagnostics.Report(error, "Sincronização", fatal: false);
         }
 
         _reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
@@ -54,6 +76,12 @@ public partial class App : System.Windows.Application
             // O desinstalador chama isto para encerrar o app limpo.
             Cleanup();
             Shutdown();
+            return;
+        }
+
+        if (e.Args.Contains("--diag"))
+        {
+            ShowDiagnostics();
             return;
         }
 
@@ -127,6 +155,7 @@ public partial class App : System.Windows.Application
         menu.Items.Add("Abrir o Orbi", null, (_, _) => ShowBar());
         menu.Items.Add("Ajustes…", null, (_, _) => ShowSettings());
         menu.Items.Add(Firebase.SignedIn ? "Conta e sincronização…" : "Entrar na conta…", null, (_, _) => ShowAccount());
+        menu.Items.Add("Diagnóstico (por que não abre?)", null, (_, _) => ShowDiagnostics());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Bloquear o Windows", null, (_, _) => SystemActions.Lock());
         menu.Items.Add("Status do PC", null, (_, _) =>
@@ -155,16 +184,117 @@ public partial class App : System.Windows.Application
     /// </summary>
     private void RegisterHotkey()
     {
-        _bar ??= new CommandBar();
-        HotKey.Attach(_bar, () => ShowBar());
+        try
+        {
+            _bar = CreateBar();
+            if (_bar is not null) HotKey.Attach(_bar, () => ShowBar());
+        }
+        catch (Exception error)
+        {
+            Diagnostics.Report(error, "Barra (hotkey)", fatal: false);
+        }
+    }
+
+    /// <summary>Cria a barra; se o XAML/tema falhar, devolve null em vez de derrubar o app.</summary>
+    private CommandBar? CreateBar()
+    {
+        try
+        {
+            return new CommandBar();
+        }
+        catch (Exception error)
+        {
+            Diagnostics.Report(error, "Barra", fatal: false);
+            return null;
+        }
     }
 
     /* ----------------------------- janelas ----------------------------- */
     public void ShowBar()
     {
-        _bar ??= new CommandBar();
-        if (_bar.WindowState == WindowState.Minimized) _bar.WindowState = WindowState.Normal;
-        _bar.ShowBar();
+        try
+        {
+            _bar ??= CreateBar();
+
+            if (_bar is null)
+            {
+                EmergencyWindow();
+                return;
+            }
+
+            if (_bar.WindowState == WindowState.Minimized) _bar.WindowState = WindowState.Normal;
+            _bar.ShowBar();
+        }
+        catch (Exception error)
+        {
+            Diagnostics.Report(error, "Mostrar barra", fatal: false);
+            EmergencyWindow();
+        }
+    }
+
+    private bool _emergencyShown;
+
+    /// <summary>
+    /// Último recurso: uma janela WPF montada só em código (sem XAML, sem tema).
+    /// Se a interface principal falhar, o app ainda abre e diz o que aconteceu.
+    /// </summary>
+    private void EmergencyWindow()
+    {
+        if (_emergencyShown) return;
+        _emergencyShown = true;
+
+        var window = new Window
+        {
+            Title = "Orbi — modo de emergência",
+            Width = 560,
+            Height = 420,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xF2, 0xED, 0xE3)),
+        };
+
+        var panel = new System.Windows.Controls.StackPanel { Margin = new Thickness(24) };
+        panel.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = "O Orbi abriu no modo de emergência.",
+            FontSize = 20,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 10),
+        });
+        panel.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = "A interface normal não conseguiu carregar. Seus dados não foram afetados.\n\n" +
+                   $"Detalhes em:\n{Diagnostics.LogPath}\n\n" +
+                   "Envie esse arquivo para o suporte — ele diz exatamente o que falhou.",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 16),
+        });
+
+        var openLog = new System.Windows.Controls.Button
+        {
+            Content = "Abrir a pasta do log",
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 0, 0, 8),
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        openLog.Click += (_, _) =>
+        {
+            try { Process.Start(new ProcessStartInfo("explorer.exe", Store.Root) { UseShellExecute = true }); }
+            catch { /* ignorar */ }
+        };
+        panel.Children.Add(openLog);
+
+        var quit = new System.Windows.Controls.Button
+        {
+            Content = "Fechar o Orbi",
+            Padding = new Thickness(12, 8, 12, 8),
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        quit.Click += (_, _) => ExitApp();
+        panel.Children.Add(quit);
+
+        window.Content = panel;
+        window.Closed += (_, _) => _emergencyShown = false;
+        window.Show();
     }
 
     public void ShowLogin()
@@ -186,6 +316,12 @@ public partial class App : System.Windows.Application
             return;
         }
         ShowSettings("conta");
+    }
+
+    public void ShowDiagnostics()
+    {
+        // Sem Dono e sem Modal: fecha e o app continua vivo na bandeja.
+        new DiagnosticoWindow().Show();
     }
 
     public void ShowSettings(string? tab = null)

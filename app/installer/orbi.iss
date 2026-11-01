@@ -6,7 +6,7 @@
 ; ---------------------------------------------------------------------------
 
 #define AppName "Orbi"
-#define AppVersion "1.0.1"
+#define AppVersion "1.0.2"
 #define AppPublisher "Orbi"
 #define AppURL "https://orbi-app-auth.web.app"
 #define AppExe "Orbi.exe"
@@ -56,12 +56,14 @@ Source: "..\..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recu
 [Icons]
 Name: "{group}\Orbi"; Filename: "{app}\{#AppExe}"
 Name: "{group}\Ajustes do Orbi"; Filename: "{app}\{#AppExe}"; Parameters: "--settings"
+Name: "{group}\Orbi (diagnóstico)"; Filename: "{app}\{#AppExe}"; Parameters: "--diag"
 Name: "{group}\Desinstalar o Orbi"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\Orbi"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 Name: "{userstartup}\Orbi"; Filename: "{app}\{#AppExe}"; Parameters: "--tray"; Tasks: startup
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Abrir o Orbi agora"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExe}"; Parameters: "--diag"; Description: "Abrir o diagnóstico (se a barra não aparecer)"; Flags: postinstall unchecked nowait skipifsilent
 
 [UninstallRun]
 Filename: "{app}\{#AppExe}"; Parameters: "--uninstall"; Flags: runhidden

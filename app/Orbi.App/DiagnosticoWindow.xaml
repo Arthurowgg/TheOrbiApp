@@ -1,0 +1,38 @@
+<Window x:Class="Orbi.DiagnosticoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Orbi — diagnóstico"
+        Width="640" Height="520"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Paper}"
+        UseLayoutRounding="True">
+
+  <Grid Margin="26">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0">
+      <TextBlock Text="ORBI" Style="{StaticResource H1}" FontSize="24"/>
+      <TextBlock Text="Diagnóstico deste PC" Style="{StaticResource Muted}" FontSize="13" Margin="0,4,0,0"/>
+      <TextBlock Style="{StaticResource Body}" TextWrapping="Wrap" Margin="0,12,0,0"
+                 Text="Se a barra não abrir, este relatório mostra exatamente onde está o problema. Copie e envie junto do relato."/>
+    </StackPanel>
+
+    <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,16,0,0" Padding="0">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" Style="{StaticResource ScrollThin}">
+        <TextBlock x:Name="Report" FontFamily="{StaticResource Mono}" FontSize="11.5"
+                   Foreground="{StaticResource Ink2}" TextWrapping="Wrap" Margin="16"/>
+      </ScrollViewer>
+    </Border>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,16,0,0">
+      <Button Content="Abrir a barra" Style="{StaticResource PrimaryButton}" Click="OpenBar_Click"/>
+      <Button Content="Copiar relatório" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="Copy_Click"/>
+      <Button Content="Recarregar" Style="{StaticResource GhostButton}" Margin="4,0,0,0" Click="Reload_Click"/>
+      <Button Content="Fechar" Style="{StaticResource GhostButton}" HorizontalAlignment="Right" Click="Close_Click"/>
+    </StackPanel>
+  </Grid>
+</Window>
