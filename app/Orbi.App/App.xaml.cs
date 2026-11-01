@@ -452,7 +452,6 @@ public partial class App : System.Windows.Application
         painel.Activate();
     }
 
-    /// <summary>Fecha o painel que estiver aberto (a barra voltou a ser a única na frente).</summary>
     /// <summary>A barra ficou escondida porque um painel abriu (não é caso de voltar sozinha).</summary>
     public void NoteBarHiddenByPanel() => _barShouldReturn = false;
 
@@ -464,6 +463,7 @@ public partial class App : System.Windows.Application
         _bar?.RefreshGreeting();
     }
 
+    /// <summary>Fecha o painel que estiver aberto (a barra voltou a ser a única na frente).</summary>
     public void ClosePanels()
     {
         var painel = _panel;
