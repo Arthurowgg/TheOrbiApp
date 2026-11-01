@@ -126,6 +126,7 @@ jobs:
   autoteste:
     name: Autoteste no Windows
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -144,29 +145,30 @@ jobs:
 
       - name: Rodar o Orbi com --selftest
         shell: powershell
+        timeout-minutes: 5
         run: |
           $ErrorActionPreference = "Continue"
           $exe = (Resolve-Path "artifacts\publish\Orbi.exe").Path
           Write-Host "exe: $exe"
-          Get-Item $exe | Select-Object Length | Format-List | Out-String | Write-Host
-          Get-ChildItem "artifacts\publish" | Select-Object -First 10 Name, Length | Format-Table | Out-String | Write-Host
+          Write-Host ("tamanho: " + (Get-Item $exe).Length)
 
-          # Roda e captura stdout/stderr: se o processo morrer na partida, o
-          # motivo aparece aqui.
-          $saida = & $exe "--selftest" 2>&1 | Out-String
-          Write-Host "saida do processo:"; Write-Host $saida
-          Write-Host "exit code: $LASTEXITCODE"
+          # --selftest gera o relatorio e CONTINUA aberto (de proposito). Por isso
+          # Start-Process + espera limitada + kill: sem isso o job fica travado.
+          $p = Start-Process -FilePath $exe -ArgumentList "--selftest" -PassThru
+          Start-Sleep -Seconds 20
+          $vivo = -not $p.HasExited
+          Write-Host "processo ainda vivo: $vivo"
+          if (-not $vivo) { Write-Host ("::error::o app terminou sozinho com codigo " + $p.ExitCode) }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
           $pasta = "$env:APPDATA\Orbi"
-          Write-Host "conteudo de $pasta :"
-          if (Test-Path $pasta) { Get-ChildItem $pasta | Select-Object Name, Length | Format-Table | Out-String | Write-Host } else { Write-Host "PASTA AUSENTE" }
-          foreach ($f in @("sonda.txt", "ultima-execucao.txt", "startup.log", "crash.log", "selftest.txt")) {
+          if (Test-Path $pasta) { Get-ChildItem $pasta | Select-Object Name, Length | Format-Table | Out-String | Write-Host } else { Write-Host "::error::pasta de dados AUSENTE" }
+          foreach ($f in @("sonda.txt", "startup.log", "crash.log", "selftest.txt")) {
             $caminho = Join-Path $pasta $f
             if (Test-Path $caminho) {
-              Write-Host "=== $f"
-              Get-Content $caminho | Select-Object -Last 40 | ForEach-Object { Write-Host "::notice::$f :: $_" }
+              Get-Content $caminho | Select-Object -Last 40 | ForEach-Object { Write-Host "::notice::[$f] $_" }
             } else {
-              Write-Host "::warning::$f AUSENTE"
+              Write-Host "::warning::[$f] AUSENTE"
             }
           }
 
