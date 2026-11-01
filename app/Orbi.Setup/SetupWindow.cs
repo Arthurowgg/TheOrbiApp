@@ -38,7 +38,6 @@ internal sealed class SetupWindow
     private bool _done;
     private string _side = "INSTALAÇÃO";
     private readonly List<string> _lines = new();
-    private readonly System.Windows.Forms.Timer _clock = new() { Interval = 200 };
 
     private static readonly string[] Etapas =
     {
@@ -96,8 +95,7 @@ internal sealed class SetupWindow
         SendMessageW(_install, WM_SETFONT, _fontBody, IntPtr.Zero);
         SendMessageW(_quit, WM_SETFONT, _fontBody, IntPtr.Zero);
 
-        _clock.Tick += (_, _) => Repaint();
-        _clock.Start();
+
     }
 
     public IntPtr Handle => _window;
@@ -173,10 +171,7 @@ internal sealed class SetupWindow
         if (_progress == IntPtr.Zero) return;
         var percent = (int)Math.Round(Math.Clamp(value, 0, 1) * 1000);
         SendMessageW(_progress, (uint)PBM_SETPOS, percent, IntPtr.Zero);
-        _progressValue = percent;
     }
-
-    private int _progressValue;
 
     /// <summary>Desenha a faixa escura, a marca e os textos fixos.</summary>
     public void Paint(IntPtr dc)
@@ -232,7 +227,8 @@ internal sealed class SetupWindow
     private void Repaint()
     {
         if (_window == IntPtr.Zero) return;
-        InvalidateRect(_window, IntPtr.Zero, false);
+        InvalidateRect(_window, IntPtr.Zero, true);
+        UpdateWindow(_window);
     }
 
     public void Advance(string line)
@@ -272,8 +268,6 @@ internal sealed class SetupWindow
 
     public void Dispose()
     {
-        _clock.Stop();
-        _clock.Dispose();
         foreach (var brush in new[] { _brushPaper, _brushFilm, _brushSignal }) DeleteObject(brush);
         foreach (var font in new[] { _fontTitle, _fontBody, _fontLabel, _fontMono }) DeleteObject(font);
     }
