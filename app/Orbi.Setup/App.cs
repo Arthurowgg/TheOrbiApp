@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -24,11 +25,65 @@ public class App : Application
         LogBox.Text += line + Environment.NewLine;
     }
 
+    /// <summary>Log da instalação sem interface (usado pelo CI e por suporte).</summary>
+    public static string SilentLog => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Orbi-setup.log");
+
     [STAThread]
     public static void Main(string[] args)
     {
         var app = new App();
+
+        if (args.Contains("--silent"))
+        {
+            app.Startup += async (_, _) => await ModoSilencioso(args, app);
+            app.Run();
+            return;
+        }
+
         app.Run(new SetupWindow(args));
+    }
+
+    /// <summary>
+    /// Instala (ou desinstala) sem mostrar nada. Exit code 0 = deu certo.
+    /// Sem isso, a única forma de conferir o instalador seria abrir uma janela.
+    /// </summary>
+    private static async Task ModoSilencioso(string[] args, Application app)
+    {
+        var log = new List<string>();
+        void Anotar(string linha)
+        {
+            log.Add(linha);
+            try { File.AppendAllText(SilentLog, linha + Environment.NewLine); } catch { }
+        }
+
+        try
+        {
+            try { File.Delete(SilentLog); } catch { }
+            Anotar($"Orbi setup {Installer.Versao} · {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+
+            if (args.Contains("--uninstall"))
+            {
+                Installer.Uninstall();
+                Anotar($"desinstalado de {Paths.Target}");
+            }
+            else
+            {
+                await Installer.RunAsync(new Progress<double>(_ => { }), CancellationToken.None);
+                Anotar($"instalado em {Paths.Target}");
+            }
+
+            foreach (var linha in Installer.Log) Anotar("  " + linha);
+            Anotar("ok");
+            Environment.ExitCode = 0;
+        }
+        catch (Exception ex)
+        {
+            Anotar("falhou: " + ex);
+            Environment.ExitCode = 1;
+        }
+
+        app.Shutdown();
     }
 
     protected override void OnStartup(StartupEventArgs e)

@@ -87,6 +87,36 @@ jobs:
           New-Item -ItemType Directory -Force -Path artifacts/Installer | Out-Null
           Move-Item artifacts/setup/OrbiSetup.exe "artifacts/Installer/OrbiSetup-1.1.1.exe" -Force
 
+      # Prova que o instalador instala e desinstala de verdade, sem abrir janela.
+      - name: Instalar e desinstalar (silencioso)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $setup = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
+          $target = Join-Path $env:LOCALAPPDATA "Programs\Orbi"
+          $log = Join-Path $env:LOCALAPPDATA "Orbi-setup.log"
+
+          $p = Start-Process $setup -ArgumentList "--silent" -PassThru -Wait
+          if (Test-Path $log) { Get-Content $log | ForEach-Object { Write-Host "  $_" } }
+          if ($p.ExitCode -ne 0) { throw "instalador saiu com código $($p.ExitCode)" }
+
+          $exe = Join-Path $target "Orbi.exe"
+          $des = Join-Path $target "Desinstalar.exe"
+          if (-not (Test-Path $exe)) { throw "Orbi.exe não foi instalado em $target" }
+          if (-not (Test-Path $des)) { throw "Desinstalar.exe não foi instalado em $target" }
+          if ((Get-Item $exe).Length -lt 100KB) { throw "Orbi.exe instalado está vazio" }
+          $uninst = (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Orbi" -ErrorAction Stop).UninstallString
+          Write-Host "instalado: $exe"
+          Write-Host "desinstalador: $uninst"
+
+          $p2 = Start-Process $des -ArgumentList "--uninstall --silent" -PassThru -Wait
+          if ($p2.ExitCode -ne 0) { throw "desinstalador saiu com código $($p2.ExitCode)" }
+          if (Test-Path $exe) { throw "Orbi.exe continuou instalado depois de desinstalar" }
+          if (Test-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Orbi") {
+            throw "entrada de desinstalação continuou no registro"
+          }
+          Write-Host "::notice::instalou, registrou e desinstalou sem administrador"
+
       - name: Checksums
         shell: powershell
         run: |

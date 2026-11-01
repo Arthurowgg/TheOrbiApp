@@ -265,6 +265,22 @@ public static class Installer
         try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Orbi", false); }
         catch { }
 
+        // Apaga agora tudo que não está em uso; o próprio Desinstalar.exe (em uso)
+        // fica para o cmd remover.
+        try
+        {
+            foreach (var arquivo in Directory.GetFiles(Paths.Target))
+            {
+                if (string.Equals(arquivo, Paths.Uninstaller, StringComparison.OrdinalIgnoreCase)) continue;
+                try { File.Delete(arquivo); } catch { }
+            }
+            foreach (var pasta in Directory.GetDirectories(Paths.Target))
+            {
+                try { Directory.Delete(pasta, true); } catch { }
+            }
+        }
+        catch { }
+
         // O executável em uso não pode ser apagado: encerra e apaga pelo cmd.
         var alvo = Paths.Target;
         var comando = $"/c ping 127.0.0.1 -n 3 > nul & rmdir /s /q \"{alvo}\"";
