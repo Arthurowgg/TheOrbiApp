@@ -373,7 +373,7 @@ public static partial class Interpreter
             return OrbiReply.Local(
                 "Experimente: “abre o zap”, “volume em 30”, “me lembra em 20 min de beber água”, " +
                 "“status do PC”, “captura a tela”, “bloqueia o PC”, “desliga em 1 hora”.",
-                "Tudo isso funciona sem internet.");
+                "Diga o nome de uma rotina para executar (ex.: “modo estudo”). F1 mostra esta lista.");
         }
 
         /* ----------------------------- nada reconhecido ----------------------------- */

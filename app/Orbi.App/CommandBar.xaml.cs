@@ -50,19 +50,26 @@ public partial class CommandBar : Window
 
     public void ShowBar()
     {
-        // Redimensiona para caber na tela (notebook pequeno, escala 150%…).
+        // WorkingArea vem em pixels físicos; Left/Top/Width do WPF em DIPs.
+        // Dividir pelo DPI da tela (150% em muitos notebooks) evita a janela
+        // nascer fora da área visível.
         var screen = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Cursor.Position);
         var area = screen.WorkingArea;
-        var scale = VisualTreeHelper.GetDpi(this);
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var areaWidth = area.Width / dpi.DpiScaleX;
+        var areaHeight = area.Height / dpi.DpiScaleY;
 
-        var width = Math.Min(Width, area.Width / scale.DpiScaleX - 40);
-        var height = Math.Min(Height, area.Height / scale.DpiScaleY - 40);
-        if (width > 300) Width = width;
-        if (height > 200) Height = height;
+        Width = Math.Max(360, Math.Min(Width > 0 ? Width : 700, areaWidth - 32));
+        Height = Math.Max(240, Math.Min(Height > 0 ? Height : 430, areaHeight - 32));
 
-        // WorkingArea e Left/Top: ambos em pixels físicos (unidades nativas).
-        Left = area.Left + (area.Width - Width * scale.DpiScaleX) / 2;
-        Top = area.Top + area.Height * 0.24;
+        Left = area.Left / dpi.DpiScaleX + (areaWidth - Width) / 2;
+        Top = area.Top / dpi.DpiScaleY + areaHeight * 0.22;
+
+        // Nunca deixa o topo passar do fim da tela.
+        var maxLeft = area.Left / dpi.DpiScaleX + areaWidth - Width - 8;
+        var maxTop = area.Top / dpi.DpiScaleY + areaHeight - Height - 8;
+        Left = Math.Clamp(Left, area.Left / dpi.DpiScaleX + 8, Math.Max(area.Left / dpi.DpiScaleX + 8, maxLeft));
+        Top = Math.Clamp(Top, area.Top / dpi.DpiScaleY + 8, Math.Max(area.Top / dpi.DpiScaleY + 8, maxTop));
 
         if (!IsVisible) Show();
 
@@ -327,6 +334,14 @@ public partial class CommandBar : Window
 
     private void Input_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // F1 mostra a lista de comandos — a pessoa não precisa "adivinhar".
+        if (e.Key == Key.F1)
+        {
+            Input.Text = "ajuda";
+            e.Handled = true;
+            return;
+        }
+
         // Tab completa o primeiro item executável.
         if (e.Key == Key.Tab)
         {

@@ -23,7 +23,7 @@ public partial class App : System.Windows.Application
         // Uma instância só: se já existe, a segunda apenas abre a barra.
         if (!SingleInstance.TryAcquire())
         {
-            SingleInstance.SignalExisting();
+            SingleInstance.SignalExisting(settings: e.Args.Contains("--settings"));
             Shutdown();
             return;
         }
@@ -32,6 +32,7 @@ public partial class App : System.Windows.Application
         {
             BuildTray();
             RegisterHotkey();
+            SingleInstance.Listen(ShowBar, () => ShowSettings());
             Sync.Start();
         }
         catch (Exception error)

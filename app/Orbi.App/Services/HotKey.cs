@@ -109,11 +109,17 @@ public static class IdleTime
     }
 }
 
-/// <summary>Uma instância só por sessão do Windows.</summary>
+/// <summary>
+/// Uma instância só por sessão do Windows, com IPC de verdade:
+/// abrir o Orbi de novo (atalho, menu Iniciar) traz a barra para frente em vez
+/// de não fazer nada.
+/// </summary>
 public static class SingleInstance
 {
     private static Mutex? _mutex;
     private const string Name = "Orbi.App.SingleInstance";
+    private const string ShowBarEvent = "Orbi.App.ShowBar";
+    private const string ShowSettingsEvent = "Orbi.App.ShowSettings";
 
     public static bool TryAcquire()
     {
@@ -121,22 +127,48 @@ public static class SingleInstance
         return created;
     }
 
-    public static void SignalExisting()
+    /// <summary>Fica ouvindo pedidos das próximas instâncias.</summary>
+    public static void Listen(Action showBar, Action showSettings)
     {
-        // Abrir o app de novo traz a barra para frente.
+        ListenOn(ShowBarEvent, showBar);
+        ListenOn(ShowSettingsEvent, showSettings);
+    }
+
+    private static void ListenOn(string name, Action action)
+    {
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                using var handle = new EventWaitHandle(false, EventResetMode.AutoReset, name);
+                while (true)
+                {
+                    handle.WaitOne();
+                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(action);
+                }
+            }
+            catch
+            {
+                // sem IPC: a segunda instância só encerra
+            }
+        })
+        {
+            IsBackground = true,
+            Name = $"orbi-ipc-{name}",
+        };
+        thread.Start();
+    }
+
+    public static void SignalExisting(bool settings)
+    {
         try
         {
-            var main = System.Diagnostics.Process.GetCurrentProcess();
-            foreach (var process in System.Diagnostics.Process.GetProcessesByName(main.ProcessName))
-            {
-                if (process.Id == main.Id) continue;
-                // Sem IPC: a segunda instância apenas mostra a barra via nome de janela.
-                _ = process;
-            }
+            using var handle = EventWaitHandle.OpenExisting(settings ? ShowSettingsEvent : ShowBarEvent);
+            handle.Set();
         }
         catch
         {
-            // ignorar
+            // instância antiga sem IPC: nada a fazer
         }
     }
 
