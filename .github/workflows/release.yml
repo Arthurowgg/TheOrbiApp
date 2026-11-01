@@ -199,14 +199,14 @@ jobs:
             --only hosting \
             --project orbi-app-auth --non-interactive 2>&1 | tee deploy.log | tail -30
           STATUS=${PIPESTATUS[0]}
-          # "Deploy complete" é o sinal real de sucesso da CLI
           if grep -q "Deploy complete" deploy.log; then STATUS=0; fi
-          {
-            echo "### Log do deploy (últimas 40 linhas)"
-            echo '```'
-            tail -40 deploy.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
           if [ "$STATUS" != "0" ]; then
-            exit "$STATUS"
+            tail -8 deploy.log | while IFS= read -r linha; do echo "::error::$linha"; done
           fi
+          {
+            echo "### Deploy (status $STATUS)"
+            echo '```'
+            tail -30 deploy.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY" || true
+          exit "$STATUS"
