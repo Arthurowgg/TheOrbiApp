@@ -127,7 +127,6 @@ internal sealed class SetupWindow
                 SetProgress(1);
                 SetWindowTextW(_install, "Abrir o Orbi");
                 EnableWindow(_install, true);
-                _installText = "Abrir o Orbi";
             }
             catch (Exception error)
             {
@@ -135,7 +134,6 @@ internal sealed class SetupWindow
                 SetStatus("Não deu para instalar: " + error.Message);
                 SetWindowTextW(_install, "Tentar de novo");
                 EnableWindow(_install, true);
-                _installText = "Tentar de novo";
                 _failed = true;
             }
             finally
@@ -145,7 +143,6 @@ internal sealed class SetupWindow
         });
     }
 
-    private string _installText = "Instalar o Orbi";
     private bool _failed;
 
     public void AppendLog(string line) => AddLine(line);
