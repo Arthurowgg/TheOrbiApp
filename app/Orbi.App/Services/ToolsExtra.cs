@@ -498,9 +498,9 @@ public static class ToolsExtra
         Add("sys-gpu-name", "Qual é a placa de vídeo", sistema, "gpu,video,placa",
             () => Query("select Name from Win32_VideoController"));
         Add("sys-ram-total", "Quanta memória tem o PC", sistema, "memoria,ram,total",
-            () => $"{SystemActions.Snapshot().MemoryTotalGb:0.#} GB."));
+            () => $"{SystemActions.Snapshot().MemoryTotalGb:0.#} GB.");
         Add("sys-ram-free", "Quanta memória está livre", sistema, "memoria,ram,livre",
-            () => $"{SystemActions.Snapshot().MemoryTotalGb - SystemActions.Snapshot().MemoryUsedGb:0.#} GB livres."));
+            () => $"{SystemActions.Snapshot().MemoryTotalGb - SystemActions.Snapshot().MemoryUsedGb:0.#} GB livres.");
         Add("sys-disk-list", "Listar as unidades de disco", sistema, "discos,unidades,c,d", () =>
         {
             var lista = DriveInfo.GetDrives().Where(d => d.IsReady)
@@ -524,7 +524,7 @@ public static class ToolsExtra
         Add("sys-admin-terminal", "Abrir terminal de administrador", sistema, "admin,elevado,powershell",
             () => { Shell("powershell.exe"); return "Abri o PowerShell. Para elevar, use Windows + X."; });
         Add("sys-uptime-short", "Tempo ligado em horas", sistema, "ligado,horas,uptime",
-            () => $"{(int)(DateTime.Now - Boot).TotalHours} horas."));
+            () => $"{(int)(DateTime.Now - Boot).TotalHours} horas.");
         Add("sys-events", "Ver erros recentes", sistema, "erros,eventos,problema",
             () => { Shell("eventvwr.msc"); return "Visualizador de eventos aberto."; });
         Add("sys-device-manager", "Gerenciador de dispositivos", sistema, "driver,dispositivo",
