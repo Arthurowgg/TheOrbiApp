@@ -206,8 +206,23 @@ jobs:
       - if: steps.check.outputs.available == 'true'
         name: Preparar credencial
         env:
+          A: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          B: ${{ secrets.AUTH_KEY }}
+          C: ${{ secrets.FIREBASE_KEY }}
           SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
+        shell: bash
         run: |
+          for par in "FIREBASE_SERVICE_ACCOUNT=$A" "AUTH_KEY=$B" "FIREBASE_KEY=$C"; do
+            nome="${par%%=*}"
+            valor="${par#*=}"
+            if [ -z "$valor" ]; then
+              echo "secret $nome: ausente"
+            else
+              echo "secret $nome: ${#valor} caracteres"
+              printf '%s' "$valor" > /tmp/candidato.json
+              python3 scripts/checar-credencial.py /tmp/candidato.json || echo "::warning::$nome inválido"
+            fi
+          done
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json" || echo "::warning::credencial do Firebase com problema"
 
