@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Icon, Keycap, Mark } from "./ui";
 
-type Panel = "ferramentas" | "barra" | "ajustes" | "conta";
+type Panel = "ferramentas" | "barra" | "ajustes" | "ia";
 
 const PANELS: { id: Panel; label: string }[] = [
   { id: "barra", label: "A barra" },
   { id: "ferramentas", label: "Ferramentas" },
   { id: "ajustes", label: "Ajustes" },
-  { id: "conta", label: "Conta" },
+  { id: "ia", label: "IA" },
 ];
 
 const ROWS: Record<Panel, { title: string; detail: string; badge: string }[]> = {
@@ -32,9 +32,12 @@ const ROWS: Record<Panel, { title: string; detail: string; badge: string }[]> = 
     { title: "Iniciar com o Windows", detail: "fica quieto na bandeja", badge: "geral" },
     { title: "Backup dos seus dados", detail: "%APPDATA%\\Orbi, aberto no botão", badge: "sobre" },
   ],
-  conta: [
-    { title: "Memória", detail: "o dia inteiro, para perguntar depois", badge: "sync" },
-    { title: "Downloads", detail: "cada versão que você baixou", badge: "site" },
+  ia: [
+    { title: "Chave do Gemini", detail: "cole uma vez, cifrada neste PC", badge: "obrigatória" },
+    { title: "Ver a tela", detail: "lê o que está aberto antes de agir", badge: "pc" },
+    { title: "Clicar e digitar", detail: "por coordenada, no campo em foco", badge: "pc" },
+    { title: "Vários passos", detail: "abrir, esperar, clicar, escrever, Enter", badge: "agente" },
+    { title: "Modelo", detail: "Gemini 2.5 Flash · Flash-Lite · 2.0", badge: "ia" },
   ],
 };
 

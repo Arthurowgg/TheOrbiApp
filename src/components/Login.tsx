@@ -362,17 +362,13 @@ export default function Login({
               <span className="text-signal">numa frase.</span>
             </h2>
             <p className="mt-4 max-w-[36ch] text-[13.5px] leading-[1.7] text-bone/55">
-              A conta guarda o que precisa ir junto: preferências e a
-              memória. O resto fica com você, no Windows.
+              O app também não pede conta: ele instala, abre a barra e
+              funciona com a sua chave da IA.
             </p>
           </div>
 
           <div className="my-8">
-            <AppMock
-              name={name || currentAccount?.name || "Ana Souza"}
-              email={email || currentAccount?.email || "ana@exemplo.com"}
-              color={currentAccount?.color}
-            />
+            <AppMock name={name || currentAccount?.name || "Ana Souza"} color={currentAccount?.color} />
           </div>
 
           <ul className="space-y-2.5 border-t border-white/12 pt-6">

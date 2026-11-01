@@ -37,8 +37,6 @@ function SiteHeader({
   onToggleMobile,
   onHome,
   onSection,
-  onLogin,
-  onSignup,
   onAccount,
   onDownload,
 }: {
@@ -48,8 +46,6 @@ function SiteHeader({
   onToggleMobile: () => void;
   onHome: () => void;
   onSection: (id: string) => void;
-  onLogin: () => void;
-  onSignup: () => void;
   onAccount: () => void;
   onDownload: () => void;
 }) {
@@ -93,16 +89,12 @@ function SiteHeader({
             </button>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={onLogin}
+              <a
+                href="#ferramentas"
                 className="label hidden px-3 py-2 text-ink-2 transition-colors hover:text-signal sm:block"
               >
-                Entrar
-              </button>
-              <Button size="sm" variant="secondary" onClick={onSignup} className="hidden md:inline-flex">
-                Criar conta
-              </Button>
+                Ferramentas
+              </a>
             </>
           )}
 
@@ -146,20 +138,9 @@ function SiteHeader({
               ))}
             </nav>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              {account ? (
-                <Button variant="secondary" onClick={onAccount} className="col-span-2">
-                  Minha conta
-                </Button>
-              ) : (
-                <>
-                  <Button variant="secondary" onClick={onLogin}>
-                    Entrar
-                  </Button>
-                  <Button variant="secondary" onClick={onSignup}>
-                    Criar conta
-                  </Button>
-                </>
-              )}
+              <Button variant="secondary" onClick={onDownload} className="col-span-2">
+                Baixar o Orbi
+              </Button>
             </div>
           </div>
         </div>
@@ -172,17 +153,11 @@ function SiteHeader({
 /* Rodapé                                                             */
 /* ------------------------------------------------------------------ */
 function SiteFooter({
-  account,
   onHome,
   onSection,
-  onLogin,
-  onAccount,
 }: {
-  account: Account | null;
   onHome: () => void;
   onSection: (id: string) => void;
-  onLogin: () => void;
-  onAccount: () => void;
 }) {
   const link = "text-[13px] text-bone/60 transition-colors hover:text-bone";
   return (
@@ -219,11 +194,11 @@ function SiteFooter({
           </div>
 
           <div>
-            <p className="label text-bone/35">Conta</p>
+            <p className="label text-bone/35">Orbi</p>
             <ul className="mt-3 space-y-2">
               <li>
-                <button type="button" onClick={account ? onAccount : onLogin} className={link}>
-                  {account ? "Minha conta" : "Entrar"}
+                <button type="button" onClick={() => onSection("conta")} className={link}>
+                  Sem conta
                 </button>
               </li>
               <li>
@@ -515,8 +490,6 @@ export default function App() {
           onToggleMobile={() => setMobileOpen((open) => !open)}
           onHome={goHome}
           onSection={goSection}
-          onLogin={openLogin}
-          onSignup={openSignup}
           onAccount={() => navigate("/conta")}
           onDownload={openDownload}
         />
@@ -527,13 +500,7 @@ export default function App() {
           onSignup={openSignup}
           onAccount={() => navigate("/conta")}
         />
-        <SiteFooter
-          account={account}
-          onHome={goHome}
-          onSection={goSection}
-          onLogin={openLogin}
-          onAccount={() => navigate("/conta")}
-        />
+        <SiteFooter onHome={goHome} onSection={goSection} />
       </>
     );
   }
