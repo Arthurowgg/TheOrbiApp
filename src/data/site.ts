@@ -89,9 +89,9 @@ export const SYNC_ITEMS = [
 
 /** Notas da versão mostradas na área da conta. */
 export const RELEASE_NOTES = [
-  "120+ ferramentas do Windows na barra, em 11 grupos",
+  "121 ferramentas do Windows na barra, em 11 grupos",
   "Barra compacta: Enter executa, / abre o catálogo, F1 também",
-  "Modo Cloud opcional (Gemini 2.5), com chave cifrada ou pela conta",
+  "IA (Gemini 2.5) com a sua chave do Google AI Studio",
   "Lembretes, notas, histórico de cópia e memória do dia",
   "Rotinas e preferências na conta, iguais no site e no app",
 ];

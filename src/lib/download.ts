@@ -23,7 +23,7 @@ export const BUILD = {
   minimum: "Windows 11 22H2 ou superior (Windows 10 1809+)",
   installer: "OrbiSetup-1.1.2.exe",
   packageName: "Orbi-1.1.2",
-  sizeHint: "≈ 6 MB + download",
+  sizeHint: "≈ 5 MB · o resto baixa na instalação",
   repo: "Arthurowgg/TheOrbiApp",
 };
 
@@ -134,7 +134,7 @@ ${
 REQUISITOS
 - ${BUILD.minimum}
 - Arquitetura x64
-- 300 MB livres em disco
+- 200 MB livres em disco
 
 USO
 - Alt+Shift+O abre a barra de comando em qualquer programa.

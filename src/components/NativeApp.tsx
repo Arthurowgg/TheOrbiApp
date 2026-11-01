@@ -27,7 +27,7 @@ const ROWS: Record<Panel, { title: string; detail: string; badge: string }[]> = 
   ],
   ajustes: [
     { title: "Atalho global", detail: "Alt+Shift+O — troca em um clique", badge: "geral" },
-    { title: "Modo Cloud", detail: "Gemini 2.5 · chave cifrada com DPAPI", badge: "ia" },
+    { title: "IA e chave", detail: "Gemini 2.5 · chave cifrada com DPAPI", badge: "ia" },
     { title: "Bloqueio por inatividade", detail: "avisa 15 s antes de bloquear", badge: "segurança" },
     { title: "Iniciar com o Windows", detail: "fica quieto na bandeja", badge: "geral" },
     { title: "Backup dos seus dados", detail: "%APPDATA%\\Orbi, aberto no botão", badge: "sobre" },
