@@ -7,12 +7,15 @@ namespace Orbi.Services;
 public sealed record AgentStep(string Title, string Detail, bool Ok = true);
 
 /// <summary>
-/// O cérebro em sequência: em vez de responder com um comando, o Orbi pede um
-/// plano à IA, executa os passos na ordem (ferramentas, cliques, digitação,
-/// atalhos, olhar a tela) e só então conta o que aconteceu.
+/// O cérebro em sequência: a IA pede um comando por vez (em JSON), o Orbi
+/// executa, devolve o que mudou na tela e só então pede o próximo. Assim um
+/// pedido de vários passos — abrir o navegador, ver a tela, clicar no campo,
+/// digitar, apertar Enter — acontece sem adivinhar posições no escuro.
 /// </summary>
 public static class Agent
 {
+    private const int MaxSteps = 8;
+
     /// <summary>
     /// Entende pedidos que precisam de mais de uma ferramenta, em uma ordem
     /// específica. Devolve a resposta final e o que foi feito em cada passo.
@@ -26,69 +29,102 @@ public static class Agent
         var passos = new List<AgentStep>();
         if (!Gemini.Available) return ("Cole a sua chave do Gemini para eu pensar e agir.", passos);
 
-        var plano = await PlanAsync(goal, history, memory, token);
-        if (plano is null) return ("Não consegui pensar agora. Tente de novo em instantes.", passos);
+        var roteiro = new List<string>();
+        string? respostaFinal = null;
 
-        if (plano.Resposta is { Length: > 0 } direta && plano.Acoes.Count == 0)
-        {
-            return (direta, passos);
-        }
-
-        var resultados = new List<string>();
-        foreach (var acao in plano.Acoes.Take(12))
+        for (var i = 0; i < MaxSteps; i++)
         {
             token.ThrowIfCancellationRequested();
-            var (titulo, resultado, ok) = Execute(acao);
-            passos.Add(new AgentStep(titulo, resultado, ok));
-            resultados.Add($"{titulo} → {resultado}");
-            if (!ok && acao.Kind is "ferramenta") break;
+
+            var decisao = await DecideAsync(goal, roteiro, i == 0 ? history : null, memory, token);
+            if (decisao is null)
+            {
+                if (roteiro.Count == 0) return ("Não consegui pensar agora. Tente de novo em instantes.", passos);
+                break;
+            }
+
+            if (decisao.Resposta is { Length: > 0 } resposta && decisao.Acoes.Count == 0)
+            {
+                respostaFinal = resposta;
+                break;
+            }
+
+            if (decisao.Acoes.Count == 0) break;
+
+            foreach (var acao in decisao.Acoes)
+            {
+                token.ThrowIfCancellationRequested();
+                var (titulo, resultado, ok) = Execute(acao);
+                passos.Add(new AgentStep(titulo, resultado, ok));
+                roteiro.Add($"{i + 1}. {titulo} → {resultado}");
+                if (!ok && acao.Kind is "ferramenta") goto encerrar;
+            }
+
+            if (decisao.Resposta is { Length: > 0 } parcial) respostaFinal = parcial;
+            if (decisao.Fim) break;
         }
 
-        // Uma segunda passada curta: transformar o que aconteceu em resposta falada.
-        var resumo = string.Join("\n", resultados);
-        var fala = await Gemini.CompleteAsync(
-            $"O que eu pedi: {goal}\nO que o app executou, em ordem:\n{resumo}\n\n" +
-            "Responda em no máximo duas frases, em português do Brasil, contando o que foi feito. " +
-            "Se algo falhou, diga só o essencial. Não use listas.",
-            SystemPrompt(memory), json: false, maxTokens: 160, token);
-        var resposta = string.IsNullOrWhiteSpace(fala) ? plano.Resposta ?? "Feito." : fala!.Trim();
-        Memory.Remember(goal, "ação", resposta);
+    encerrar:
+
+        if (respostaFinal is null && roteiro.Count > 0)
+        {
+            respostaFinal = await ResumirAsync(goal, roteiro, memory, token);
+        }
+
+        var resposta = string.IsNullOrWhiteSpace(respostaFinal)
+            ? roteiro.Count == 0 ? "Não precisei mexer no PC." : "Feito."
+            : respostaFinal!.Trim();
+
+        if (roteiro.Count > 0) Memory.Remember(goal, "ação", resposta);
         return (resposta, passos);
     }
 
-    /* ------------------------------ plano ------------------------------ */
+    /* ------------------------------ decisão ------------------------------ */
 
     private sealed record Acao(string Kind, string? Id, string? Texto, int? X, int? Y, string? Tecla, string? Alvo);
 
-    private sealed record Plano(string? Resposta, List<Acao> Acoes);
+    private sealed record Decisao(string? Resposta, List<Acao> Acoes, bool Fim);
 
-    private static async Task<Plano?> PlanAsync(string goal, IEnumerable<(string Role, string Text)>? history,
-        string? memory, CancellationToken token)
+    private static async Task<Decisao?> DecideAsync(string goal, List<string> roteiro,
+        IEnumerable<(string Role, string Text)>? history, string? memory, CancellationToken token)
     {
         var catalogo = Tools.ForAi(Tools.All.Count);
+        var feito = roteiro.Count == 0
+            ? "nada até agora (este é o primeiro passo)"
+            : string.Join("\n", roteiro.TakeLast(6));
+
+        var conversa = "";
+        if (history is not null)
+        {
+            var linhas = history.TakeLast(6).Select(item => $"{item.Role}: {item.Text}").ToList();
+            if (linhas.Count > 0) conversa = "Conversa recente:\n" + string.Join("\n", linhas) + "\n\n";
+        }
+
         var pedido =
+            conversa +
             "Pedido da pessoa: " + goal + "\n\n" +
-            "Ferramentas disponíveis (use exatamente estes ids):\n" + catalogo + "\n\n" +
-            "Ações de controle do PC que você pode pedir:\n" +
-            "  {\"acao\":\"clicar\",\"x\":640,\"y\":400}\n" +
-            "  {\"acao\":\"digitar\",\"texto\":\"...\"}\n" +
-            "  {\"acao\":\"atalho\",\"tecla\":\"ctrl+t\"}\n" +
-            "  {\"acao\":\"ver\"}            (lê a tela e as janelas abertas)\n" +
-            "  {\"acao\":\"focar\",\"alvo\":\"chrome\"}\n\n" +
-            "Responda APENAS com JSON válido neste formato:\n" +
-            "{\"resposta\":\"o que responder se não precisar agir\",\"acoes\":[{\"acao\":\"ferramenta\",\"id\":\"volume-up\"}]}\n\n" +
-            "Regras: use quantos passos o pedido precisar, na ordem certa; " +
-            "para ver a tela use {\"acao\":\"ver\"} antes de clicar em algo que você não sabe onde está; " +
-            "se o pedido for só uma pergunta, deixe acoes vazio e responda em resposta; " +
-            "nada de texto fora do JSON.";
+            "O que já foi feito, em ordem:\n" + feito + "\n\n" +
+            "Ferramentas disponíveis (use exatamente estes ids em \"ferramenta\"):\n" + catalogo + "\n\n" +
+            "Ações de controle do PC:\n" +
+            "  {\"acao\":\"ver\"}                      lê a tela, as janelas e o cursor\n" +
+            "  {\"acao\":\"ferramenta\",\"id\":\"...\"}   executa uma ferramenta do catálogo\n" +
+            "  {\"acao\":\"focar\",\"alvo\":\"chrome\"}   traz a janela para a frente\n" +
+            "  {\"acao\":\"clicar\",\"x\":640,\"y\":400}  clique na posição da tela\n" +
+            "  {\"acao\":\"digitar\",\"texto\":\"...\"}   digita no campo em foco\n" +
+            "  {\"acao\":\"atalho\",\"tecla\":\"ctrl+t\"} atalho de teclado\n\n" +
+            "Responda APENAS com JSON:\n" +
+            "{\"acoes\":[{\"acao\":\"ver\"}],\"fim\":false,\"resposta\":\"só quando terminar\"}\n\n" +
+            "Regras: uma ação por passo quando o próximo depende do resultado (depois de \"ver\", " +
+            "use as coordenadas e os títulos que voltaram); várias ações juntas só quando são independentes; " +
+            "use \"fim\":true e escreva \"resposta\" quando o pedido estiver resolvido ou for só uma pergunta; " +
+            "se não souber onde clicar, peça {\"acao\":\"ver\"} primeiro; nada de texto fora do JSON.";
 
         var bruto = await Gemini.CompleteAsync(pedido, SystemPrompt(memory), json: true, maxTokens: 700, token);
         if (string.IsNullOrWhiteSpace(bruto)) return null;
 
         try
         {
-            var json = Extrair(bruto!);
-            using var documento = JsonDocument.Parse(json);
+            using var documento = JsonDocument.Parse(Extrair(bruto!));
             var raiz = documento.RootElement;
 
             string? resposta = null;
@@ -96,6 +132,8 @@ public static class Agent
             {
                 resposta = r.GetString();
             }
+
+            var fim = raiz.TryGetProperty("fim", out var f) && f.ValueKind is JsonValueKind.True;
 
             var acoes = new List<Acao>();
             if (raiz.TryGetProperty("acoes", out var lista) && lista.ValueKind == JsonValueKind.Array)
@@ -106,13 +144,28 @@ public static class Agent
                     if (acao is not null) acoes.Add(acao);
                 }
             }
-            return new Plano(resposta, acoes);
+
+            // uma resposta pronta sem ações encerra o pedido
+            if (!string.IsNullOrWhiteSpace(resposta) && acoes.Count == 0) fim = true;
+            return new Decisao(resposta, acoes, fim);
         }
         catch (Exception error)
         {
-            Log.Error("plano", error);
+            Log.Error("passo do agente", error);
             return null;
         }
+    }
+
+    private static async Task<string> ResumirAsync(string goal, List<string> roteiro, string? memory,
+        CancellationToken token)
+    {
+        var resumo = string.Join("\n", roteiro);
+        var fala = await Gemini.CompleteAsync(
+            $"O que eu pedi: {goal}\nO que o app executou, em ordem:\n{resumo}\n\n" +
+            "Responda em no máximo duas frases, em português do Brasil, contando o que foi feito. " +
+            "Se algo falhou, diga só o essencial. Não use listas.",
+            SystemPrompt(memory), json: false, maxTokens: 160, token);
+        return string.IsNullOrWhiteSpace(fala) ? "Feito." : fala!.Trim();
     }
 
     private static Acao? Ler(JsonElement item)

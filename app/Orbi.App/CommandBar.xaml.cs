@@ -603,6 +603,10 @@ public partial class CommandBar : Window
         _thinking = true;
         Expand();
         Footer.Text = "pensando…";
+        // A barra sai da frente: se o Orbi for clicar ou digitar, ela não pode
+        // roubar o foco nem cobrir o que precisa ser visto.
+        App.Instance.HideBarForAction();
+        await Task.Delay(150);
         try
         {
             var (answer, steps) = await Agent.RunAsync(prompt, _history, Memory.TodaySummary());
