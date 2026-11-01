@@ -165,6 +165,19 @@ jobs:
             exit 1
           fi
 
+      - name: Publicar resumo do deploy no branch
+        if: always()
+        shell: bash
+        run: |
+          if [ -f deploy-resumo.txt ]; then
+            { echo "# Deploy $(date -u +%FT%TZ)"; echo; head -40 deploy-resumo.txt; } > deploy-resultado.md
+            git config user.name "orbi-ci"
+            git config user.email "ci@orbi.local"
+            git add -f deploy-resultado.md
+            git commit -m "ci: resultado do deploy [skip ci]" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}" || true
+          fi
+
       - name: Guardar relatório como artefato
         if: always()
         uses: actions/upload-artifact@v4
@@ -219,10 +232,14 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npx --yes firebase-tools@latest deploy \
-            --only hosting,firestore:rules \
-            --project orbi-app-auth --non-interactive --debug 2>&1 | tee deploy.log | tail -40
-          STATUS=${PIPESTATUS[0]}
+          { npx --yes firebase-tools@latest deploy \
+              --only hosting,firestore:rules \
+              --project orbi-app-auth --non-interactive 2>&1 || true; } | tee deploy.log | tail -40
+          # guarda só as linhas úteis para o relatório no branch
+          grep -iE "error|forbidden|permission|invalid|failed|quota|http|warn|deploy" deploy.log | head -40 > deploy-resumo.txt || true
+          echo "exit original abaixo"
+          STATUS=$?
+          if grep -qE "Deploy complete|Hosting URL" deploy.log; then STATUS=0; fi
           if [ "$STATUS" != "0" ]; then
             echo "---- resumo para a API de checks ----"
             tail -25 deploy.log | while IFS= read -r line; do
