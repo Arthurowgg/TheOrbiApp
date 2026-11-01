@@ -5,36 +5,68 @@ using System.Text.Json;
 namespace Orbi.Services;
 
 /// <summary>
-/// Ponte com o Gemini (Google AI Studio). A chave fica cifrada no PC com DPAPI;
-/// o app nunca envia nada além do texto do comando.
+/// Modo Cloud: o Orbi responde com o Gemini em vez de só com o catálogo local.
+///
+/// A chave é pessoal e gratuita (Google AI Studio, camada Spark). Ela fica
+/// cifrada com DPAPI em %APPDATA%\Orbi e só é usada aqui no PC.
+///
+/// Sem chave — ou se o Google não responder — o Orbi continua funcionando:
+/// 120+ ferramentas executam no PC sem internet nenhuma.
 /// </summary>
 public static class Gemini
 {
-    private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(25) };
+    private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(20) };
 
-    public static bool Available => Store.Current.UseGemini && Store.HasApiKey();
+    /// <summary>Modelos gratuitos, do mais novo ao mais antigo — o primeiro que responder ganha.</summary>
+    public static readonly string[] Models =
+    {
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash",
+    };
+
+    public const string KeyPage = "https://aistudio.google.com/apikey";
+
+    public static bool HasKey => !string.IsNullOrWhiteSpace(Store.LoadApiKey());
+
+    /// <summary>Modo Cloud ligado e com chave: vale tentar o Gemini.</summary>
+    public static bool Available => Store.Current.CloudMode && HasKey;
+
+    public static string Mode => Available ? "cloud" : "local";
 
     public static async Task<string?> AskAsync(string prompt, IEnumerable<(string Role, string Text)>? history = null,
         string? memory = null)
     {
+        if (!Available) return null;
         var key = Store.LoadApiKey();
         if (string.IsNullOrWhiteSpace(key)) return null;
 
-        var model = string.IsNullOrWhiteSpace(Store.Current.GeminiModel)
-            ? "gemini-2.0-flash"
-            : Store.Current.GeminiModel;
+        var preferred = Store.Current.GeminiModel;
+        var order = Models.Where(model => model != preferred).Prepend(preferred)
+            .Where(model => !string.IsNullOrWhiteSpace(model))
+            .Distinct()
+            .ToList();
 
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={Uri.EscapeDataString(key)}";
+        foreach (var model in order)
+        {
+            var answer = await CallAsync(model, key, prompt, history, memory);
+            if (answer is not null)
+            {
+                Store.Current.GeminiModel = model;
+                Store.Save();
+                return answer;
+            }
+        }
+        return null;
+    }
+
+    private static async Task<string?> CallAsync(string model, string key, string prompt,
+        IEnumerable<(string Role, string Text)>? history, string? memory)
+    {
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent" +
+                  $"?key={Uri.EscapeDataString(key)}";
 
         var contents = new List<object>();
-        var system = "Você é a Orbi, assistente do Windows. Responda em português do Brasil, " +
-                     "direto, no máximo 3 frases. Se o pedido puder ser resolvido por um comando do app, " +
-                     "diga o comando exato (ex.: “abre o zap”, “volume em 30”, “me lembra em 20 min”). " +
-                     "Você não executa ações: apenas responde e sugere comandos. " +
-                     $"O usuário se chama {Store.Current.UserName}. Data: {DateTime.Now:dd/MM/yyyy}. " +
-                     "Você tem memória do dia dele e deve usá-la para responder perguntas como " +
-                     "“o que eu tava fazendo?”: " + (string.IsNullOrWhiteSpace(memory) ? "nada registrado hoje." : memory);
-
         if (history is not null)
         {
             foreach (var (role, text) in history.TakeLast(6))
@@ -46,27 +78,25 @@ public static class Gemini
 
         var payload = new
         {
-            systemInstruction = new { parts = new[] { new { text = system } } },
+            systemInstruction = new { parts = new[] { new { text = System(memory) } } },
             contents,
-            generationConfig = new { temperature = 0.6, maxOutputTokens = 400 },
+            generationConfig = new { temperature = 0.5, maxOutputTokens = 400 },
         };
 
         try
         {
             using var body = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
             using var response = await Client.PostAsync(url, body);
-            var json = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
-                // 400/403 costuma ser chave inválida; devolvemos null para cair no modo local.
+                Log.Add("gemini recusou", model + " " + (int)response.StatusCode);
                 return null;
             }
 
-            using var document = JsonDocument.Parse(json);
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             var root = document.RootElement;
             if (!root.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0) return null;
-            var candidate = candidates[0];
-            if (!candidate.TryGetProperty("content", out var content)) return null;
+            if (!candidates[0].TryGetProperty("content", out var content)) return null;
             if (!content.TryGetProperty("parts", out var parts) || parts.GetArrayLength() == 0) return null;
 
             var builder = new StringBuilder();
@@ -77,27 +107,43 @@ public static class Gemini
             var answer = builder.ToString().Trim();
             return string.IsNullOrWhiteSpace(answer) ? null : answer;
         }
-        catch
+        catch (Exception error)
         {
+            Log.Error("gemini " + model, error);
             return null;
         }
     }
 
-    /// <summary>Testa a chave com uma chamada mínima.</summary>
+    private static string System(string? memory)
+    {
+        var name = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "amigo" : Store.Current.UserName;
+        return "Você é o Orbi, o assistente do Windows do " + name + ". " +
+               "Responda em português do Brasil, direto, no máximo 3 frases. " +
+               "Você roda dentro de um app que executa ações no PC: quando a pessoa pedir algo do sistema, " +
+               "responda com o comando exato em uma linha, começando com “/”. " +
+               "Ferramentas disponíveis: " + Tools.ForAi() + ". " +
+               "Exemplo: para abrir o gerenciador de tarefas, responda “/task-manager — abrindo”. " +
+               "Nunca invente comandos fora dessa lista. " +
+               $"Hoje é {DateTime.Now:dd/MM/yyyy}, agora são {DateTime.Now:HH:mm}. " +
+               "Memória do dia: " + (string.IsNullOrWhiteSpace(memory) ? "nada registrado ainda." : memory);
+    }
+
+    /// <summary>Testa a chave com uma chamada mínima e devolve o primeiro modelo que respondeu.</summary>
     public static async Task<(bool Ok, string Message)> TestAsync(string key)
     {
-        var previous = Store.LoadApiKey();
-        Store.SaveApiKey(key);
-        try
+        if (string.IsNullOrWhiteSpace(key)) return (false, "Cole a chave antes de testar.");
+        foreach (var model in Models)
         {
-            var answer = await AskAsync("Responda apenas: ok");
-            return answer is null
-                ? (false, "A chave não foi aceita pelo Google. Confira se ela foi copiada inteira e se a Generative Language API está ativa.")
-                : (true, "Chave válida. O Gemini já pode responder aos comandos que fogem do script.");
+            var answer = await CallAsync(model, key.Trim(), "Responda apenas: ok", null, null);
+            if (answer is not null)
+            {
+                Store.SaveApiKey(key.Trim());
+                Store.Current.GeminiModel = model;
+                Store.Current.CloudMode = true;
+                Store.Save();
+                return (true, $"Chave válida. Modo Cloud ativo com {model}.");
+            }
         }
-        finally
-        {
-            if (!string.IsNullOrWhiteSpace(previous) && previous != key) Store.SaveApiKey(previous);
-        }
+        return (false, "O Google não aceitou a chave. Confira se copiou inteira e se a Generative Language API está ativa.");
     }
 }

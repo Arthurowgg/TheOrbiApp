@@ -384,8 +384,8 @@ public class SetupWindow : Window
 
         _conteudo.Children.Add(new TextBlock
         {
-            Text = "Na primeira vez o Orbi mostra uma janela dizendo que está aberto — " +
-                   "se algo não aparecer, use Orbi (diagnóstico) no Menu Iniciar.",
+            Text = "O Orbi abre como uma barra de comando no topo da tela. " +
+                   "O atalho do Menu Iniciar leva direto às ferramentas e aos ajustes.",
             FontSize = 12.5,
             Margin = new Thickness(0, 6, 0, 0),
             TextWrapping = TextWrapping.Wrap,

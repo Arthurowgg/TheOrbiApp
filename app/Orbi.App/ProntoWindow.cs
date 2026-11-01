@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -74,7 +75,7 @@ public static class ProntoWindow
             "volume 30               · volume, brilho, energia, captura",
             "nota comprar leite      · notas rápidas",
             "lembrar 18:00 reunião   · aviso na hora marcada",
-            "atalho gm → gmail.com   · atalho de texto",
+            "/  ou F1               · catálogo com 120+ ações",
             "status                  · CPU, memória, disco e bateria",
         })
         {
@@ -97,15 +98,15 @@ public static class ProntoWindow
         botoes.Children.Add(Botao("Abrir a barra", true, () =>
         {
             try { App.Instance.ShowBar(); }
-            catch (Exception erro) { Diagnostics.Report(erro, "Pronto → abrir barra", fatal: false); }
+            catch (Exception erro) { Log.Error("Pronto → abrir barra", erro); }
         }));
 
-        botoes.Children.Add(Botao("Diagnóstico", false, () =>
+        botoes.Children.Add(Botao("Ferramentas", false, () =>
         {
-            try { App.Instance.ShowDiagnostics(); } catch { /* ignorar */ }
+            try { App.Instance.ShowSettings("ferramentas"); } catch { /* ignorar */ }
         }));
 
-        botoes.Children.Add(Botao("Abrir a pasta dos logs", false, () =>
+        botoes.Children.Add(Botao("Abrir a pasta do Orbi", false, () =>
         {
             try { Process.Start(new ProcessStartInfo("explorer.exe", Store.Root) { UseShellExecute = true }); }
             catch { /* ignorar */ }
@@ -113,7 +114,7 @@ public static class ProntoWindow
 
         painel.Children.Add(botoes);
 
-        var log = ConsoleLog.Transcript;
+        var log = File.Exists(Log.Path) ? string.Join(Environment.NewLine, File.ReadAllLines(Log.Path).TakeLast(20)) : "";
         if (!string.IsNullOrWhiteSpace(log))
         {
             var caixa = new TextBox

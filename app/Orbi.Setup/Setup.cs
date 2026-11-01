@@ -167,10 +167,8 @@ public static class Installer
             Directory.CreateDirectory(Paths.StartMenu);
             Shortcut.Create(Path.Combine(Paths.StartMenu, "Orbi.lnk"), Paths.Exe, "", Paths.Target,
                 "Seu PC em português");
-            Shortcut.Create(Path.Combine(Paths.StartMenu, "Orbi (abrir com terminal).lnk"), Paths.Exe,
-                "--console-keep", Paths.Target, "Abre o Orbi com o log ao vivo");
-            Shortcut.Create(Path.Combine(Paths.StartMenu, "Orbi (diagnóstico).lnk"), Paths.Exe,
-                "--diag", Paths.Target, "Mostra por que a barra não apareceu");
+            Shortcut.Create(Path.Combine(Paths.StartMenu, "Orbi (ajustes e ferramentas).lnk"), Paths.Exe,
+                "--settings", Paths.Target, "Abre direto o painel de ferramentas");
             Shortcut.Create(Path.Combine(Paths.StartMenu, "Desinstalar o Orbi.lnk"), Paths.Uninstaller,
                 "--uninstall", Paths.Target, "Remove o Orbi deste PC");
             Shortcut.Create(Paths.Desktop, Paths.Exe, "", Paths.Target, "Seu PC em português");

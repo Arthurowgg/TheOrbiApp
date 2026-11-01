@@ -26,6 +26,9 @@ public sealed record OrbiReply(string Text, ReplyKind Kind = ReplyKind.Local, st
 /// </summary>
 public static partial class Interpreter
 {
+    /// <summary>Texto sem acento e em minúsculas — a mesma base usada para casar comandos.</summary>
+    public static string Simplify(string input) => Normalize(input);
+
     private static string Normalize(string input)
     {
         var lowered = input.Trim().ToLowerInvariant();
@@ -363,13 +366,54 @@ public static partial class Interpreter
         if (HelpCmd().IsMatch(text))
         {
             return OrbiReply.Local(
-                "Experimente: “abre o zap”, “volume em 30”, “me lembra em 20 min de beber água”, " +
-                "“status do PC”, “captura a tela”, “bloqueia o PC”, “desliga em 1 hora”.",
-                "Diga o nome de uma rotina para executar (ex.: “modo estudo”). F1 mostra esta lista.");
+                $"{Tools.All.Count} ferramentas prontas. Digite / para ver por grupo, ou peça direto: " +
+                "“abre o zap”, “volume em 30”, “me lembra em 20 min de beber água”, " +
+                "“status do PC”, “captura a tela”, “bloqueia o PC”, “limpa o dns”.",
+                "F1 também abre o catálogo. Enter executa o item selecionado.");
+        }
+
+        /* ----------------------------- catálogo de ferramentas ----------------------------- */
+        // Antes de desistir, procuramos no catálogo: 120+ ações do Windows que não
+        // precisam de regex própria ("bluetooth", "lixeira", "task manager"...).
+        var byTool = MatchTool(text);
+        if (byTool is not null)
+        {
+            return OrbiReply.Local(Tools.Run(byTool.Id), $"{byTool.Group} · ferramenta do Orbi");
         }
 
         /* ----------------------------- nada reconhecido ----------------------------- */
         return OrbiReply.Ai(input);
+    }
+
+    /// <summary>
+    /// Casa a frase com uma ferramenta do catálogo. Cuidado com falso positivo:
+    /// só aceita quando o texto é curto ou começa pelo comando.
+    /// </summary>
+    private static Tool? MatchTool(string text)
+    {
+        var best = (Tool? Tool, int Score)null;
+        foreach (var tool in Tools.All)
+        {
+            foreach (var key in tool.Keywords.Append(tool.Name))
+            {
+                var needle = Simplify(key);
+                if (needle.Length < 3) continue;
+                if (!text.Contains(needle, StringComparison.Ordinal)) continue;
+
+                // "abre o bluetooth" casa; um texto longo que só menciona a
+                // palavra de passagem não deve disparar ação.
+                var atStart = text.StartsWith(needle, StringComparison.Ordinal) ||
+                              text.StartsWith("abre " + needle, StringComparison.Ordinal) ||
+                              text.StartsWith("abrir " + needle, StringComparison.Ordinal) ||
+                              text.StartsWith("ativa " + needle, StringComparison.Ordinal) ||
+                              text.StartsWith("mostra " + needle, StringComparison.Ordinal);
+                if (!atStart && text.Length > needle.Length + 24) continue;
+
+                var score = needle.Length + (atStart ? 40 : 0);
+                if (best.Tool is null || score > best.Score) best = (tool, score);
+            }
+        }
+        return best.Tool;
     }
 
     /* ----------------------------- padrões ----------------------------- */

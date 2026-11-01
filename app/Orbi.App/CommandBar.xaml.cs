@@ -30,6 +30,39 @@ public partial class CommandBar : Window
     private readonly DispatcherTimer _debounce = new() { Interval = TimeSpan.FromMilliseconds(260) };
     private bool _thinking;
 
+    /// <summary>Altura da barra fechada: só a linha de comando.</summary>
+    private const double CompactHeight = 62;
+    private const double ExpandedHeight = 380;
+
+    private string Greeting
+    {
+        get
+        {
+            var first = string.IsNullOrWhiteSpace(Store.Current.UserName)
+                ? ""
+                : ", " + Store.Current.UserName.Split(' ')[0];
+            return $"Oi{first}. Digite um comando, “/” para as ferramentas ou pergunte algo…";
+        }
+    }
+
+    /// <summary>Só a linha de comando: sem resultados, sem rodapé.</summary>
+    private void Collapse()
+    {
+        Results.Visibility = Visibility.Collapsed;
+        FooterBar.Visibility = Visibility.Collapsed;
+        Height = CompactHeight;
+    }
+
+    private void Expand()
+    {
+        Results.Visibility = Visibility.Visible;
+        FooterBar.Visibility = Visibility.Visible;
+        var area = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Cursor.Position).WorkingArea;
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var areaHeight = area.Height / dpi.DpiScaleY;
+        Height = Math.Min(ExpandedHeight, Math.Max(CompactHeight + 80, areaHeight - 40));
+    }
+
     public CommandBar()
     {
         InitializeComponent();
@@ -66,7 +99,7 @@ public partial class CommandBar : Window
     }
 
     /* ----------------------------- abrir / fechar ----------------------------- */
-    public void RefreshGreeting() => ShowGreeting();
+    public void RefreshGreeting() => Hint.Text = Greeting;
 
     public void ShowBar()
     {
@@ -81,8 +114,9 @@ public partial class CommandBar : Window
 
         // Sempre define tamanho (nunca deixa NaN/Auto) — foi isso que já deixou
         // a janela com 0 de altura em telas com escala alta.
-        Width = Math.Max(380, Math.Min(720, areaWidth - 24));
-        Height = Math.Max(260, Math.Min(440, areaHeight - 24));
+        // Altura compacta: a janela é uma barra, não um painel.
+        Width = Math.Max(420, Math.Min(760, areaWidth - 24));
+        Height = CompactHeight;
 
         Left = area.Left / dpi.DpiScaleX + (areaWidth - Width) / 2;
         Top = area.Top / dpi.DpiScaleY + areaHeight * 0.22;
@@ -101,7 +135,8 @@ public partial class CommandBar : Window
 
         Input.Text = "";
         _rows.Clear();
-        ShowGreeting();
+        Hint.Text = Greeting;
+        Collapse();
         UpdateFooter();
 
         Topmost = true;
@@ -160,53 +195,6 @@ public partial class CommandBar : Window
     }
 
     /* ----------------------------- saudação ----------------------------- */
-    private void ShowGreeting()
-    {
-        var first = string.IsNullOrWhiteSpace(Store.Current.UserName)
-            ? ""
-            : ", " + Store.Current.UserName.Split(' ')[0];
-        var pending = Store.Current.Reminders.Count(r => !r.Done && r.DueAt > DateTime.Now);
-        var detail = pending > 0
-            ? $"Você tem {pending} lembrete(s) pendente(s)."
-            : ShortcutHint();
-
-        Add(new ResultRow
-        {
-            Glyph = "\u25CF",
-            Text = $"Oi{first}. O que você precisa?",
-            Detail = detail,
-            Badge = Gemini.Available ? "IA" : "local",
-            BadgeBrush = Gemini.Available ? "#FFC7452A" : "#1FFFFFFF",
-            BadgeTextBrush = Gemini.Available ? "#FFFFFFFF" : "#99F1EBDF",
-        });
-
-        var suggestions = new[]
-        {
-            ("Abre o zap", "apps"),
-            ("Volume em 30", "sliders"),
-            ("Me lembra em 20 min de beber água", "bell"),
-            ("Status do PC", "monitor"),
-        };
-
-        foreach (var (command, _) in suggestions)
-        {
-            Add(new ResultRow { Glyph = "\u2192", Text = command, Command = command, Badge = "exemplo" });
-        }
-
-        // A memória aparece como sugestão: é assim que a pessoa descobre que
-        // pode perguntar “o que eu fiz hoje?”.
-        foreach (var lembranca in Memory.Suggestions().Take(2))
-        {
-            Add(new ResultRow { Glyph = "\u21BA", Text = lembranca, Command = lembranca, Badge = "memória" });
-        }
-
-        var recent = Store.Current.Commands.Take(3).ToList();
-        foreach (var command in recent)
-        {
-            Add(new ResultRow { Glyph = "\u21BB", Text = command, Command = command, Badge = "recente" });
-        }
-    }
-
     private static string ShortcutHint() =>
         string.IsNullOrEmpty(HotKey.Combination)
             ? "Abra pelo ícone do Orbi na bandeja."
@@ -224,7 +212,65 @@ public partial class CommandBar : Window
         if (string.IsNullOrWhiteSpace(text))
         {
             _debounce.Stop();
-            ShowGreeting();
+            Collapse();
+            return;
+        }
+
+        // "/" abre o catálogo: a pessoa vê as ferramentas em vez de decorar comandos.
+        if (text == "/" )
+        {
+            _debounce.Stop();
+            Expand();
+            foreach (var group in Tools.Groups)
+            {
+                var sample = Tools.All.Where(tool => tool.Group == group).Take(3).Select(tool => tool.Name);
+                Add(new ResultRow
+                {
+                    Glyph = "\u25A0",
+                    Text = group,
+                    Detail = string.Join(" · ", sample) + " …",
+                    Badge = Tools.All.Count(tool => tool.Group == group).ToString(),
+                    Command = "/" + group,
+                });
+            }
+            Results.SelectedIndex = 0;
+            UpdateFooter();
+            return;
+        }
+
+        // "/grupo": lista as ferramentas daquele grupo. "/nome": executa direto.
+        if (text.StartsWith("/", StringComparison.Ordinal) && text.Length > 1)
+        {
+            _debounce.Stop();
+            Expand();
+            var query = text[1..].Trim();
+            var tool = Tools.Find(query);
+            if (tool is not null)
+            {
+                Add(ToRow(OrbiReply.Local(Tools.Run(tool.Id), $"{tool.Group} · {tool.Name}")));
+                Results.SelectedIndex = 0;
+                UpdateFooter();
+                return;
+            }
+
+            var found = Tools.Search(query);
+            foreach (var item in found.Take(40))
+            {
+                Add(new ResultRow
+                {
+                    Glyph = "\u2192",
+                    Text = item.Name,
+                    Detail = item.Group,
+                    Badge = "Enter",
+                    Command = "/" + item.Id,
+                });
+            }
+            if (found.Count == 0)
+            {
+                Add(new ResultRow { Glyph = "?", Text = $"Nenhuma ferramenta com “{query}”.", Detail = "Digite / para ver os grupos." });
+            }
+            Results.SelectedIndex = 0;
+            UpdateFooter();
             return;
         }
 
@@ -233,6 +279,7 @@ public partial class CommandBar : Window
         if (preview.Kind != ReplyKind.NeedsAi)
         {
             _debounce.Stop();
+            Expand();
             Add(ToRow(preview));
 
             // 1º item selecionado: Enter executa sem precisar clicar.
@@ -256,6 +303,7 @@ public partial class CommandBar : Window
 
         if (!Gemini.Available)
         {
+            Expand();
             Results.SelectedIndex = 0;
             Add(new ResultRow
             {
@@ -267,6 +315,7 @@ public partial class CommandBar : Window
             return;
         }
 
+        Expand();
         Add(new ResultRow
         {
             Glyph = "?",
@@ -329,6 +378,7 @@ public partial class CommandBar : Window
         {
             var answer = await Gemini.AskAsync(prompt, _history, Memory.TodaySummary());
             _rows.Clear();
+            Expand();
             if (answer is null)
             {
                 Add(new ResultRow
@@ -388,7 +438,8 @@ public partial class CommandBar : Window
         // F1 mostra a lista de comandos — a pessoa não precisa "adivinhar".
         if (e.Key == Key.F1)
         {
-            Input.Text = "ajuda";
+            Input.Text = "/";
+            Input.CaretIndex = 1;
             e.Handled = true;
             return;
         }
@@ -436,6 +487,7 @@ public partial class CommandBar : Window
         Remember(text, reply);
 
         _rows.Clear();
+        Expand();
         Add(ToRow(reply));
 
         if (reply.Kind == ReplyKind.Confirm)

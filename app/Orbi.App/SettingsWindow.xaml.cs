@@ -22,7 +22,7 @@ public partial class SettingsWindow : Window
         var settings = Store.Current;
         NameBox.Text = settings.UserName;
         StartupToggle.IsChecked = settings.StartWithWindows;
-        GeminiToggle.IsChecked = settings.UseGemini;
+        GeminiToggle.IsChecked = settings.CloudMode;
         LockToggle.IsChecked = settings.LockEnabled;
         LockMinutes.Text = settings.LockAfterMinutes.ToString();
         ApiKeyBox.Password = Store.LoadApiKey() ?? "";
@@ -32,13 +32,62 @@ public partial class SettingsWindow : Window
         RefreshAccount();
         LoadHotkeys();
         DataPath.Text = Store.Root;
-        ModelBox.SelectedIndex = Math.Max(0, new[] { "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b" }
-            .ToList().IndexOf(settings.GeminiModel));
+        ModelBox.SelectedIndex = Math.Max(0, Gemini.Models.ToList().IndexOf(settings.GeminiModel));
 
+        LoadTools();
         RenderReminders();
         RenderNotes();
         RenderShortcuts();
         RenderMemory();
+    }
+
+    private void OpenKeyPage_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(Gemini.KeyPage) { UseShellExecute = true });
+        }
+        catch (Exception error)
+        {
+            KeyStatus.Text = "Não abri o navegador: " + error.Message;
+        }
+    }
+
+    /* ----------------------------- ferramentas ----------------------------- */
+    private void LoadTools()
+    {
+        ToolsCount.Text = $"{Tools.All.Count} ações no seu Windows — sem administrador, sem internet.";
+        RenderTools(Tools.All);
+    }
+
+    private void RenderTools(IEnumerable<Tool> tools)
+    {
+        ToolsList.ItemsSource = tools
+            .Select(tool => new { tool.Group, tool.Name, tool.Id })
+            .ToList();
+    }
+
+    private void ToolsSearch_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        var query = ToolsSearch.Text.Trim();
+        RenderTools(string.IsNullOrWhiteSpace(query) ? Tools.All : Tools.Search(query));
+    }
+
+    private void ToolsList_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != System.Windows.Input.Key.Enter) return;
+        RunSelectedTool();
+        e.Handled = true;
+    }
+
+    private void ToolsList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => RunSelectedTool();
+
+    private void RunSelectedTool()
+    {
+        if (ToolsList.SelectedItem is null) return;
+        var id = ToolsList.SelectedItem.GetType().GetProperty("Id")?.GetValue(ToolsList.SelectedItem) as string;
+        if (string.IsNullOrWhiteSpace(id)) return;
+        ToolsStatus.Text = Tools.Run(id);
     }
 
     /* ----------------------------- conta e sync ----------------------------- */
@@ -133,12 +182,13 @@ public partial class SettingsWindow : Window
     {
         if (Pages is null) return;
         var tag = (Nav.SelectedItem as ListBoxItem)?.Tag as string ?? "geral";
-        foreach (var page in new[] { PageGeral, PageIa, PageConta, PageLembretes, PageNotas, PageAtalhos, PageMemoria, PageSeguranca, PageSobre })
+        foreach (var page in new[] { PageGeral, PageFerramentas, PageIa, PageConta, PageLembretes, PageNotas, PageAtalhos, PageMemoria, PageSeguranca, PageSobre })
         {
             page.Visibility = Visibility.Collapsed;
         }
         var target = tag switch
         {
+            "ferramentas" => PageFerramentas,
             "ia" => PageIa,
             "conta" => PageConta,
             "lembretes" => PageLembretes,
@@ -161,7 +211,7 @@ public partial class SettingsWindow : Window
         {
             SystemActions.StartWithWindows(wantsStartup);
         }
-        Store.Current.UseGemini = GeminiToggle.IsChecked == true;
+        Store.Current.CloudMode = GeminiToggle.IsChecked == true;
         Store.Save();
         _ = Sync.PushFieldsAsync(new System.Text.Json.Nodes.JsonObject
         {
@@ -187,7 +237,7 @@ public partial class SettingsWindow : Window
             return;
         }
         Store.SaveApiKey(key);
-        Store.Current.UseGemini = true;
+        Store.Current.CloudMode = true;
         Store.Save();
         KeyStatus.Text = "Chave salva e cifrada com DPAPI.";
         GeminiToggle.IsChecked = true;

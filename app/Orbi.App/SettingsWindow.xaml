@@ -58,6 +58,7 @@
                  ItemContainerStyle="{StaticResource NavButton}"
                  SelectionChanged="Nav_SelectionChanged" Padding="8">
           <ListBoxItem Content="Geral" Tag="geral"/>
+          <ListBoxItem Content="Ferramentas" Tag="ferramentas"/>
           <ListBoxItem Content="IA (Gemini)" Tag="ia"/>
           <ListBoxItem Content="Conta" Tag="conta"/>
           <ListBoxItem Content="Lembretes" Tag="lembretes"/>
@@ -117,9 +118,43 @@
           </StackPanel>
 
           <!-- IA -->
+          <!-- FERRAMENTAS -->
+          <StackPanel x:Name="PageFerramentas" Visibility="Collapsed">
+            <TextBlock Text="Ferramentas" Style="{StaticResource H1}"/>
+            <TextBlock x:Name="ToolsCount" Style="{StaticResource Muted}" Margin="0,4,0,16"/>
+
+            <TextBox x:Name="ToolsSearch" Style="{StaticResource Field}"
+                     TextChanged="ToolsSearch_TextChanged"/>
+
+            <ListBox x:Name="ToolsList" BorderThickness="0" Background="Transparent"
+                     Margin="0,14,0,0" MaxHeight="460"
+                     MouseDoubleClick="ToolsList_MouseDoubleClick"
+                     KeyDown="ToolsList_KeyDown">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Grid Margin="0,7">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="150"/>
+                      <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{Binding Group}"
+                               Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource Body}"/>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <TextBlock Text="Dê dois cliques (ou Enter) para executar. Na barra, digite / e o nome."
+                       Style="{StaticResource Muted}" Margin="0,10,0,0"/>
+            <TextBlock x:Name="ToolsStatus" Style="{StaticResource MonoText}" Margin="0,8,0,0"
+                       TextWrapping="Wrap"/>
+          </StackPanel>
+
           <StackPanel x:Name="PageIa" Visibility="Collapsed">
-            <TextBlock Text="IA (Gemini)" Style="{StaticResource H1}"/>
-            <TextBlock Text="A chave do Google AI Studio é gratuita e fica cifrada neste PC." Style="{StaticResource Muted}" Margin="0,4,0,18"/>
+            <TextBlock Text="Modo Cloud (Gemini)" Style="{StaticResource H1}"/>
+            <TextBlock Text="Sem chave o Orbi já funciona: as ferramentas rodam no PC. Com uma chave gratuita do Google AI Studio, ele também conversa e entende pedidos livres."
+                       Style="{StaticResource Muted}" Margin="0,4,0,18" TextWrapping="Wrap"/>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
@@ -129,7 +164,7 @@
                     <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
                   <StackPanel Grid.Column="0">
-                    <TextBlock Text="Usar Gemini para comandos fora do script" Style="{StaticResource Body}" FontWeight="SemiBold"/>
+                    <TextBlock Text="Modo Cloud ligado" Style="{StaticResource Body}" FontWeight="SemiBold"/>
                     <TextBlock x:Name="GeminiState" Style="{StaticResource Muted}"/>
                   </StackPanel>
                   <ToggleButton x:Name="GeminiToggle" Grid.Column="1" Style="{StaticResource ToggleSwitch}"
@@ -140,8 +175,12 @@
 
                 <TextBlock Text="Chave da API" Style="{StaticResource Label}"/>
                 <PasswordBox x:Name="ApiKeyBox" Style="{StaticResource PasswordField}" Margin="0,6,0,0"/>
-                <TextBlock Text="Cole a chave criada em aistudio.google.com/apikey. Guardamos com DPAPI: só este usuário do Windows consegue ler."
-                           Style="{StaticResource Muted}" Margin="0,6,0,0"/>
+                <TextBlock Text="Crie a sua em aistudio.google.com/apikey (leva um minuto, é gratuita). Ela fica cifrada neste PC com DPAPI: só este usuário do Windows consegue ler."
+                           Style="{StaticResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                <Button x:Name="OpenKeyPage" Content="Abrir a página da chave" Style="{StaticResource GhostButton}"
+                        HorizontalAlignment="Left" Margin="0,8,0,0" Click="OpenKeyPage_Click"/>
+                <TextBlock Text="Quem entra na conta do Orbi pode usar o modo Cloud sem colar chave nenhuma: o app usa a chave do projeto Orbi. A sua chave é só um atalho para não depender disso."
+                           Style="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap"/>
 
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                   <Button Content="Salvar chave" Style="{StaticResource PrimaryButton}" Click="SaveKey_Click"/>
@@ -155,9 +194,9 @@
 
                 <TextBlock Text="Modelo" Style="{StaticResource Label}"/>
                 <ComboBox x:Name="ModelBox" Margin="0,6,0,0">
+                  <ComboBoxItem Content="gemini-2.5-flash"/>
+                  <ComboBoxItem Content="gemini-2.5-flash-lite"/>
                   <ComboBoxItem Content="gemini-2.0-flash"/>
-                  <ComboBoxItem Content="gemini-1.5-flash"/>
-                  <ComboBoxItem Content="gemini-1.5-flash-8b"/>
                 </ComboBox>
               </StackPanel>
             </Border>

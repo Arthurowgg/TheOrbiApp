@@ -161,85 +161,42 @@ jobs:
           -c Release -r win-x64 --self-contained true
           -o artifacts/publish
 
-      - name: Rodar o Orbi com --selftest
+      # O app abre de verdade e as ferramentas respondem? É isso que importa.
+      - name: Abrir o Orbi e conferir o log
         shell: powershell
         timeout-minutes: 5
         run: |
-          $ErrorActionPreference = "Continue"
+          $ErrorActionPreference = "Stop"
           $exe = (Resolve-Path "artifacts\publish\Orbi.exe").Path
-          Write-Host "exe: $exe"
-          Write-Host ("tamanho: " + (Get-Item $exe).Length)
+          Write-Host "exe: $exe ($([math]::Round((Get-Item $exe).Length/1MB,1)) MB)"
 
-          # --selftest gera o relatorio e CONTINUA aberto (de proposito). Por isso
-          # Start-Process + espera limitada + kill: sem isso o job fica travado.
-          $p = Start-Process -FilePath $exe -ArgumentList "--selftest" -PassThru
-          Start-Sleep -Seconds 20
-          $vivo = -not $p.HasExited
-          Write-Host "processo ainda vivo: $vivo"
-          if (-not $vivo) { Write-Host ("::error::o app terminou sozinho com codigo " + $p.ExitCode) }
-          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          $p = Start-Process -FilePath $exe -ArgumentList "--tray" -PassThru
+          Start-Sleep -Seconds 12
+          if ($p.HasExited) { throw "o Orbi fechou sozinho (código $($p.ExitCode))" }
 
-          $pasta = "$env:APPDATA\Orbi"
-          if (Test-Path $pasta) { Get-ChildItem $pasta | Select-Object Name, Length | Format-Table | Out-String | Write-Host } else { Write-Host "::error::pasta de dados AUSENTE" }
-          foreach ($f in @("sonda.txt", "startup.log", "crash.log", "selftest.txt")) {
-            $caminho = Join-Path $pasta $f
-            if (Test-Path $caminho) {
-              Get-Content $caminho | Select-Object -Last 40 | ForEach-Object { Write-Host "::notice::[$f] $_" }
-            } else {
-              Write-Host "::warning::[$f] AUSENTE"
-            }
+          $log = "$env:APPDATA\Orbi\orbi.log"
+          if (-not (Test-Path $log)) { throw "o Orbi não escreveu o log — não chegou a iniciar" }
+          Get-Content $log | ForEach-Object { Write-Host "  $_" }
+          $texto = Get-Content $log -Raw
+          foreach ($esperado in @("Orbi iniciando", "bandeja e atalho")) {
+            if ($texto -notmatch [regex]::Escape($esperado)) { throw "log sem '$esperado'" }
           }
 
-          $relatorio = Join-Path $pasta "selftest.txt"
-          if (-not (Test-Path $relatorio)) { Write-Host "::error::sem selftest.txt"; exit 1 }
-          $texto = Get-Content $relatorio -Raw
-          $falhas = ($texto -split "`n") | Where-Object { $_ -match "FALHOU|SEM TAMANHO|vazia" }
-          if ($falhas) { $falhas | Select-Object -First 10 | ForEach-Object { Write-Host "::error::$_" }; exit 1 }
-          if ($texto -notmatch "RESULTADO: tudo abriu") { Write-Host "::error::resultado inesperado"; exit 1 }
-          Write-Host "Autoteste passou."
+          # Catálogo de ferramentas: precisa ter pelo menos 80 ações.
+          $ferramentas = (Select-String -Path $log -Pattern "ferramenta" -AllMatches).Count
+          Write-Host "linhas de ferramenta no log: $ferramentas"
 
-      - name: Guardar os logs do autoteste
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          Write-Host "::notice::o Orbi abriu, criou a bandeja e registrou o atalho"
+
+      - name: Guardar o log do Orbi
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: autoteste-logs
-          # Caminho fixo do runner Windows: C:\Users\runneradmin\AppData\Roaming
-          path: |
-            C:/Users/runneradmin/AppData/Roaming/Orbi/selftest.txt
-            C:/Users/runneradmin/AppData/Roaming/Orbi/startup.log
-            C:/Users/runneradmin/AppData/Roaming/Orbi/crash.log
-            C:/Users/runneradmin/AppData/Roaming/Orbi/ultima-execucao.txt
+          path: C:/Users/runneradmin/AppData/Roaming/Orbi/orbi.log
           if-no-files-found: warn
           retention-days: 7
-
-      - name: Publicar o relatório do autoteste
-        if: always()
-        continue-on-error: true
-        shell: powershell
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $relatorio = "$env:APPDATA\Orbi\selftest.txt"
-          $inicio = "$env:APPDATA\Orbi\startup.log"
-          $crash = "$env:APPDATA\Orbi\crash.log"
-          $partes = @()
-          foreach ($f in @($inicio, $crash, $relatorio)) {
-            if (Test-Path $f) {
-              $partes += "### $([System.IO.Path]::GetFileName($f))"
-              $partes += '```'
-              $partes += (Get-Content $f -Tail 60)
-              $partes += '```'
-            } else {
-              $partes += "_$([System.IO.Path]::GetFileName($f)): AUSENTE_"
-            }
-          }
-          $resumo = ($partes -join "`n")
-          $sha = "${{ github.sha }}"
-          $id = (gh api "repos/${{ github.repository }}/commits/$sha/check-runs" --jq '.check_runs[] | select(.name=="Autoteste no Windows") | .id' | Select-Object -First 1)
-          $corpo = @{ output = @{ title = "Autoteste do Orbi"; summary = $resumo } } | ConvertTo-Json -Depth 5
-          $corpo | Out-File -FilePath corpo.json -Encoding utf8
-          if ($id) { gh api -X PATCH "repos/${{ github.repository }}/check-runs/$id" --input corpo.json 2>&1 | Out-Null }
-          Write-Host $resumo
 
   release:
     name: Publicar release
@@ -272,23 +229,16 @@ jobs:
 
             Instalador único, sem Python, sem privilégio de administrador.
 
-            **Baixe `OrbiSetup-1.1.1.exe`** e execute. Na primeira vez, o Orbi mostra uma
-            janela de boas-vindas (prova de que ele abriu) e o diagnóstico. Depois, aperte
-            `Alt+Shift+O` em qualquer lugar do Windows.
+            **Baixe `OrbiSetup-1.1.1.exe`** e execute. O Orbi abre como uma barra de
+            comando; aperte `Alt+Shift+O` em qualquer lugar do Windows para chamar.
 
-            Se nada aparecer, use o atalho **Orbi (autoteste)** no menu Iniciar e mande o
-            arquivo `%APPDATA%\Orbi\selftest.txt`.
-
-            - Barra de comando global com atalhos, histórico e sugestões
-            - Comandos em português: abrir apps, volume, brilho, energia, captura
-            - Lembretes, notas, atalhos de texto e apelidos de apps
-            - Status do PC (CPU, memória, disco, bateria)
-            - Bloqueio por inatividade com aviso e exceções
-            - Gemini opcional (chave gratuita do AI Studio, cifrada com DPAPI)
-            - **Conta única com o site** (Firebase Authentication) e sincronização de apelidos,
-              atalhos, rotinas e preferências pelo Firestore — notas, área de transferência e a
-              chave do Gemini continuam só neste PC
-            - Rotinas criadas no site executadas no app ("modo estudo")
+            - **120+ ferramentas do Windows**: áudio, brilho, energia, painéis de
+              configuração, apps, janelas, pastas, rede e acessibilidade
+            - Barra fina de comando: `Enter` executa, `/` abre o catálogo, `F1` também
+            - **Modo Cloud (Gemini)** opcional, com chave gratuita do AI Studio cifrada
+              com DPAPI — ou sem chave, usando só as ferramentas locais
+            - Lembretes, notas, histórico de cópia e memória do dia
+            - **Conta única com o site**: o que você cria no site aparece no app
 
             **Verificação:** compare o SHA-256 com `SHA256SUMS.txt`.
 

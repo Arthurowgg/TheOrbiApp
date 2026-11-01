@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json.Nodes;
 using System.Windows.Threading;
 
@@ -23,6 +24,13 @@ public static class Sync
     public static string LastStatus { get; private set; } = "Sem conta vinculada.";
     public static DateTime? LastSync { get; private set; }
     public static event Action? Changed;
+
+    /// <summary>Sincroniza na hora (usado pela ferramenta “sincronizar agora”).</summary>
+    public static void Now()
+    {
+        try { Start(); Log.Add("sync manual pedido"); }
+        catch (Exception error) { Log.Error("sync manual", error); }
+    }
 
     public static void Start()
     {
