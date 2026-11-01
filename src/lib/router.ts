@@ -2,7 +2,7 @@ export type AccountPage = "painel" | "perfil" | "computadores" | "memoria" | "do
 export type LoginMode = "signin" | "signup" | "recover";
 
 export type Route =
-  | { name: "home" }
+  | { name: "home"; scroll?: string }
   | { name: "login"; mode: LoginMode }
   | { name: "account"; page: AccountPage };
 
@@ -20,6 +20,10 @@ export function parseRoute(hash: string): Route {
   if (path.startsWith("/entrar")) return { name: "login", mode: "signin" };
   if (path.startsWith("/criar")) return { name: "login", mode: "signup" };
   if (path.startsWith("/recuperar")) return { name: "login", mode: "recover" };
+  // atalhos diretos usados pelo app (ex.: "ver a versão mais nova")
+  if (path.startsWith("/baixar") || path.startsWith("/download") || path.startsWith("/instalar")) {
+    return { name: "home", scroll: "download" };
+  }
   if (path.startsWith("/conta")) {
     const sub = path.split("/")[2] ?? "";
     return { name: "account", page: ACCOUNT_PAGES[sub] ?? "painel" };

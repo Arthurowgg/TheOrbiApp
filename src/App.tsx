@@ -337,6 +337,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // /baixar e /download levam direto à seção de download da home.
+    if (route.name === "home" && route.scroll) {
+      const alvo = document.getElementById(route.scroll);
+      if (alvo) {
+        alvo.scrollIntoView({ behavior: "auto", block: "start" });
+        return;
+      }
+    }
     scrollToTop();
   }, [key]);
 
