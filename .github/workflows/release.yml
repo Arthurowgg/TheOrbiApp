@@ -112,7 +112,7 @@ jobs:
           $exe = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
           $zip = (Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1).FullName
           # Pacote local: o download público só existe depois da release publicada.
-          $p = Start-Process -FilePath $exe -ArgumentList "--silent","--payload",$zip -PassThru -Wait
+          $p = Start-Process -FilePath $exe -ArgumentList "--silent","--payload=$zip" -PassThru -Wait
           if ($p.ExitCode -ne 0) {
             $log = Join-Path $env:LOCALAPPDATA "Orbi-setup.log"
             if (Test-Path $log) { Get-Content $log | ForEach-Object { Write-Host "::error::setup: $_" } }

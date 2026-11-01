@@ -97,9 +97,17 @@ internal static class App
     /// <summary>Valor que vem depois de uma opção (ex.: --payload caminho.zip).</summary>
     private static string? Flag(string[] args, string name)
     {
+        foreach (var arg in args)
+        {
+            if (arg.StartsWith(name + "=", StringComparison.OrdinalIgnoreCase))
+            {
+                return arg[(name.Length + 1)..].Trim('"');
+            }
+        }
+
         var index = Array.FindIndex(args, a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
         if (index < 0 || index + 1 >= args.Length) return null;
-        return args[index + 1];
+        return args[index + 1].Trim('"');
     }
 
     /* ------------------------------ silencioso ------------------------------ */
@@ -117,8 +125,11 @@ internal static class App
         {
             Anotar($"Orbi setup {Installer.Versao} · {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
 
-            var payload = Flag(args, "--payload");
-            if (payload is not null) Payload.UseLocal(payload);
+            Anotar("argumentos: " + string.Join(" ", args));
+
+            var payload = Flag(args, "--payload") ?? Environment.GetEnvironmentVariable("ORBI_PAYLOAD");
+            if (!string.IsNullOrWhiteSpace(payload) && File.Exists(payload)) Payload.UseLocal(payload!);
+            else if (!string.IsNullOrWhiteSpace(payload)) Anotar("pacote local não encontrado: " + payload);
             Installer.Sink = Anotar;
 
             if (args.Contains("--uninstall"))
