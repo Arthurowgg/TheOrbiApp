@@ -1,0 +1,23 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\App.xaml.cs(142,28): error CS9202: Feature 'null conditional assignment' is not available in C# 12.0. Please use language version 14.0 or greater. [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Services\SystemActions.cs(62,24): error CS1061: 'ManagementBaseObject' does not contain a definition for 'InvokeMethod' and no accessible extension method 'InvokeMethod' accepting a first argument of type 'ManagementBaseObject' could be found (are you missing a using directive or an assembly reference?) [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Services\SystemActions.cs(387,51): error CS1503: Argument 1: cannot convert from 'System.Drawing.Bitmap' to 'System.Windows.Media.Imaging.BitmapSource' [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Services\PairingCodes.cs(31,20): error CS0019: Operator '+' cannot be applied to operands of type 'StringBuilder' and 'char' [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Services\Interpreter.cs(119,36): error CS1503: Argument 1: cannot convert from 'void' to 'string' [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\SettingsWindow.xaml.cs(11,18): warning CS0414: The field 'SettingsWindow._loading' is assigned but its value is never used [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+CSC : warning WFAC010: Remove high DPI settings from D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\app.manifest and configure via Application.SetHighDpiMode API or 'ApplicationHighDpiMode' project property [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+
+Build FAILED.
+
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\SettingsWindow.xaml.cs(11,18): warning CS0414: The field 'SettingsWindow._loading' is assigned but its value is never used [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+CSC : warning WFAC010: Remove high DPI settings from D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\app.manifest and configure via Application.SetHighDpiMode API or 'ApplicationHighDpiMode' project property [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\App.xaml.cs(142,28): error CS9202: Feature 'null conditional assignment' is not available in C# 12.0. Please use language version 14.0 or greater. [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Services\SystemActions.cs(62,24): error CS1061: 'ManagementBaseObject' does not contain a definition for 'InvokeMethod' and no accessible extension method 'InvokeMethod' accepting a first argument of type 'ManagementBaseObject' could be found (are you missing a using directive or an assembly reference?) [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Services\SystemActions.cs(387,51): error CS1503: Argument 1: cannot convert from 'System.Drawing.Bitmap' to 'System.Windows.Media.Imaging.BitmapSource' [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Services\PairingCodes.cs(31,20): error CS0019: Operator '+' cannot be applied to operands of type 'StringBuilder' and 'char' [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Services\Interpreter.cs(119,36): error CS1503: Argument 1: cannot convert from 'void' to 'string' [D:\a\TheOrbiApp\TheOrbiApp\app\Orbi.App\Orbi.App.csproj]
+    2 Warning(s)
+    5 Error(s)
+
+Time Elapsed 00:00:03.39
