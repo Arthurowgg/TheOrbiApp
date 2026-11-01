@@ -302,7 +302,7 @@ jobs:
             - **IA que usa o PC**: vê a tela, clica em um ponto, digita, aperta
               atalhos e encadeia ferramentas para pedidos com vários passos
             - Chave gratuita do Google AI Studio, guardada cifrada neste PC
-            - Lembretes, notas, histórico de cópia e memória do dia
+            - Histórico de cópia e memória do dia, sempre no seu PC
             - **Conta única com o site**: o que você cria no site aparece no app
 
             **Verificação:** compare o SHA-256 com `SHA256SUMS.txt`.
