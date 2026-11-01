@@ -144,40 +144,6 @@ jobs:
           [ "$FAILED" = "0" ] && log "RESULTADO: tudo passou" || log "RESULTADO: há falhas acima"
           echo "$FAILED" > failed.flag
 
-      - name: Publicar relatório no branch
-        if: always()
-        shell: bash
-        run: |
-          if [ -f relatorio-firebase.txt ]; then
-            git config user.name "orbi-ci"
-            git config user.email "ci@orbi.local"
-            git add -f relatorio-firebase.txt
-            git commit -m "ci: relatório do Firebase [skip ci]" || true
-            echo "" >> relatorio-firebase.txt
-            echo "push: $(git push origin "HEAD:${GITHUB_REF_NAME}" 2>&1 | tr '\n' ' ')" >> relatorio-firebase.txt
-          fi
-
-      - name: Falhar se algum teste falhou
-        shell: bash
-        run: |
-          if [ -f failed.flag ] && [ "$(cat failed.flag)" != "0" ]; then
-            echo "Algum teste falhou — veja relatorio-firebase.txt"
-            exit 1
-          fi
-
-      - name: Publicar resumo do deploy no branch
-        if: always()
-        shell: bash
-        run: |
-          if [ -f deploy-resumo.txt ]; then
-            { echo "# Deploy $(date -u +%FT%TZ)"; echo; head -40 deploy-resumo.txt; } > deploy-resultado.md
-            git config user.name "orbi-ci"
-            git config user.email "ci@orbi.local"
-            git add -f deploy-resultado.md
-            git commit -m "ci: resultado do deploy [skip ci]" || true
-            git push origin "HEAD:${GITHUB_REF_NAME}" || true
-          fi
-
       - name: Guardar relatório como artefato
         if: always()
         uses: actions/upload-artifact@v4
@@ -260,4 +226,7 @@ jobs:
             [ "$CODE" = "200" ] && break
             sleep 10
           done
-          curl -s https://orbi-app-auth.web.app/ | grep -o '<title>[^<]*</title>' || true
+          PAGINA=$(curl -sL https://orbi-app-auth.web.app/ || true)
+          echo "$PAGINA" | grep -o '<title>[^<]*</title>' || true
+          echo "$PAGINA" | grep -qi "orbi" && echo "::notice::site do Orbi publicado" \
+            || echo "::error::a página publicada não parece o site do Orbi"

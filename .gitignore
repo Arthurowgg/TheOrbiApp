@@ -17,3 +17,5 @@ app/frontend/Orbi/installer/OrbiSetup.exe
 coverage
 *.tgz
 ci-build.log
+deploy-resultado.md
+relatorio-firebase.txt
