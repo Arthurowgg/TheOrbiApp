@@ -11,7 +11,7 @@ namespace Orbi.Services;
 /// cifrada com DPAPI em %APPDATA%\Orbi e só é usada aqui no PC.
 ///
 /// Sem chave — ou se o Google não responder — o Orbi continua funcionando:
-/// 120+ ferramentas executam no PC sem internet nenhuma.
+/// centenas de ferramentas executam no PC sem internet nenhuma.
 /// </summary>
 public static class Gemini
 {
