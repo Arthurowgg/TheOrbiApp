@@ -80,7 +80,10 @@ jobs:
           $saida = & $iscc "app\installer\orbi.iss" *>&1 | Out-String
           Set-Content -Path "iscc.log" -Value $saida -Encoding utf8
           $codigo = $LASTEXITCODE
-          ($saida -split "`n") | Select-Object -Last 20 | ForEach-Object { Write-Host "::error::$_" }
+          $linhas = $saida -split "`n"
+          $erros = $linhas | Where-Object { $_ -match "Error|error|Erro" } | Select-Object -First 4
+          if (-not $erros) { $erros = $linhas | Where-Object { $_.Trim() } | Select-Object -Last 4 }
+          $erros | ForEach-Object { Write-Host "::error::$_" }
           if ($codigo -ne 0) { throw "ISCC falhou com codigo $codigo" }
 
       - name: Salvar o log do instalador
