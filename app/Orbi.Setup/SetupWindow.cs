@@ -45,6 +45,31 @@ public class SetupWindow : Window
 
         Montar();
         MostrarBoasVindas();
+
+        // --self-test: abre a janela, confere que ela ficou com conteúdo visível
+        // e fecha. É o que o CI usa para garantir que o instalador "abre".
+        if (_args.Contains("--self-test"))
+        {
+            Loaded += (_, _) =>
+            {
+                var linhas = $"janela visível={IsVisible} tamanho={ActualWidth:0}x{ActualHeight:0} " +
+                             $"conteúdo={(_raiz.Children.Count > 1 ? "montado" : "vazio")} " +
+                             $"log={(App.Current as App)?.LogBox is not null}";
+                try
+                {
+                    File.WriteAllText(App.SilentLog, $"self-test: {linhas}" + Environment.NewLine);
+                }
+                catch { }
+
+                // Fecha sozinho e com código 0 só se a janela realmente apareceu.
+                var ok = IsVisible && ActualWidth > 400 && ActualHeight > 300 && _raiz.Children.Count > 1;
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Environment.ExitCode = ok ? 0 : 1;
+                    Close();
+                }));
+            };
+        }
     }
 
     /* ------------------------------ layout ------------------------------ */

@@ -145,6 +145,20 @@ jobs:
           if (Test-Path $chave) { Falhar "a entrada de desinstalação continuou no registro" }
           Write-Host "::notice::instalação e desinstalação conferidas ($tamanho MB instalados)"
 
+      # A janela abre mesmo? Janela em branco que fecha sozinha já aconteceu uma
+      # vez; este passo abre, mede e fecha o instalador sozinho.
+      - name: A janela do instalador abre
+        shell: powershell
+        timeout-minutes: 5
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
+          $p = Start-Process -FilePath $exe -ArgumentList "--self-test" -PassThru -Wait
+          $log = Join-Path $env:LOCALAPPDATA "Orbi-setup.log"
+          $texto = if (Test-Path $log) { Get-Content $log -Raw } else { "" }
+          Write-Host "::notice::janela: $($texto.Trim())"
+          if ($p.ExitCode -ne 0) { throw "a janela do instalador não abriu direito (código $($p.ExitCode)): $texto" }
+
       - name: Smoke test do instalador
         shell: powershell
         run: |
