@@ -95,10 +95,7 @@ public static class SystemActions
     }
 
     /* ----------------------------- energia ----------------------------- */
-    public static void Lock()
-    {
-        LockScreen.Lock();
-    }
+    public static string Lock() => LockScreen.Lock();
 
     public static string Shutdown(int minutes)
     {
