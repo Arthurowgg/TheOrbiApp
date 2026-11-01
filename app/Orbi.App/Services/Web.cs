@@ -12,11 +12,15 @@ namespace Orbi.Services;
 /// </summary>
 public static class Web
 {
-    private static readonly HttpClient Cliente = new()
+    private static readonly HttpClient Cliente = Criar();
+
+    private static HttpClient Criar()
     {
-        Timeout = TimeSpan.FromSeconds(15),
-        Headers = { { "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Orbi/1.1" } },
-    };
+        var cliente = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        cliente.DefaultRequestHeaders.TryAddWithoutValidation(
+            "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Orbi/1.1");
+        return cliente;
+    }
 
     /// <summary>Pesquisa e devolve (título do 1º resultado, resumo curto, achou?).</summary>
     public static async Task<(string Titulo, string Trecho, bool Ok)> PesquisarAsync(string consulta)

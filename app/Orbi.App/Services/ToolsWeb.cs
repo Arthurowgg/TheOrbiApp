@@ -27,7 +27,7 @@ public static class ToolsWeb
             tools.Add(new Tool(id, name, group, keywords.Split(',', StringSplitOptions.TrimEntries), run,
                 Arg: arg, Placeholder: arg));
 
-        string D() => Args.Current;
+
 
         // dado vazio = usa o que está copiado
         string Texto(string valor) => string.IsNullOrWhiteSpace(valor) ? ClipboardSafe() : valor;
@@ -227,26 +227,26 @@ public static class ToolsWeb
         Add("abrir-o-zoom", "Abrir o Zoom", "Aplicativos", "zoom,reuniao", () => App("zoom"));
         Add("abrir-o-7-zip", "Abrir o 7-Zip", "Aplicativos", "zip,compactar", () => App("7zFM"));
         Add("abrir-o-prompt-como-administrador", "Abrir o Prompt como administrador", "Aplicativos", "cmd,administrador", () => App("cmd-as-admin"));
-        Add("somar", "Somar", "Cálculos", "somar,mais,calculadora", () => Calculo("somar", D()), "2+2 ou uma lista de números");
-        Add("subtrair", "Subtrair", "Cálculos", "subtrair,menos", () => Calculo("subtrair", D()), "10-3");
-        Add("multiplicar", "Multiplicar", "Cálculos", "multiplicar,vezes", () => Calculo("multiplicar", D()), "6*7");
-        Add("dividir", "Dividir", "Cálculos", "dividir,por", () => Calculo("dividir", D()), "10/2");
-        Add("calcular-uma-porcentagem", "Calcular uma porcentagem", "Cálculos", "porcentagem,desconto", () => Calculo("porcentagem", D()), "20% de 250");
-        Add("calcular-um-aumento", "Calcular um aumento", "Cálculos", "aumento,acrescimo", () => Calculo("aumento", D()), "250 + 15%");
-        Add("calcular-um-desconto", "Calcular um desconto", "Cálculos", "desconto,off", () => Calculo("desconto", D()), "250 - 15%");
-        Add("dividir-uma-conta", "Dividir uma conta", "Cálculos", "dividir,conta,rachar", () => Calculo("rachar", D()), "120/4");
-        Add("calcular-a-media", "Calcular a média", "Cálculos", "media,media de", () => Calculo("media", D()), "10, 8, 6");
-        Add("calcular-o-imc", "Calcular o IMC", "Cálculos", "imc,peso,altura", () => Conversao("calcular-o-imc", D()), "80 1.80");
-        Add("converter-celsius-para-fahrenheit", "Converter Celsius para Fahrenheit", "Cálculos", "celsius,fahrenheit", () => Conversao("converter-celsius-para-fahrenheit", D()), "30");
-        Add("converter-fahrenheit-para-celsius", "Converter Fahrenheit para Celsius", "Cálculos", "fahrenheit,celsius", () => Conversao("converter-fahrenheit-para-celsius", D()), "86");
-        Add("converter-quilometros-para-milhas", "Converter quilômetros para milhas", "Cálculos", "km,milhas", () => Conversao("converter-quilometros-para-milhas", D()), "42");
-        Add("converter-metros-para-pes", "Converter metros para pés", "Cálculos", "metros,pés", () => Conversao("converter-metros-para-pes", D()), "1.80");
-        Add("converter-quilos-para-libras", "Converter quilos para libras", "Cálculos", "quilos,libras", () => Conversao("converter-quilos-para-libras", D()), "75");
-        Add("converter-litros-para-galoes", "Converter litros para galões", "Cálculos", "litros,galao", () => Conversao("converter-litros-para-galoes", D()), "10");
-        Add("converter-reais-para-dolares", "Converter reais para dólares", "Cálculos", "reais,dolar,cambio", () => Conversao("converter-reais-para-dolares", D()), "100");
-        Add("calcular-a-regra-de-tres", "Calcular a regra de três", "Cálculos", "regra de tres,proporcao", () => Conversao("calcular-a-regra-de-tres", D()), "a b c");
-        Add("calcular-juros-simples", "Calcular juros simples", "Cálculos", "juros,simples", () => Conversao("calcular-juros-simples", D()), "1000 2 12");
-        Add("calcular-o-troco", "Calcular o troco", "Cálculos", "troco,resto", () => Conversao("calcular-o-troco", D()), "50-37.20");
+        Add("somar", "Somar", "Cálculos", "somar,mais,calculadora", () => Calculo("somar", Args.Current), "2+2 ou uma lista de números");
+        Add("subtrair", "Subtrair", "Cálculos", "subtrair,menos", () => Calculo("subtrair", Args.Current), "10-3");
+        Add("multiplicar", "Multiplicar", "Cálculos", "multiplicar,vezes", () => Calculo("multiplicar", Args.Current), "6*7");
+        Add("dividir", "Dividir", "Cálculos", "dividir,por", () => Calculo("dividir", Args.Current), "10/2");
+        Add("calcular-uma-porcentagem", "Calcular uma porcentagem", "Cálculos", "porcentagem,desconto", () => Calculo("porcentagem", Args.Current), "20% de 250");
+        Add("calcular-um-aumento", "Calcular um aumento", "Cálculos", "aumento,acrescimo", () => Calculo("aumento", Args.Current), "250 + 15%");
+        Add("calcular-um-desconto", "Calcular um desconto", "Cálculos", "desconto,off", () => Calculo("desconto", Args.Current), "250 - 15%");
+        Add("dividir-uma-conta", "Dividir uma conta", "Cálculos", "dividir,conta,rachar", () => Calculo("rachar", Args.Current), "120/4");
+        Add("calcular-a-media", "Calcular a média", "Cálculos", "media,media de", () => Calculo("media", Args.Current), "10, 8, 6");
+        Add("calcular-o-imc", "Calcular o IMC", "Cálculos", "imc,peso,altura", () => Conversao("calcular-o-imc", Args.Current), "80 1.80");
+        Add("converter-celsius-para-fahrenheit", "Converter Celsius para Fahrenheit", "Cálculos", "celsius,fahrenheit", () => Conversao("converter-celsius-para-fahrenheit", Args.Current), "30");
+        Add("converter-fahrenheit-para-celsius", "Converter Fahrenheit para Celsius", "Cálculos", "fahrenheit,celsius", () => Conversao("converter-fahrenheit-para-celsius", Args.Current), "86");
+        Add("converter-quilometros-para-milhas", "Converter quilômetros para milhas", "Cálculos", "km,milhas", () => Conversao("converter-quilometros-para-milhas", Args.Current), "42");
+        Add("converter-metros-para-pes", "Converter metros para pés", "Cálculos", "metros,pés", () => Conversao("converter-metros-para-pes", Args.Current), "1.80");
+        Add("converter-quilos-para-libras", "Converter quilos para libras", "Cálculos", "quilos,libras", () => Conversao("converter-quilos-para-libras", Args.Current), "75");
+        Add("converter-litros-para-galoes", "Converter litros para galões", "Cálculos", "litros,galao", () => Conversao("converter-litros-para-galoes", Args.Current), "10");
+        Add("converter-reais-para-dolares", "Converter reais para dólares", "Cálculos", "reais,dolar,cambio", () => Conversao("converter-reais-para-dolares", Args.Current), "100");
+        Add("calcular-a-regra-de-tres", "Calcular a regra de três", "Cálculos", "regra de tres,proporcao", () => Conversao("calcular-a-regra-de-tres", Args.Current), "a b c");
+        Add("calcular-juros-simples", "Calcular juros simples", "Cálculos", "juros,simples", () => Conversao("calcular-juros-simples", Args.Current), "1000 2 12");
+        Add("calcular-o-troco", "Calcular o troco", "Cálculos", "troco,resto", () => Conversao("calcular-o-troco", Args.Current), "50-37.20");
         Add("ver-a-data-de-hoje", "Ver a data de hoje", "Datas", "data,hoje", () => Data("ver-a-data-de-hoje"));
         Add("ver-a-hora-agora", "Ver a hora agora", "Datas", "hora,agora", () => Data("ver-a-hora-agora"));
         Add("ver-o-dia-da-semana", "Ver o dia da semana", "Datas", "dia,semana,hoje", () => Data("ver-o-dia-da-semana"));
