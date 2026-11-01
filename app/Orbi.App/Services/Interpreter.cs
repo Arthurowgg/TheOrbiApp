@@ -189,6 +189,13 @@ public static partial class Interpreter
             return OrbiReply.Local($"Você tem {pending.Count} lembrete(s):\n{list}");
         }
 
+        if (ForgetCmd().IsMatch(text))
+        {
+            Memory.Forget();
+            if (Firebase.SignedIn) _ = Sync.PushAsync();
+            return OrbiReply.Local("Apaguei a memória.", "A conta também fica limpa.");
+        }
+
         if (ClipboardCmd().IsMatch(text))
         {
             try
@@ -400,6 +407,9 @@ public static partial class Interpreter
 
     [GeneratedRegex(@"\b(o que eu copiei|copia o que eu copiei|area de transferencia)\b")]
     private static partial Regex ClipboardCmd();
+
+    [GeneratedRegex(@"^(esque[cç]a (a )?(minha )?mem[oó]ria|apague (a )?mem[oó]ria|limpe a mem[oó]ria)$")]
+    private static partial Regex ForgetCmd();
 
     [GeneratedRegex(@"\b(historico de copia|ultimos copiados)\b")]
     private static partial Regex CopyHistory();

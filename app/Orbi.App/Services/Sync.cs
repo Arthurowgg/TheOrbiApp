@@ -42,6 +42,7 @@ public static class Sync
         };
         Timer.Tick += async (_, _) => await TickAsync();
         Timer.Start();
+        Memory.PushHook = AgendarMemoria;
 
         if (Firebase.SignedIn) _ = PullAsync(true);
     }
@@ -51,6 +52,37 @@ public static class Sync
         Store.Current.LastSyncLabel = LastSync is { } when ? when.ToString("HH:mm") : "";
         Changed?.Invoke();
     }
+
+    /// <summary>
+    /// Envia a memória sozinho, mas com calma: no máximo uma vez a cada 20 s,
+    /// e só se algo novo realmente entrou.
+    /// </summary>
+    private static void AgendarMemoria()
+    {
+        if (!Firebase.SignedIn) return;
+        if (_pending) return;
+        _pending = true;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        timer.Tick += async (_, _) =>
+        {
+            timer.Stop();
+            _pending = false;
+            if (!Firebase.SignedIn) return;
+            await Enviar(new JsonObject
+            {
+                ["memory"] = Firebase.List(Memory.All.Take(120).Select(entry => Firebase.Map(new JsonObject
+                {
+                    ["text"] = Firebase.Str(entry.Text),
+                    ["kind"] = Firebase.Str(entry.Kind),
+                    ["answer"] = Firebase.Str(entry.Answer ?? ""),
+                    ["at"] = Firebase.Timestamp(entry.At.ToUniversalTime()),
+                }))),
+            });
+        };
+        timer.Start();
+    }
+
+    private static bool _pending;
 
     private static async Task TickAsync()
     {

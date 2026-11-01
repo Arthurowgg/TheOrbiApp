@@ -86,6 +86,7 @@ public static class Memory
             if (_entries.Count > Max) _entries.RemoveRange(Max, _entries.Count - Max);
         }
         Save();
+        PushHook?.Invoke();
     }
 
     public static void Forget()
@@ -94,6 +95,9 @@ public static class Memory
         lock (Gate) _entries.Clear();
         Save();
     }
+
+    /// <summary>Chamado quando algo novo entra na memória (a conta envia em segundo plano).</summary>
+    public static Action? PushHook { get; set; }
 
     /// <summary>Junta registros guardados em outro PC com os daqui.</summary>
     public static void Adopt(IEnumerable<MemoryEntry> remotas)
