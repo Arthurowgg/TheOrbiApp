@@ -703,7 +703,7 @@ public static class ToolsWeb
         switch (id)
         {
             case "copiar-para-a-area-de-transferencia":
-                try { System.Windows.Clipboard.SetText(dado); return "Copiado."; }
+                try { System.Windows.Clipboard.SetText(dado); return "Copiado: " + Curto(dado); }
                 catch (Exception error) { return error.Message; }
             case "colar-da-area-de-transferencia":
             case "ver-o-que-esta-copiado":

@@ -299,6 +299,33 @@ public partial class App : System.Windows.Application
                     Nota($"painel {painel}: visível={janela?.IsVisible} tamanho={janela?.ActualWidth:0}x{janela?.ActualHeight:0}");
                 }
 
+                // O catálogo novo tem que executar de verdade, não só compilar.
+                var casos = new (string Id, string Dado, string Esperado)[]
+                {
+                    ("somar", "2+2", "4"),
+                    ("calcular-uma-porcentagem", "% de 250", "50"),
+                    ("converter-celsius-para-fahrenheit", "100", "212"),
+                    ("calcular-o-imc", "80 1,80", "24"),
+                    ("deixar-em-maiusculas", "orbi", "ORBI"),
+                    ("inverter-o-texto", "abc", "cba"),
+                    ("contar-as-letras", "orbi", "4"),
+                    ("copiar-para-a-area-de-transferencia", "teste orbi", "teste orbi"),
+                    ("ver-o-que-esta-copiado", "", "teste orbi"),
+                    ("contar-as-palavras-do-texto-copiado", "", "2"),
+                };
+                foreach (var (id, dado, esperado) in casos)
+                {
+                    var saida = Tools.Run(id, dado);
+                    var casou = saida.Contains(esperado, StringComparison.OrdinalIgnoreCase);
+                    ok &= casou;
+                    Nota($"ferramenta {id}({dado}) => {saida}{(casou ? "" : "  [esperado: " + esperado + "]")}");
+                }
+
+                // A IA não pode receber o catálogo inteiro: o pedido escolhe as ferramentas.
+                var enxuto = Tools.ForAi("converter 30 graus para fahrenheit");
+                ok &= enxuto.Contains("converter-celsius-para-fahrenheit") && enxuto.Length < Tools.CatalogoCompleto().Length;
+                Nota($"catálogo para a IA: {enxuto.Split('\n').Length} de {Tools.All.Count} linhas");
+
                 // abrir a barra de novo tem que fechar o painel: um na frente por vez
                 ShowBar();
                 await Task.Delay(200);
