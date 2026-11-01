@@ -19,7 +19,9 @@ permissions:
 
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: false
+  # true: uma execução travada (runner preso) não bloqueia as próximas — o push
+  # novo cancela a antiga e roda.
+  cancel-in-progress: true
 
 jobs:
   web:
