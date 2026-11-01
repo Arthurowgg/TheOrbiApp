@@ -54,7 +54,8 @@ public class SetupWindow : Window
             {
                 var linhas = $"janela visível={IsVisible} tamanho={ActualWidth:0}x{ActualHeight:0} " +
                              $"conteúdo={(_raiz.Children.Count > 1 ? "montado" : "vazio")} " +
-                             $"log={(App.Current as App)?.LogBox is not null}";
+                             $"log={(App.Current as App)?.LogBox is not null} " +
+                             $"sink={Installer.Sink is not null}";
                 try
                 {
                     File.WriteAllText(App.SilentLog, $"self-test: {linhas}" + Environment.NewLine);
@@ -62,7 +63,8 @@ public class SetupWindow : Window
                 catch { }
 
                 // Fecha sozinho e com código 0 só se a janela realmente apareceu.
-                var ok = IsVisible && ActualWidth > 400 && ActualHeight > 300 && _raiz.Children.Count > 1;
+                var ok = IsVisible && ActualWidth > 400 && ActualHeight > 300 && _raiz.Children.Count > 1
+                         && _conteudo.Children.Count > 0;
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     Environment.ExitCode = ok ? 0 : 1;
@@ -359,6 +361,11 @@ public class SetupWindow : Window
         };
         _conteudo.Children.Add(log);
         ((App)Application.Current).LogBox = log;
+        // Sem isso a janela ficava muda e parecia travada em branco.
+        Installer.Sink = linha => Dispatcher.BeginInvoke(new Action(() =>
+        {
+            log.Text += linha + Environment.NewLine;
+        }));
 
         var progresso = new Progress<double>(valor =>
         {

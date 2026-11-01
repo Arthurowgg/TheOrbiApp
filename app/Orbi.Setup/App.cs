@@ -41,7 +41,26 @@ public class App : Application
             return;
         }
 
-        app.Run(new SetupWindow(args));
+        try
+        {
+            app.Run(new SetupWindow(args));
+        }
+        catch (Exception error)
+        {
+            Note("falha ao abrir a janela: " + error);
+            MessageBox.Show("O instalador não conseguiu abrir: " + error.Message,
+                "Orbi — instalador", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// Registra o que aconteceu em %LOCALAPPDATA%\Orbi-setup.log. É o que permite
+    /// descobrir depois por que uma janela abriu em branco em algum PC.
+    /// </summary>
+    public static void Note(string line)
+    {
+        try { File.AppendAllText(SilentLog, $"{DateTime.Now:HH:mm:ss} {line}{Environment.NewLine}"); }
+        catch { }
     }
 
     /// <summary>
@@ -88,8 +107,12 @@ public class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            Note("erro não tratado: " + args.ExceptionObject);
+
         DispatcherUnhandledException += (_, args) =>
         {
+            Note("erro na interface: " + args.Exception);
             MessageBox.Show(args.Exception.ToString(), "Orbi — erro no instalador");
             args.Handled = true;
         };
