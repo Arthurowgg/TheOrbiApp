@@ -220,7 +220,12 @@ jobs:
             else
               echo "secret $nome: ${#valor} caracteres"
               printf '%s' "$valor" > /tmp/candidato.json
-              python3 scripts/checar-credencial.py /tmp/candidato.json || echo "::warning::$nome inválido"
+              if ! SAIDA=$(python3 scripts/checar-credencial.py /tmp/candidato.json 2>&1); then
+                echo "::error::$nome inválido: $(echo "$SAIDA" | head -2 | tr '\n' ' ' | cut -c1-300)"
+              else
+                echo "::notice::$nome ok: $(echo "$SAIDA" | head -2 | tr '\n' ' ')"
+              fi
+              echo "comeca com: $(printf '%s' "$valor" | head -c 18)"
             fi
           done
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
