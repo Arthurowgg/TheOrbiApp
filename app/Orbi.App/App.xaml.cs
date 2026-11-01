@@ -20,7 +20,12 @@ public partial class App : System.Windows.Application
     {
         try
         {
-            new App().Run();
+            var app = new App();
+            if (Environment.GetCommandLineArgs().Any(arg => arg == "--self-test"))
+            {
+                app._selfTest = true;
+            }
+            app.Run();
         }
         catch (Exception error)
         {
@@ -37,6 +42,7 @@ public partial class App : System.Windows.Application
     private Window? _panel;
     private string? _panelName;
     private bool _barShouldReturn;
+    private bool _selfTest;
     private DispatcherTimer? _reminderTimer;
     private DispatcherTimer? _idleTimer;
     private DateTime _lastActivity = DateTime.Now;
@@ -121,6 +127,13 @@ public partial class App : System.Windows.Application
         if (e.Args.Contains("--settings"))
         {
             ShowSettings();
+            return;
+        }
+
+        // Autoteste do CI: abre barra e painéis, confere e sai.
+        if (_selfTest || e.Args.Contains("--self-test"))
+        {
+            RunSelfTest();
             return;
         }
 
@@ -228,6 +241,65 @@ public partial class App : System.Windows.Application
     {
         _barShouldReturn = false;
         _bar?.HideBar();
+    }
+
+    /// <summary>
+    /// Autoteste do CI: abre a barra, o menu e cada painel, confere que eles
+    /// existem de verdade e fecha. Sem isso, um painel quebrado só apareceria
+    /// na mão de quem usa.
+    /// </summary>
+    public void RunSelfTest()
+    {
+        Dispatcher.BeginInvoke(new Action(async () =>
+        {
+            var linhas = new List<string>();
+            void Nota(string texto)
+            {
+                linhas.Add(texto);
+                try
+                {
+                    File.AppendAllText(Path.Combine(Store.Root, "autoteste.log"), texto + Environment.NewLine);
+                }
+                catch { }
+            }
+
+            var ok = true;
+            try
+            {
+                ShowBar();
+                ok &= _bar is { IsVisible: true };
+                Nota($"barra visível={_bar?.IsVisible} largura={_bar?.Width:0} altura={_bar?.Height:0}");
+
+                _bar?.OpenMenuForTest();
+                ok &= _bar?.MenuOpen == true;
+                Nota($"menu aberto={_bar?.MenuOpen}");
+
+                foreach (var painel in new[] { "perfil", "ia", "ferramentas", "ajustes" })
+                {
+                    OpenPanel(painel);
+                    await Task.Delay(250);
+                    var janela = _panel;
+                    var visivel = janela is { IsVisible: true } && janela.ActualWidth > 300 && janela.ActualHeight > 250;
+                    ok &= visivel;
+                    Nota($"painel {painel}: visível={janela?.IsVisible} tamanho={janela?.ActualWidth:0}x{janela?.ActualHeight:0}");
+                }
+
+                // abrir a barra de novo tem que fechar o painel: um na frente por vez
+                ShowBar();
+                await Task.Delay(200);
+                ok &= _panel is null;
+                Nota($"um por vez: painel fechado={_panel is null}");
+            }
+            catch (Exception error)
+            {
+                ok = false;
+                Nota("falhou: " + error.Message);
+            }
+
+            Nota(ok ? "ok" : "falhou");
+            Environment.ExitCode = ok ? 0 : 1;
+            ExitApp();
+        }));
     }
 
     /// <summary>A barra volta (usado depois de salvar a chave, sair da conta…).</summary>

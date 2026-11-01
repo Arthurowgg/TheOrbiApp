@@ -146,7 +146,7 @@ public sealed class IaWindow : Window
 
     private void Remover()
     {
-        Store.SaveApiKey(null);
+        Store.SaveApiKey("");
         _chave.Password = "";
         _estado.Text = Estado();
         _status.Text = "Chave removida.";

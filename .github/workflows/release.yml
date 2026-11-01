@@ -153,6 +153,22 @@ jobs:
           if (Test-Path $chave) { Falhar "a entrada de desinstalação continuou no registro" }
           Write-Host "::notice::instalação e desinstalação conferidas ($tamanho MB instalados)"
 
+      # Os painéis (IA, Ferramentas, Perfil) abrem sem erro? A barra também?
+      - name: Abrir a barra e os painéis
+        shell: powershell
+        timeout-minutes: 5
+        run: |
+          $ErrorActionPreference = "Stop"
+          $app = Join-Path $env:LOCALAPPDATA "Programs\Orbi\Orbi.exe"
+          if (-not (Test-Path $app)) { throw "Orbi instalado não encontrado em $app" }
+          $log = Join-Path $env:APPDATA "Orbi\orbi.log"
+          $auto = Join-Path $env:APPDATA "Orbi\autoteste.log"
+          if (Test-Path $auto) { Remove-Item $auto -Force }
+          $p = Start-Process -FilePath $app -ArgumentList "--self-test" -PassThru -Wait
+          $texto = if (Test-Path $auto) { Get-Content $auto -Raw } else { "(sem autoteste.log)" }
+          Write-Host "::notice::app: $($texto -replace "`r?`n", ' | ')"
+          if ($p.ExitCode -ne 0) { throw "o app ou um dos painéis falhou (código $($p.ExitCode)): $texto" }
+
       # A janela abre mesmo? Janela em branco que fecha sozinha já aconteceu uma
       # vez; este passo abre, mede e fecha o instalador sozinho.
       - name: A janela do instalador abre

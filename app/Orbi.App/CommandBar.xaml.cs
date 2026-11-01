@@ -218,6 +218,9 @@ public partial class CommandBar : Window
 
     public bool MenuOpen => Sheet.Visibility == Visibility.Visible;
 
+    /// <summary>Usado pelo autoteste: abre o painel dos três pontos.</summary>
+    public void OpenMenuForTest() => OpenMenu();
+
     /// <summary>Uma linha do painel: título, detalhe e ação.</summary>
     private Border SheetRow(string titulo, string detalhe, Action acao, bool destaque = false, bool aviso = false)
     {
