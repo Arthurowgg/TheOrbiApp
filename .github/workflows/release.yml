@@ -195,9 +195,12 @@ jobs:
           STATUS=${PIPESTATUS[0]}
           # "Deploy complete" é o sinal real de sucesso da CLI
           if grep -q "Deploy complete" deploy.log; then STATUS=0; fi
+          {
+            echo "### Log do deploy (últimas 40 linhas)"
+            echo '```'
+            tail -40 deploy.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
           if [ "$STATUS" != "0" ]; then
-            # 3 linhas de erro + contexto (o log do runner não é legível pela API)
-            grep -inE "error|forbidden|permission|invalid|fail|quota|denied|http" deploy.log | head -6 | while IFS= read -r line; do echo "::error::$line"; done
-            echo "::error::ultimas linhas: $(tail -6 deploy.log | tr '\n' ' | ')"
             exit "$STATUS"
           fi
