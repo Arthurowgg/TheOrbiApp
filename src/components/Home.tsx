@@ -18,6 +18,9 @@ import { BUILD, fetchLatestRelease, humanSize, shortChecksum, type Release } fro
 import { scrollToSection } from "../lib/router";
 import type { Account } from "../lib/accounts";
 
+/** Caminho de asset respeitando a base do build (Firebase `/` ou GitHub Pages `/TheOrbiApp/`). */
+const asset = (file: string) => `${import.meta.env.BASE_URL}${file}`;
+
 type HomeProps = {
   account: Account | null;
   onDownload: () => void;
@@ -128,7 +131,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
         {/* ilustração editorial de fundo */}
         <div className="pointer-events-none absolute inset-x-0 top-16 hidden justify-end px-8 xl:flex" aria-hidden>
           <img
-            src="/images/hero-opt.jpg"
+            src={asset("images/hero-opt.jpg")}
             alt=""
             width={1200}
             height={800}
@@ -273,7 +276,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
           <Reveal>
             <figure className="relative">
               <img
-                src="/images/hero-opt.jpg"
+                src={asset("images/hero-opt.jpg")}
                 alt="Ilustração de uma barra de comando flutuando sobre janelas empilhadas"
                 width={1200}
                 height={800}
@@ -536,7 +539,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
           <Reveal delay={80} className="order-1 lg:order-2">
             <figure className="mb-7 overflow-hidden border border-rule">
               <img
-                src="/images/security-opt.jpg"
+                src={asset("images/security-opt.jpg")}
                 alt="Cadeado sobre o desenho técnico de um notebook aberto"
                 width={1024}
                 height={1536}
@@ -619,7 +622,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
 
                 <figure className="mt-7 overflow-hidden border border-rule/70">
                   <img
-                    src="/images/download-opt.jpg"
+                    src={asset("images/download-opt.jpg")}
                     alt="Caixa de papel com faixa vermelha e um pen drive ao lado"
                     width={1024}
                     height={1536}

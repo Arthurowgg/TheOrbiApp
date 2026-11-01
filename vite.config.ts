@@ -9,6 +9,8 @@ const __dirname = path.dirname(__filename);
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Firebase Hosting serve na raiz; o espelho no GitHub Pages usa /TheOrbiApp/.
+  base: process.env.VITE_BASE ?? "/",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
