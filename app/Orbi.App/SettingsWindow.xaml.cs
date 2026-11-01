@@ -27,8 +27,8 @@ public partial class SettingsWindow : Window
         LockMinutes.Text = settings.LockAfterMinutes.ToString();
         ApiKeyBox.Password = Store.LoadApiKey() ?? "";
         GeminiState.Text = Store.HasApiKey()
-            ? "Chave configurada e cifrada neste PC."
-            : "Sem chave: comandos locais funcionam, perguntas livres não.";
+            ? "Chave configurada e cifrada neste PC — " + Gemini.Mode
+            : "Sem chave: as ferramentas funcionam; perguntas livres ficam no modo local.";
         RefreshAccount();
         LoadHotkeys();
         DataPath.Text = Store.Root;
@@ -262,7 +262,7 @@ public partial class SettingsWindow : Window
         Store.SaveApiKey("");
         ApiKeyBox.Password = "";
         KeyStatus.Text = "Chave removida deste PC.";
-        GeminiState.Text = "Sem chave: comandos locais funcionam, perguntas livres não.";
+        GeminiState.Text = "Chave removida. O Orbi segue no modo local, com todas as ferramentas.";
     }
 
     private void SaveSecurity_Click(object sender, RoutedEventArgs e)

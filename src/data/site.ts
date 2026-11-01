@@ -61,7 +61,7 @@ export const LOCAL_ONLY = ["Senhas", "Área de transferência", "Chave da IA", "
 export const FAQ = [
   {
     q: "Preciso pagar para usar?",
-    a: "Não. O app, as ferramentas e a conta são gratuitos. Se você quiser conversa livre com IA, pode colar uma chave gratuita do Google AI Studio (ou entrar na conta e usar a do Orbi).",
+    a: "Não. O app, as ferramentas e a conta são gratuitos. Se você quiser conversa livre com IA, cole uma chave gratuita do Google AI Studio — ela fica cifrada no seu PC.",
   },
   {
     q: "Preciso de conta para instalar?",

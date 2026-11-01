@@ -73,7 +73,7 @@ public partial class CommandBar : Window
             _debounce.Stop();
             await AskAiAsync(Input.Text);
         };
-        AiStatus.Text = Gemini.Available ? "gemini pronto" : "modo local";
+        AiStatus.Text = Gemini.Mode;
         AiStatus.Foreground = Gemini.Available
             ? new SolidColorBrush(Color.FromRgb(0xC7, 0x45, 0x2A))
             : new SolidColorBrush(Color.FromArgb(0x80, 0xF1, 0xEB, 0xDF));
@@ -99,7 +99,11 @@ public partial class CommandBar : Window
     }
 
     /* ----------------------------- abrir / fechar ----------------------------- */
-    public void RefreshGreeting() => Hint.Text = Greeting;
+    public void RefreshGreeting()
+    {
+        Hint.Text = Greeting;
+        AiStatus.Text = Gemini.Mode;
+    }
 
     public void ShowBar()
     {

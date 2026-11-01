@@ -208,7 +208,7 @@ export default function Home({ account, onDownload, onLogin, onSignup, onAccount
               {[
                 ["Sem instalar nada além dele", "um .exe, sem Python, sem runtime extra, sem administrador"],
                 ["Fica na bandeja", "fecha a barra e o Orbi continua vivo, esperando a tecla"],
-                ["Funciona offline", "o catálogo é local; só a conversa livre precisa de rede"],
+                ["Funciona offline", "o catálogo é local; só a conversa livre precisa de rede e de chave"],
                 ["Leve na memória", "sem navegador embutido, sem servidor local"],
               ].map(([title, body]) => (
                 <div key={title} className="flex flex-col gap-1 py-3 sm:flex-row sm:gap-5">

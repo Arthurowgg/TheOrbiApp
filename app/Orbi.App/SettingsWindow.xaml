@@ -179,7 +179,7 @@
                            Style="{StaticResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 <Button x:Name="OpenKeyPage" Content="Abrir a página da chave" Style="{StaticResource GhostButton}"
                         HorizontalAlignment="Left" Margin="0,8,0,0" Click="OpenKeyPage_Click"/>
-                <TextBlock Text="Quem entra na conta do Orbi pode usar o modo Cloud sem colar chave nenhuma: o app usa a chave do projeto Orbi. A sua chave é só um atalho para não depender disso."
+                <TextBlock Text="A conta não é necessária aqui: a chave fica neste PC, e cada pessoa usa a sua — assim o uso é gratuito e separado."
                            Style="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap"/>
 
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">

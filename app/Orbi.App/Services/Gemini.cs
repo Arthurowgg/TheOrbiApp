@@ -29,10 +29,15 @@ public static class Gemini
 
     public static bool HasKey => !string.IsNullOrWhiteSpace(Store.LoadApiKey());
 
-    /// <summary>Modo Cloud ligado e com chave: vale tentar o Gemini.</summary>
+    /// <summary>
+    /// Modo Cloud = chave gratuita do Google AI Studio, cifrada neste PC.
+    /// Sem chave (ou com o modo desligado) o app fica local: as 120 ferramentas
+    /// continuam funcionando, sem internet e sem gastar chamada nenhuma.
+    /// </summary>
     public static bool Available => Store.Current.CloudMode && HasKey;
 
-    public static string Mode => Available ? "cloud" : "local";
+    public static string Mode =>
+        !Store.Current.CloudMode ? "modo local" : HasKey ? "cloud" : "local · sem chave";
 
     public static async Task<string?> AskAsync(string prompt, IEnumerable<(string Role, string Text)>? history = null,
         string? memory = null)
