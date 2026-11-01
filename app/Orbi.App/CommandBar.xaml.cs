@@ -539,6 +539,13 @@ public partial class CommandBar : Window
         {
             _thinking = false;
             UpdateFooter();
+            // Se a barra se escondeu para o Orbi agir, volta com o resultado.
+            if (!IsVisible)
+            {
+                Show();
+                Topmost = true;
+                Activate();
+            }
         }
     }
 
@@ -613,6 +620,16 @@ public partial class CommandBar : Window
     /// Atalhos diretos de controle do PC, sem passar pela IA: são o que a pessoa
     /// pede com mais pressa. Devolve null quando não é um deles.
     /// </summary>
+    /// <summary>O pedido precisa da tela livre (sem a barra na frente)?</summary>
+    private static bool MexeNaTela(string text)
+    {
+        var t = Interpreter.Simplify(text);
+        return System.Text.RegularExpressions.Regex.IsMatch(t,
+            @"^(clique|clicar|click|digite|digitar|escreva|escrever|atalho|aperte|tecla|pressione|" +
+            @"traga|trazer|focar|foca|ative|ativar|ver a tela|ver tela|olhe a tela|olhar a tela|" +
+            @"o que esta na tela)\b");
+    }
+
     private static ResultRow? DirectControl(string text)
     {
         var t = Interpreter.Simplify(text);
@@ -684,12 +701,21 @@ public partial class CommandBar : Window
         if (!System.Text.RegularExpressions.Regex.IsMatch(Interpreter.Simplify(text), @"^(clique|clicar|click)\b")
             && DirectControl(text) is { } direct)
         {
+            // A ação já rodou; a barra só conta o que houve.
             _rows.Clear();
             Expand();
             Add(direct);
             Input.Text = "";
             Input.Focus();
             return;
+        }
+
+        // Pedido de controle que foi para a IA: a barra sai da frente antes,
+        // senão ela apareceria na captura e roubaria o foco.
+        if (MexeNaTela(text))
+        {
+            RememberPlace();
+            Hide();
         }
 
         var reply = Interpreter.Execute(text);
