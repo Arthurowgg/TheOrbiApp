@@ -5,6 +5,8 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>OrbiSetup</AssemblyName>
     <RootNamespace>Orbi.Setup</RootNamespace>
     <ApplicationIcon>..\Orbi.App\Assets\orbi.ico</ApplicationIcon>
@@ -14,21 +16,14 @@
     <Product>Orbi</Product>
     <Description>Instalador do Orbi</Description>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-
-    <!-- Win32 puro + NativeAOT: o instalador inteiro fica em poucos MB,
-         roda antes de existir .NET no PC e não extrai nada na partida. -->
-    <PublishAot>true</PublishAot>
-    <PublishSingleFile>false</PublishSingleFile>
-    <InvariantGlobalization>true</InvariantGlobalization>
-    <OptimizationPreference>Size</OptimizationPreference>
-    <StackTraceSupport>false</StackTraceSupport>
-    <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
-    <EventSourceSupport>false</EventSourceSupport>
-    <UseSystemResourceKeys>true</UseSystemResourceKeys>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="assets\**" />

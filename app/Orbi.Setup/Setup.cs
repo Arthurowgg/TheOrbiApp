@@ -68,7 +68,7 @@ public static class Payload
     public const string Url =
         "https://github.com/Arthurowgg/TheOrbiApp/releases/download/v1.1.2/orbi-payload-1.1.2.zip";
 
-    public const long ApproximateSize = 3L * 1024 * 1024;
+    public const long ApproximateSize = 2L * 1024 * 1024;
 
     public static string Cache =>
         Path.Combine(Path.GetTempPath(), "orbi-payload-" + Installer.Versao + ".zip");
@@ -86,7 +86,12 @@ public static class Payload
         if (!File.Exists(path)) throw new FileNotFoundException("pacote local não encontrado", path);
         if (Cache.Equals(Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase)) return;
         try { if (File.Exists(Cache)) File.Delete(Cache); } catch { }
-        File.Copy(path, Cache, overwrite: true);
+        // Copia em fluxo: pacote grande cansa a memória se for de uma vez.
+        using (var origem = File.OpenRead(path))
+        using (var destino = File.Create(Cache))
+        {
+            origem.CopyTo(destino);
+        }
         Installer.Write($"Usando o pacote local ({new FileInfo(Cache).Length / 1024 / 1024} MB)");
     }
 

@@ -81,15 +81,21 @@ jobs:
 
       # Sem WPF e sem WinForms: Win32 puro compilado com NativeAOT. É isso que
       # deixa o instalador em poucos MB e independente do .NET do PC.
-      - name: Compilar o instalador (Win32 nativo, poucos MB)
+      # WPF próprio, self-contained: abre mesmo em PC sem .NET e é o mesmo
+      # formato de janela que já funcionava. O tamanho extra é aceitável.
+      - name: Compilar o instalador
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
-          dotnet publish app/Orbi.Setup/Orbi.Setup.csproj -c Release -r win-x64 -o artifacts/setup
+          dotnet publish app/Orbi.Setup/Orbi.Setup.csproj -c Release -r win-x64 `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false -p:SelfContained=true -o artifacts/setup
           New-Item -ItemType Directory -Force -Path artifacts/Installer | Out-Null
           Move-Item artifacts/setup/OrbiSetup.exe "artifacts/Installer/OrbiSetup-1.1.2.exe" -Force
           $exe = Get-Item "artifacts/Installer/OrbiSetup-1.1.2.exe"
-          Write-Host ("setup: " + [math]::Round($exe.Length/1MB,2) + " MB")
+          Write-Host ("setup: " + [math]::Round($exe.Length/1MB,1) + " MB")
+          if ($exe.Length -gt 110MB) { throw "instalador pesado demais: $([math]::Round($exe.Length/1MB,1)) MB" }
+          if ($exe.Length -lt 5MB) { throw "instalador suspeito: $([math]::Round($exe.Length/1MB,1)) MB" }
 
       - name: Checksums
         shell: powershell
@@ -103,7 +109,6 @@ jobs:
           $linhas | ForEach-Object { Write-Host $_ }
 
       # Instalador silencioso de verdade: instala, confere os arquivos e desinstala.
-      # Sem isso, trocar a UI do setup por Win32 poderia quebrar a instalação sem ninguém ver.
       - name: Instalar e desinstalar sem interface
         shell: powershell
         timeout-minutes: 10
@@ -139,8 +144,8 @@ jobs:
           $ErrorActionPreference = "Stop"
           $exe = Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1
           $zip = Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1
-          if ($exe.Length -gt 8MB) { throw "instalador pesado demais: $([math]::Round($exe.Length/1MB,1)) MB" }
-          if ($exe.Length -lt 1MB) { throw "instalador pequeno demais: $($exe.Length) bytes" }
+          
+          
           if ($zip.Length -lt 0.2MB) { throw "payload suspeito: $([math]::Round($zip.Length/1MB,1)) MB" }
           Write-Host "::notice::instalador $($exe.Name) com $([math]::Round($exe.Length/1MB,1)) MB · payload $([math]::Round($zip.Length/1MB,1)) MB"
 

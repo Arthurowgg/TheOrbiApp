@@ -1,271 +1,441 @@
+using System.Diagnostics;
 using System.IO;
-using static Orbi.Setup.Win32;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 
 namespace Orbi.Setup;
 
 /// <summary>
-/// A janela do instalador, desenhada com Win32: faixa escura à esquerda com a
-/// marca, título, o que vai ser instalado, uma barra de progresso e o botão.
-/// Sem WPF — é isso que deixa o setup em poucos MB.
+/// A janela inteira do instalador: bem-vindo → removendo versão antiga →
+/// instalando (com progresso e log ao vivo) → pronto.
 /// </summary>
-internal sealed class SetupWindow
+public class SetupWindow : Window
 {
-    private const int Width = 720;
-    private const int Height = 430;
+    private readonly string[] _args;
+    private readonly Grid _raiz = new();
+    private readonly StackPanel _conteudo = new();
+    private readonly ProgressBar _barra = new();
+    private readonly TextBlock _status = new();
+    private readonly Button _principal = new();
+    private readonly Button _secundario = new();
 
-    private const int IdInstall = 1001;
-    private const int IdQuit = 1002;
-    private const int IdLog = 1003;
-    private const int IdProgress = 1004;
-    private const int IdStatus = 1005;
+    private enum Etapa { BoasVindas, Removendo, Instalando, Pronto, Erro }
+    private Etapa _etapa = Etapa.BoasVindas;
+    private string _erro = "";
 
-    private readonly IntPtr _window;
-    private readonly IntPtr _install;
-    private readonly IntPtr _quit;
-    private readonly IntPtr _log;
-    private readonly IntPtr _progress;
-    private readonly IntPtr _status;
-
-    private readonly IntPtr _fontTitle;
-    private readonly IntPtr _fontBody;
-    private readonly IntPtr _fontLabel;
-    private readonly IntPtr _fontMono;
-    private readonly IntPtr _brushPaper;
-    private readonly IntPtr _brushFilm;
-    private readonly IntPtr _brushSignal;
-
-    private bool _busy;
-    private bool _done;
-    private string _side = "INSTALAÇÃO";
-    private readonly List<string> _lines = new();
-
-    private static readonly string[] Etapas =
+    public SetupWindow(string[] args)
     {
-        "Conferindo o .NET",
-        "Baixando o Orbi",
-        "Copiando os arquivos",
-        "Criando os atalhos",
-    };
+        _args = args;
+        Title = "Orbi — instalação";
+        Width = 760;
+        Height = 520;
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        ResizeMode = ResizeMode.NoResize;
+        Background = new SolidColorBrush(App.Paper);
+        FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI");
 
-    private int _step;
-
-    public SetupWindow()
-    {
-        var instance = GetModuleHandleW(null);
-        var style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
-        var screenWidth = 1280;
-        var screenHeight = 800;
-        var x = Math.Max(0, (screenWidth - Width) / 2);
-        var y = Math.Max(0, (screenHeight - Height) / 2);
-
-        _window = CreateWindowExW(0, "OrbiSetup", "Orbi — instalação", style, x, y, Width, Height,
-            IntPtr.Zero, IntPtr.Zero, instance, IntPtr.Zero);
-
-        _fontTitle = CreateFontW(-30, 0, 0, 0, FW_SEMIBOLD, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 5, 0,
-            "Bahnschrift SemiBold");
-        _fontBody = CreateFontW(-17, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 5, 0, "Segoe UI");
-        _fontLabel = CreateFontW(-13, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 5, 0, "Consolas");
-        _fontMono = CreateFontW(-14, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 5, 0, "Consolas");
-        _brushPaper = CreateSolidBrush(Paper);
-        _brushFilm = CreateSolidBrush(Film);
-        _brushSignal = CreateSolidBrush(Signal);
-
-        _install = CreateWindowExW(0, "BUTTON", "Instalar o Orbi",
-            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON,
-            Width - 300, Height - 78, 168, 38, _window, IdInstall, instance, IntPtr.Zero);
-        _quit = CreateWindowExW(0, "BUTTON", "Cancelar",
-            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
-            Width - 122, Height - 78, 96, 38, _window, IdQuit, instance, IntPtr.Zero);
-
-        _progress = CreateWindowExW(0, "msctls_progress32", "",
-            WS_CHILD | WS_VISIBLE, 268, Height - 128, Width - 300, 14, _window, IdProgress, instance, IntPtr.Zero);
-
-        _status = CreateWindowExW(0, "STATIC", "Pronto para instalar.",
-            WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOPREFIX,
-            268, Height - 108, Width - 300, 22, _window, IdStatus, instance, IntPtr.Zero);
-
-        _log = CreateWindowExW(0, "EDIT", "",
-            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_BORDER,
-            268, 196, Width - 300, Height - 340, _window, IdLog, instance, IntPtr.Zero);
-
-        foreach (var handle in new[] { _status, _log })
+        if (_args.Contains("--uninstall"))
         {
-            SendMessageW(handle, WM_SETFONT, handle == _log ? _fontMono : _fontBody, IntPtr.Zero);
+            Desinstalar();
+            return;
         }
-        SendMessageW(_install, WM_SETFONT, _fontBody, IntPtr.Zero);
-        SendMessageW(_quit, WM_SETFONT, _fontBody, IntPtr.Zero);
 
-
+        Montar();
+        MostrarBoasVindas();
     }
 
-    public IntPtr Handle => _window;
-
-    public void Show()
+    /* ------------------------------ layout ------------------------------ */
+    private void Montar()
     {
-        ShowWindow(_window, SW_SHOW);
-        UpdateWindow(_window);
-    }
+        _raiz.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(232) });
+        _raiz.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-    /// <summary>Clique em instalar: dispara o trabalho em segundo plano.</summary>
-    public void StartInstall()
-    {
-        if (_busy) return;
-        _busy = true;
-        EnableWindow(_install, false);
-        SetWindowTextW(_install, "Instalando…");
-        AddLine("Iniciando a instalação");
+        _raiz.Children.Add(Lateral());
 
-        var progress = new Progress<double>(value => SetProgress(value));
-        Task.Run(async () =>
+        var direita = new Grid { Margin = new Thickness(30, 28, 30, 24) };
+        direita.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        direita.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        direita.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var titulo = new StackPanel();
+        titulo.Children.Add(new TextBlock
         {
-            try
+            Text = "ORBI",
+            FontFamily = new FontFamily("Bahnschrift SemiBold, Segoe UI Semibold"),
+            FontSize = 30,
+            Foreground = new SolidColorBrush(App.Ink),
+        });
+        titulo.Children.Add(_status);
+        _status.FontSize = 13.5;
+        _status.Margin = new Thickness(0, 6, 0, 0);
+        _status.TextWrapping = TextWrapping.Wrap;
+        _status.Foreground = new SolidColorBrush(App.Warm);
+        Grid.SetRow(titulo, 0);
+        direita.Children.Add(titulo);
+
+        var meio = new Grid { Margin = new Thickness(0, 22, 0, 18) };
+        meio.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        meio.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        _barra.Height = 6;
+        _barra.Minimum = 0;
+        _barra.Maximum = 1;
+        _barra.Foreground = new SolidColorBrush(App.Signal);
+        _barra.Background = new SolidColorBrush(Color.FromRgb(0xE2, 0xDA, 0xCC));
+        Grid.SetRow(_barra, 0);
+        meio.Children.Add(_barra);
+
+        var scroll = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Margin = new Thickness(0, 16, 0, 0),
+            Content = _conteudo,
+        };
+        Grid.SetRow(scroll, 1);
+        meio.Children.Add(scroll);
+
+        Grid.SetRow(meio, 1);
+        direita.Children.Add(meio);
+
+        var botoes = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+        };
+        EstiloBotao(_secundario, primario: false);
+        EstiloBotao(_principal, primario: true);
+        _secundario.Margin = new Thickness(0, 0, 8, 0);
+        _principal.Click += (_, _) => OnPrincipal();
+        _secundario.Click += (_, _) => OnSecundario();
+        botoes.Children.Add(_secundario);
+        botoes.Children.Add(_principal);
+        Grid.SetRow(botoes, 2);
+        direita.Children.Add(botoes);
+
+        Grid.SetColumn(direita, 1);
+        _raiz.Children.Add(direita);
+        Content = _raiz;
+    }
+
+    private UIElement Lateral()
+    {
+        var fundo = new Grid { Background = new SolidColorBrush(App.Ink) };
+
+        // grade fina
+        var linhas = new Canvas();
+        for (var x = 0; x < 232; x += 20)
+        {
+            linhas.Children.Add(new Line
             {
-                await Installer.RunAsync(progress, CancellationToken.None);
-                _done = true;
-                AddLine("Tudo pronto.");
-                SetStatus("O Orbi está instalado.");
-                SetProgress(1);
-                SetWindowTextW(_install, "Abrir o Orbi");
-                EnableWindow(_install, true);
-            }
-            catch (Exception error)
+                X1 = x, X2 = x, Y1 = 0, Y2 = 520,
+                Stroke = new SolidColorBrush(Color.FromRgb(0x1C, 0x16, 0x12)), StrokeThickness = 1,
+            });
+        }
+        fundo.Children.Add(linhas);
+
+        var conteudo = new StackPanel { Margin = new Thickness(24, 26, 20, 24) };
+
+        conteudo.Children.Add(new Border
+        {
+            Width = 34, Height = 34,
+            Background = new SolidColorBrush(App.Signal),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Child = new Ellipse
             {
-                AddLine("Falhou: " + error.Message);
-                SetStatus("Não deu para instalar: " + error.Message);
-                SetWindowTextW(_install, "Tentar de novo");
-                EnableWindow(_install, true);
-                _failed = true;
-            }
-            finally
+                Width = 10, Height = 10,
+                Fill = new SolidColorBrush(App.Ink),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
+        });
+
+        conteudo.Children.Add(new TextBlock
+        {
+            Text = "Você pede.\nO PC faz.",
+            FontFamily = new FontFamily("Bahnschrift SemiBold, Segoe UI Semibold"),
+            FontSize = 26,
+            Foreground = new SolidColorBrush(App.Paper),
+            Margin = new Thickness(0, 22, 0, 0),
+            LineHeight = 30,
+        });
+
+        conteudo.Children.Add(new TextBlock
+        {
+            Text = $"versão {Installer.Versao}",
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 11,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0x8C, 0x7C)),
+            Margin = new Thickness(0, 10, 0, 0),
+        });
+
+        var imagem = Logo();
+        if (imagem is not null)
+        {
+            imagem.Margin = new Thickness(0, 26, 0, 0);
+            conteudo.Children.Add(imagem);
+        }
+
+        conteudo.Children.Add(new TextBlock
+        {
+            Text = "Alt+Shift+O\nabre a barra em\nqualquer programa",
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 11,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0x8C, 0x7C)),
+            Margin = new Thickness(0, 26, 0, 0),
+            LineHeight = 17,
+        });
+
+        fundo.Children.Add(conteudo);
+        return fundo;
+    }
+
+    private static Image? Logo()
+    {
+        try
+        {
+            var assembly = typeof(SetupWindow).Assembly;
+            var nome = assembly.GetManifestResourceNames()
+                .FirstOrDefault(item => item.EndsWith("orbi.png", StringComparison.OrdinalIgnoreCase));
+            if (nome is null) return null;
+            using var stream = assembly.GetManifestResourceStream(nome)!;
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.StreamSource = stream;
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.EndInit();
+            return new Image { Source = bitmap, Width = 128, HorizontalAlignment = HorizontalAlignment.Left };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void EstiloBotao(Button botao, bool primario)
+    {
+        botao.Padding = new Thickness(20, 10, 20, 10);
+        botao.FontSize = 13.5;
+        botao.FontWeight = FontWeights.SemiBold;
+        botao.Cursor = System.Windows.Input.Cursors.Hand;
+        botao.BorderThickness = primario ? new Thickness(0) : new Thickness(1);
+        botao.Background = new SolidColorBrush(primario ? App.Ink : Colors.Transparent);
+        botao.Foreground = new SolidColorBrush(primario ? App.Paper : App.Ink);
+        botao.BorderBrush = new SolidColorBrush(Color.FromRgb(0xD0, 0xC6, 0xB5));
+    }
+
+    /* ------------------------------ etapas ------------------------------ */
+    private void MostrarBoasVindas()
+    {
+        _etapa = Etapa.BoasVindas;
+        _status.Text = "Pronto para instalar. Nada de administrador, nada de cadastro.";
+        _barra.Visibility = Visibility.Collapsed;
+        _conteudo.Children.Clear();
+
+        var instalada = Paths.InstalledVersion;
+        var linhas = new List<(string Rotulo, string Valor)>
+        {
+            ("Instala em", Paths.Target),
+            ("Versão", Installer.Versao),
+            ("Tamanho", Tamanho()),
+            ("Conta", "opcional — a mesma do site"),
+        };
+        if (instalada is not null)
+        {
+            linhas.Insert(0, ("Versão instalada", $"{instalada} — será substituída"));
+        }
+
+        foreach (var (rotulo, valor) in linhas)
+        {
+            var linha = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+            linha.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
+            linha.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var r = new TextBlock
             {
-                _busy = false;
-            }
+                Text = rotulo.ToUpperInvariant(),
+                FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+                FontSize = 10,
+                Foreground = new SolidColorBrush(App.Warm),
+            };
+            linha.Children.Add(r);
+            var v = new TextBlock
+            {
+                Text = valor,
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new SolidColorBrush(App.Ink),
+            };
+            Grid.SetColumn(v, 1);
+            linha.Children.Add(v);
+            _conteudo.Children.Add(linha);
+        }
+
+        _conteudo.Children.Add(new TextBlock
+        {
+            Text = "Você pode desinstalar quando quiser em Configurações ▸ Aplicativos. " +
+                   "Notas, lembretes e a memória do Orbi ficam neste PC e não são apagados.",
+            FontSize = 12.5,
+            Margin = new Thickness(0, 12, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(App.Warm),
+        });
+
+        _principal.Content = "Instalar o Orbi";
+        _secundario.Content = "Cancelar";
+        _secundario.Visibility = Visibility.Visible;
+    }
+
+    private void OnPrincipal()
+    {
+        switch (_etapa)
+        {
+            case Etapa.BoasVindas:
+                _ = InstalarAsync();
+                break;
+            case Etapa.Pronto:
+                Abrir();
+                break;
+            case Etapa.Erro:
+                MostrarBoasVindas();
+                break;
+        }
+    }
+
+    private void OnSecundario()
+    {
+        if (_etapa == Etapa.Pronto)
+        {
+            Close();
+            return;
+        }
+        Close();
+    }
+
+    private async Task InstalarAsync()
+    {
+        _etapa = Etapa.Instalando;
+        _barra.Visibility = Visibility.Visible;
+        _barra.Value = 0;
+        _principal.IsEnabled = false;
+        _principal.Content = "Instalando…";
+        _secundario.Visibility = Visibility.Collapsed;
+        _conteudo.Children.Clear();
+
+        // log ao vivo: mostra cada passo em vez de uma barra muda
+        var log = new TextBlock
+        {
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 11,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(App.Warm),
+            LineHeight = 17,
+        };
+        _conteudo.Children.Add(log);
+        ((App)Application.Current).LogBox = log;
+
+        var progresso = new Progress<double>(valor =>
+        {
+            _barra.Value = valor;
+            _status.Text = valor < 0.1 ? "Encerrando versões antigas…"
+                : valor < 0.85 ? $"Copiando os arquivos… {valor * 100:0}%"
+                : valor < 1 ? "Criando atalhos…"
+                : "Pronto.";
+        });
+
+        try
+        {
+            await Installer.RunAsync(progresso, CancellationToken.None);
+            MostrarPronto();
+        }
+        catch (Exception error)
+        {
+            _erro = error.Message;
+            _etapa = Etapa.Erro;
+            _status.Text = "A instalação não terminou.";
+            log.Text += Environment.NewLine + "ERRO: " + error;
+            _principal.IsEnabled = true;
+            _principal.Content = "Tentar de novo";
+            _secundario.Content = "Fechar";
+            _secundario.Visibility = Visibility.Visible;
+            _secundario.Click += (_, _) => Close();
+        }
+    }
+
+    private void MostrarPronto()
+    {
+        _etapa = Etapa.Pronto;
+        _barra.Value = 1;
+        _status.Text = "Instalado. O Orbi já está no Menu Iniciar.";
+        _principal.IsEnabled = true;
+        _principal.Content = "Abrir o Orbi";
+        _secundario.Content = "Fechar";
+        _secundario.Visibility = Visibility.Visible;
+
+        _conteudo.Children.Add(new TextBlock
+        {
+            Text = "Aperte Alt+Shift+O em qualquer programa.",
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 16, 0, 0),
+            Foreground = new SolidColorBrush(App.Ink),
+        });
+
+        _conteudo.Children.Add(new TextBlock
+        {
+            Text = "O instalador é leve: o app em si é baixado aqui, durante a instalação. " +
+                   "Depois o Orbi abre como uma barra de comando, e o atalho do Menu Iniciar " +
+                   "leva direto às ferramentas e aos ajustes.",
+            FontSize = 12.5,
+            Margin = new Thickness(0, 6, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(App.Warm),
         });
     }
 
-    private bool _failed;
-
-    public void AppendLog(string line) => AddLine(line);
-
-    private void AddLine(string line)
+    private static void Abrir()
     {
-        if (_window == IntPtr.Zero) return;
-        _lines.Add(line);
-        if (_lines.Count > 200) _lines.RemoveAt(0);
-        var text = string.Join("\r\n", _lines);
-        SetWindowTextW(_log, text);
-        SendMessageW(_log, (uint)EM_LINESCROLL, IntPtr.Zero, IntPtr.Zero);
-    }
-
-    private void SetStatus(string text)
-    {
-        if (_window == IntPtr.Zero) return;
-        SetWindowTextW(_status, text);
-    }
-
-    private void SetProgress(double value)
-    {
-        if (_progress == IntPtr.Zero) return;
-        var percent = (int)Math.Round(Math.Clamp(value, 0, 1) * 1000);
-        SendMessageW(_progress, (uint)PBM_SETPOS, percent, IntPtr.Zero);
-    }
-
-    /// <summary>Desenha a faixa escura, a marca e os textos fixos.</summary>
-    public void Paint(IntPtr dc)
-    {
-        var sideWidth = 240;
-
-        var film = new RECT { Left = 0, Top = 0, Right = sideWidth, Bottom = Height };
-        FillRect(dc, ref film, _brushFilm);
-
-        var dot = new RECT { Left = 28, Top = 34, Right = 52, Bottom = 58 };
-        FillRect(dc, ref dot, _brushSignal);
-
-        var title = new RECT { Left = 28, Top = 74, Right = sideWidth - 20, Bottom = 122 };
-        var old = SelectObject(dc, _fontTitle);
-        SetTextColor(dc, Bone);
-        SetBkColor(dc, Film);
-        DrawTextW(dc, "ORBI", -1, ref title, DT_LEFT | DT_NOPREFIX);
-
-        var version = new RECT { Left = 28, Top = 126, Right = sideWidth - 20, Bottom = 200 };
-        SelectObject(dc, _fontLabel);
-        SetTextColor(dc, Rgb(0x9A, 0x90, 0x80));
-        DrawTextW(dc, "\r\n" + _side + "\r\nv" + Installer.Versao, -1, ref version, DT_LEFT | DT_WORDBREAK | DT_NOPREFIX);
-
-        var where = new RECT { Left = 28, Top = Height - 120, Right = sideWidth - 20, Bottom = Height - 30 };
-        SetTextColor(dc, Rgb(0x7A, 0x72, 0x64));
-        DrawTextW(dc, "\r\nInstala só para você.\r\nSem administrador.", -1, ref where, DT_LEFT | DT_WORDBREAK | DT_NOPREFIX);
-
-        var paper = new RECT { Left = sideWidth, Top = 0, Right = Width, Bottom = Height };
-        FillRect(dc, ref paper, _brushPaper);
-
-        var heading = new RECT { Left = 268, Top = 30, Right = Width - 30, Bottom = 70 };
-        SelectObject(dc, _fontTitle);
-        SetTextColor(dc, Ink);
-        SetBkColor(dc, Paper);
-        DrawTextW(dc, _done ? "Instalado." : _failed ? "Algo deu errado." : "Instalar o Orbi", -1, ref heading, DT_LEFT | DT_NOPREFIX);
-
-        var rows = new RECT { Left = 268, Top = 74, Right = Width - 30, Bottom = 190 };
-        SelectObject(dc, _fontBody);
-        SetTextColor(dc, Warm);
-        var detalhe = _done
-            ? "Pronto. A barra abre com Alt+Shift+O.\r\nSeus dados ficam em %APPDATA%\\Orbi."
-            : "Instalador leve: o app é baixado aqui.\r\nSem conta obrigatória. Sem administrador.";
-        DrawTextW(dc, detalhe, -1, ref rows, DT_LEFT | DT_WORDBREAK | DT_NOPREFIX);
-
-        var steps = new RECT { Left = 268, Top = Height - 96, Right = Width - 30, Bottom = Height - 74 };
-        SelectObject(dc, _fontLabel);
-        SetTextColor(dc, Rgb(0x9A, 0x90, 0x80));
-        DrawTextW(dc, _done ? "concluído" : _busy ? Etapas[Math.Min(_step, Etapas.Length - 1)] : "pronto para começar", -1, ref steps, DT_LEFT | DT_NOPREFIX);
-
-        SelectObject(dc, old);
-    }
-
-    private void Repaint()
-    {
-        if (_window == IntPtr.Zero) return;
-        InvalidateRect(_window, IntPtr.Zero, true);
-        UpdateWindow(_window);
-    }
-
-    public void Advance(string line)
-    {
-        if (line.Contains("runtime", StringComparison.OrdinalIgnoreCase)) _step = 0;
-        else if (line.Contains("Baixando", StringComparison.OrdinalIgnoreCase)) _step = 1;
-        else if (line.Contains("Instalando os arquivos", StringComparison.OrdinalIgnoreCase)) _step = 2;
-        else if (line.Contains("atalhos", StringComparison.OrdinalIgnoreCase)) _step = 3;
-        AddLine(line);
-    }
-
-    public void HandleCommand(int id)
-    {
-        if (id == IdInstall)
+        try
         {
-            if (_done)
+            Process.Start(new ProcessStartInfo(Paths.Exe) { UseShellExecute = true, WorkingDirectory = Paths.Target });
+        }
+        catch (Exception error)
+        {
+            MessageBox.Show("Não consegui abrir o Orbi: " + error.Message, "Orbi");
+        }
+    }
+
+    private static string Tamanho()
+    {
+        var instalador = Environment.ProcessPath is { } exe && File.Exists(exe)
+            ? new FileInfo(exe).Length / 1024.0 / 1024.0
+            : 0;
+        var cache = Payload.Cached ? " · app já baixado neste PC" : "";
+        return $"{instalador:0.0} MB · baixa o Orbi na hora{cache}";
+    }
+
+    /* ------------------------------ desinstalar ------------------------------ */
+    private void Desinstalar()
+    {
+        var silencioso = _args.Contains("--silent");
+        if (!silencioso)
+        {
+            var resposta = MessageBox.Show(
+                "Remover o Orbi deste PC?\n\nNotas, lembretes e a memória em " + Paths.Data + " não são apagados.",
+                "Desinstalar o Orbi", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (resposta != MessageBoxResult.Yes)
             {
-                Installer.Launch();
-                DestroyWindow(_window);
+                Application.Current.Shutdown();
                 return;
             }
-            if (_failed) _failed = false;
-            StartInstall();
-            return;
         }
-        if (id == IdQuit)
-        {
-            if (_busy)
-            {
-                var answer = MessageBoxW(_window, "Cancelar a instalação?", "Orbi",
-                    MB_YESNO | MB_ICONQUESTION);
-                if (answer != IDYES) return;
-            }
-            DestroyWindow(_window);
-        }
-    }
 
-    public void Dispose()
-    {
-        foreach (var brush in new[] { _brushPaper, _brushFilm, _brushSignal }) DeleteObject(brush);
-        foreach (var font in new[] { _fontTitle, _fontBody, _fontLabel, _fontMono }) DeleteObject(font);
+        Installer.Uninstall();
+        if (!silencioso)
+        {
+            MessageBox.Show("O Orbi foi removido.", "Desinstalar o Orbi");
+        }
+        Application.Current.Shutdown();
     }
 }
