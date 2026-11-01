@@ -44,3 +44,17 @@ npm run build
 npx firebase-tools login          # abre o navegador
 npx firebase-tools deploy --only hosting,firestore:rules --project orbi-app-auth
 ```
+
+## Alternativa: GitHub Pages (sem secret)
+
+Se quiser o site no ar **sem** usar credencial do Firebase:
+
+1. Settings ▸ Pages ▸ **Build and deployment** ▸ Source: **GitHub Actions**
+2. Actions ▸ **Site no GitHub Pages** ▸ Run workflow
+3. Site em https://arthurowgg.github.io/TheOrbiApp/
+
+O workflow já compila com `VITE_BASE=/TheOrbiApp/` (a subpasta do Pages), então os
+assets e as imagens carregam certo. O Firebase Authentication exige que esse domínio
+esteja em **Authentication ▸ Settings ▸ Authorized domains** (adicione
+`arthurowgg.github.io`), senão o login por popup do Google é bloqueado ali — o login
+por e-mail/senha funciona de qualquer jeito.
