@@ -330,7 +330,7 @@ public static partial class Interpreter
         }
 
         /* ----------------------------- catálogo de ferramentas ----------------------------- */
-        // Antes de desistir, procuramos no catálogo: 383 ações do Windows que não
+        // Antes de desistir, procuramos no catálogo: 384 ações do Windows que não
         // precisam de regex própria ("bluetooth", "lixeira", "task manager"...).
         var byTool = MatchTool(text);
         if (byTool is not null)

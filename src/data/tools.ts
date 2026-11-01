@@ -474,6 +474,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
       "Abrir a barra do Orbi",
       "Ajustes do Orbi",
       "Abrir o perfil",
+      "Sincronizar com a conta",
       "Abrir o site do Orbi",
       "Ver o log do Orbi",
       "Versão do Orbi",

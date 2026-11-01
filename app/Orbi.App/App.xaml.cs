@@ -91,6 +91,15 @@ public partial class App : System.Windows.Application
 
         try
         {
+            Sync.Start();
+        }
+        catch (Exception error)
+        {
+            Log.Error("sincronização", error);
+        }
+
+        try
+        {
             BuildTray();
             RegisterHotkey();
             Log.Add("bandeja e atalho", HotKey.Combination);
@@ -160,6 +169,7 @@ public partial class App : System.Windows.Application
         };
         menu.Items.Add("Abrir o Orbi", null, (_, _) => ShowBar());
         menu.Items.Add("Ajustes…", null, (_, _) => ShowSettings());
+        menu.Items.Add("Conta…", null, (_, _) => ShowAccount());
         menu.Items.Add("Ferramentas…", null, (_, _) => ShowSettings("ferramentas"));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Bloquear o Windows", null, (_, _) => SystemActions.Lock());
@@ -275,6 +285,9 @@ public partial class App : System.Windows.Application
                 _bar?.OpenMenuForTest();
                 ok &= _bar?.MenuOpen == true;
                 Nota($"menu aberto={_bar?.MenuOpen}");
+
+                // com conta vinculada, o painel de perfil precisa mostrar o e-mail
+                Nota($"conta: vinculada={Firebase.SignedIn} sincronização={Sync.LastStatus}");
 
                 foreach (var painel in new[] { "perfil", "ia", "ferramentas", "ajustes" })
                 {
@@ -414,7 +427,25 @@ public partial class App : System.Windows.Application
         window.Show();
     }
 
-    public void ShowAccount() => OpenPanel("perfil");
+    /// <summary>Entra na conta (a mesma do site) ou mostra o perfil já vinculado.</summary>
+    public void ShowAccount()
+    {
+        if (!Firebase.SignedIn)
+        {
+            ShowLogin();
+            return;
+        }
+        OpenPanel("perfil");
+    }
+
+    public void ShowLogin()
+    {
+        var login = new LoginWindow();
+        if (login.ShowDialog() != true) return;
+        _bar?.RefreshAccountChip();
+        if (_panel is ProfileWindow perfil) perfil.Refresh();
+        _ = Sync.PullAsync(true);
+    }
 
     public void ShowSettings(string? tab = null) => OpenPanel(Mapear(tab));
 
@@ -473,6 +504,7 @@ public partial class App : System.Windows.Application
     public void RefreshAfterKey()
     {
         _bar?.RefreshGreeting();
+        _bar?.RefreshAccountChip();
     }
 
     /// <summary>Fecha o painel que estiver aberto (a barra voltou a ser a única na frente).</summary>

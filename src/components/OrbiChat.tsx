@@ -23,7 +23,7 @@ type OrbiChatProps = {
 
 const SINAIS: Record<Sinal, { label: string; className: string; dot: string }> = {
   local: {
-    label: "no seu PC",
+    label: "no app",
     className: "border border-white/15 text-bone/75",
     dot: "bg-[#a79d8f]",
   },
@@ -487,7 +487,7 @@ export default function OrbiChat({ onDownload, onLogin }: OrbiChatProps) {
     {
       id: 3,
       from: "orbi",
-      text: "Combinado. Te aviso em 20 minutos. O lembrete fica no seu PC e continua valendo mesmo se você reiniciar.",
+      text: "Combinado. Te aviso em 20 minutos. O lembrete continua valendo mesmo se você reiniciar.",
       signal: "local",
       detail: "Funciona sem internet.",
     },
@@ -824,8 +824,8 @@ export default function OrbiChat({ onDownload, onLogin }: OrbiChatProps) {
 
       <p className="mt-3 flex items-center gap-2 font-mono text-[10.5px] leading-relaxed text-warm">
         <span className="h-1.5 w-1.5 shrink-0 bg-signal" aria-hidden />
-        Este assistente roda de verdade no navegador: regras locais para os comandos do app e Gemini
-        para o resto. No Windows, ele age no seu PC.
+        Este assistente roda de verdade no navegador: comandos do app resolvidos na hora e Gemini
+        para o resto.
       </p>
     </div>
   );

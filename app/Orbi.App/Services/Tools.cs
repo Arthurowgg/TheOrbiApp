@@ -361,6 +361,11 @@ public static class Tools
             App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.ShowAccount()));
             return "Abrindo o perfil.";
         });
+        Add("sync-now", "Sincronizar com a conta", "Produtividade", "sincronizar,sync,conta,memoria", () =>
+        {
+            Sync.Now();
+            return Firebase.SignedIn ? "Sincronizando com a sua conta." : "Entre na conta para sincronizar.";
+        });
         Add("orbi-site", "Abrir o site do Orbi", "Produtividade", "site,conta,navegador", () => Shell("https://orbi-app.web.app") == "Feito." ? "Abri o site." : "Não abri o site.");
         Add("orbi-log", "Ver o log do Orbi", "Produtividade", "log,registro,problema", () =>
         {

@@ -124,8 +124,8 @@ public partial class CommandBar : Window
 
     /* ----------------------------- menu ----------------------------- */
     /// <summary>
-    /// O botão da direita: três pontos. O ponto só acende quando falta a chave
-    /// da IA — é a única coisa que precisa de atenção.
+    /// O botão da direita: três pontos. O ponto fica neutro com conta e ganha
+    /// o acento da marca quando falta a chave da IA.
     /// </summary>
     public void RefreshAccountChip()
     {
@@ -133,7 +133,11 @@ public partial class CommandBar : Window
         AccountDot.Fill = Gemini.HasKey
             ? new SolidColorBrush(Color.FromRgb(0x4E, 0x9A, 0x5C))
             : new SolidColorBrush(Color.FromRgb(0xC7, 0x45, 0x2A));
-        AccountButton.ToolTip = "Menu — perfil, IA, ajustes e ferramentas";
+
+        var conta = Firebase.SignedIn ? Firebase.Email : null;
+        AccountButton.ToolTip = string.IsNullOrWhiteSpace(conta)
+            ? "Menu — conta, IA, ajustes e ferramentas"
+            : $"Menu · {conta}";
     }
 
     private void AccountButton_Click(object sender, RoutedEventArgs e)
@@ -142,26 +146,53 @@ public partial class CommandBar : Window
         else OpenMenu();
     }
 
-    /// <summary>Três pontos: perfil, IA, ajustes, ferramentas e o resto.</summary>
+    /// <summary>Três pontos: conta, IA, ajustes, ferramentas e o resto.</summary>
     private void OpenMenu()
     {
         Expand();
         Results.Visibility = Visibility.Collapsed;
         FooterBar.Visibility = Visibility.Collapsed;
 
-        _sheetTitle = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "menu" : Store.Current.UserName.Trim();
-        _sheetNote = Gemini.HasKey ? Gemini.Mode : "IA sem chave";
+        var nome = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "Orbi" : Store.Current.UserName.Trim();
+        _sheetTitle = Firebase.SignedIn ? nome : "menu";
+        _sheetNote = Firebase.SignedIn
+            ? (Firebase.Email ?? "conta")
+            : (Gemini.HasKey ? Gemini.Mode : "entre na conta");
 
         SheetClose.Visibility = Visibility.Collapsed;
         SheetBody.Children.Clear();
 
-        SheetBody.Children.Add(SheetRow("Perfil", "seu nome e este PC", () => Abrir("perfil")));
+        if (Firebase.SignedIn)
+        {
+            SheetBody.Children.Add(SheetRow("Conta", $"{Firebase.Email} · {Store.LastSyncText}",
+                () => Abrir("perfil"), destaque: true));
+        }
+        else
+        {
+            SheetBody.Children.Add(SheetRow("Entrar na conta", "a memória acompanha você",
+                () => App.Instance.ShowLogin(), destaque: true));
+            SheetBody.Children.Add(SheetRow("Criar conta", "", () => Browser.Open("https://orbi-app.web.app/conta")));
+        }
+
+        SheetBody.Children.Add(SheetDivider());
         SheetBody.Children.Add(SheetRow("IA e chave", Gemini.HasKey ? Gemini.Mode : "cole a sua chave", () => Abrir("ia"),
             aviso: !Gemini.HasKey));
         SheetBody.Children.Add(SheetRow("Ajustes", "atalho, Windows, segurança", () => Abrir("ajustes")));
         SheetBody.Children.Add(SheetRow("Ferramentas", $"{Tools.All.Count} ações", () => Abrir("ferramentas")));
-        SheetBody.Children.Add(SheetRow("Memória", "o que o Orbi lembra", () => Abrir("ajustes")));
+        SheetBody.Children.Add(SheetRow("Memória", "o que o Orbi lembra", () => Abrir("perfil")));
         SheetBody.Children.Add(SheetDivider());
+
+        if (Firebase.SignedIn)
+        {
+            SheetBody.Children.Add(SheetRow("Sair da conta", "", () =>
+            {
+                Firebase.SignOut();
+                Sync.Now();
+                RefreshAccountChip();
+                OpenMenu();
+            }));
+        }
+
         SheetBody.Children.Add(SheetRow("Site do Orbi", "", () => Browser.Open("https://orbi-app.web.app")));
         SheetBody.Children.Add(SheetRow("Encerrar o Orbi", "", () => App.Instance.ExitApp()));
         ShowSheet();
@@ -591,7 +622,7 @@ public partial class CommandBar : Window
             ReplyKind.Confirm => "confirmar",
             ReplyKind.Private => "privado",
             ReplyKind.NeedsAi => "IA",
-            _ => "no seu PC",
+            _ => "no app",
         },
         BadgeBrush = reply.Kind is ReplyKind.Confirm or ReplyKind.NeedsAi ? "#FFC7452A" : "#1FFFFFFF",
         BadgeTextBrush = reply.Kind is ReplyKind.Confirm or ReplyKind.NeedsAi ? "#FFFFFFFF" : "#99F1EBDF",

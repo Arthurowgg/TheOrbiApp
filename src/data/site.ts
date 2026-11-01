@@ -2,7 +2,7 @@ export const NAV = [
   { label: "O que faz", section: "faz" },
   { label: "Ferramentas", section: "ferramentas" },
   { label: "O app", section: "app" },
-  { label: "Como funciona", section: "conta" },
+  { label: "Sua conta", section: "conta" },
   { label: "Baixar", section: "download" },
 ] as const;
 
@@ -44,15 +44,15 @@ export const STEPS = [
     body: "A barra aparece sobre qualquer programa. Enter executa; / abre o catálogo de ferramentas.",
   },
   {
-    title: "Cole a sua chave da IA",
-    body: "A chave do Google AI Studio é gratuita e fica cifrada neste PC. É ela que faz o Orbi ver a tela, clicar e digitar.",
+    title: "Entre na conta",
+    body: "A mesma do site. A sua memória acompanha você quando trocar de PC.",
   },
 ];
 
 export const ACCOUNT_ITEMS = [
-  { label: "Memória", body: "o que você pediu e o que o Orbi fez, no seu PC." },
-  { label: "Lembretes", body: "avisos na hora marcada, na bandeja do Windows." },
-  { label: "Preferências", body: "atalho global, posição da barra, bloqueio por inatividade." },
+  { label: "Memória", body: "o que você pediu e o que o Orbi fez." },
+  { label: "Preferências", body: "atalho, bloqueio por inatividade, modelo da IA." },
+  { label: "Apelidos", body: "os atalhos de texto que você criou." },
 ];
 
 export const FAQ = [
@@ -61,8 +61,8 @@ export const FAQ = [
     a: "Não. O Orbi é gratuito. A única chave é a da IA, gratuita no Google AI Studio.",
   },
   {
-    q: "Preciso criar conta?",
-    a: "Não existe conta. O Orbi roda no seu PC e guarda tudo nele.",
+    q: "Preciso de conta para usar?",
+    a: "Não. As ferramentas funcionam assim que instalar. A conta serve para a sua memória acompanhar você em outro PC.",
   },
   {
     q: "O Orbi mexe no PC sozinho?",
@@ -70,7 +70,7 @@ export const FAQ = [
   },
   {
     q: "E a inteligência artificial?",
-    a: "O modo inteligente pede uma chave do Gemini: é o único requisito. Cole a chave no painel IA e o Orbi passa a ver a tela, clicar, digitar e encadear ferramentas.",
+    a: "O modo inteligente pede uma chave do Gemini, gratuita no Google AI Studio. Cole no painel IA e o Orbi passa a ver a tela, clicar, digitar e encadear ferramentas.",
   },
   {
     q: "Qual Windows eu preciso?",
@@ -80,16 +80,16 @@ export const FAQ = [
 
 /** O que a conta acompanha. Sem listar dados guardados, sem detalhes de banco. */
 export const SYNC_ITEMS = [
-  { key: "memoria" as const, label: "Memória no seu PC" },
-  { key: "preferencias" as const, label: "Posição e tamanho da barra" },
-  { key: "ferramentas" as const, label: "383 ferramentas locais" },
+  { key: "memoria" as const, label: "Memória" },
+  { key: "preferencias" as const, label: "Preferências" },
+  { key: "apelidos" as const, label: "Apelidos e favoritos" },
 ];
 
 /** Notas da versão mostradas na área da conta. */
 export const RELEASE_NOTES = [
-  "383 ferramentas do Windows na barra",
+  "384 ferramentas do Windows na barra",
   "Barra compacta: Enter executa, / abre o catálogo, F1 também",
   "IA que usa o PC: vê a tela, clica, digita e encadeia ferramentas",
-  "Memória do dia e histórico de cópia, no seu PC",
-  "Barra que volta ao mesmo lugar, com o mesmo tamanho",
+  "Memória do dia a dia",
+  "Memória e preferências na sua conta",
 ];

@@ -127,6 +127,7 @@ public sealed class IaWindow : Window
         {
             Store.Current.GeminiModel = modelo;
             Store.Save();
+            _ = Sync.PushPrefsAsync();
         }
         _estado.Text = Estado();
         _status.Text = "Chave salva, cifrada neste PC.";

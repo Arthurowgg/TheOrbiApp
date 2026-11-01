@@ -69,7 +69,7 @@ function Faq() {
   );
 }
 
-export default function Home({ onDownload, onAccount }: HomeProps) {
+export default function Home({ account, onDownload, onLogin, onSignup, onAccount }: HomeProps) {
   const release = useRelease();
   const { releases, loading: versionsLoading } = useReleases();
 
@@ -98,10 +98,16 @@ export default function Home({ onDownload, onAccount }: HomeProps) {
                 <Icon name="download" className="h-4 w-4" />
                 Baixar para Windows
               </Button>
-              <Button size="lg" variant="secondary" onClick={onAccount}>
-                Ver as ferramentas
-                <Icon name="arrow-right" className="h-4 w-4" />
-              </Button>
+              {account ? (
+                <Button size="lg" variant="secondary" onClick={onAccount}>
+                  Minha conta
+                  <Icon name="arrow-right" className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button size="lg" variant="secondary" onClick={onSignup}>
+                  Criar conta
+                </Button>
+              )}
             </div>
 
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[10.5px] uppercase tracking-[0.1em] text-warm">
@@ -118,7 +124,7 @@ export default function Home({ onDownload, onAccount }: HomeProps) {
           </div>
 
           <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
-            <OrbiChat onDownload={onDownload} onLogin={onAccount} />
+            <OrbiChat onDownload={onDownload} onLogin={onLogin} />
           </div>
         </div>
       </section>
@@ -210,26 +216,37 @@ export default function Home({ onDownload, onAccount }: HomeProps) {
         </div>
       </section>
 
-      {/* ------------------------------ COMO FUNCIONA ------------------------------ */}
+      {/* ------------------------------ CONTA ------------------------------ */}
       <section id="conta" className="scroll-mt-16 border-y border-rule bg-film text-bone">
         <div className="mx-auto grid max-w-[1120px] items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1fr_0.8fr] lg:gap-16 lg:py-20">
           <Reveal>
-            <Eyebrow tone="paper">Sem conta</Eyebrow>
+            <Eyebrow tone="paper">Sua conta</Eyebrow>
             <h2 className="display mt-4 text-[clamp(2rem,4.2vw,3rem)] text-bone">
-              Tudo roda aqui,
+              A mesma conta
               <br />
-              <span className="text-signal">no seu PC.</span>
+              <span className="text-signal">no site e no app.</span>
             </h2>
             <p className="mt-5 max-w-[44ch] text-[14.5px] leading-[1.7] text-bone/60">
-              Nada de login para instalar. A barra, as ferramentas e a memória ficam neste
-              computador — e a chave da IA fica cifrada com o seu usuário do Windows.
+              Entre uma vez e o Orbi lembra do que você pediu, do seu jeito de usar
+              e dos seus apelidos — em qualquer PC.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Button variant="inverse" onClick={onDownload}>
-                Baixar o Orbi
-                <Icon name="arrow-right" className="h-3.5 w-3.5" />
-              </Button>
+              {account ? (
+                <Button variant="inverse" onClick={onAccount}>
+                  Abrir minha conta
+                  <Icon name="arrow-right" className="h-3.5 w-3.5" />
+                </Button>
+              ) : (
+                <>
+                  <Button variant="inverse" onClick={onSignup}>
+                    Criar conta
+                  </Button>
+                  <Button variant="outline" onClick={onLogin}>
+                    Já tenho conta
+                  </Button>
+                </>
+              )}
             </div>
           </Reveal>
 
@@ -337,9 +354,11 @@ export default function Home({ onDownload, onAccount }: HomeProps) {
               <Icon name="download" className="h-4 w-4" />
               Baixar o Orbi
             </Button>
-            <Button size="lg" variant="secondary" onClick={onAccount}>
-              Ver as ferramentas
-            </Button>
+            {!account && (
+              <Button size="lg" variant="secondary" onClick={onSignup}>
+                Criar conta
+              </Button>
+            )}
           </div>
         </div>
       </section>

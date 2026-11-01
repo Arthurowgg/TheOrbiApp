@@ -81,6 +81,7 @@ public partial class SettingsWindow : Window
         }
 
         Store.Save();
+        _ = Sync.PushPrefsAsync();
         HotkeyState.Text = "Salvo.";
         App.Instance.ReturnBar();
     }

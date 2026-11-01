@@ -6,10 +6,26 @@ using System.Text.Json.Serialization;
 
 namespace Orbi.Services;
 
-/// <summary>Dados que vivem só neste PC, em %APPDATA%\Orbi\orbi.json.</summary>
+/// <summary>
+/// O que o app guarda em %APPDATA%\Orbi\orbi.json. Com conta, a memória e as
+/// preferências acompanham você (Services/Sync.cs).
+/// </summary>
 public sealed class OrbiSettings
 {
     public string UserName { get; set; } = "";
+    public string? AccountEmail { get; set; }
+
+    // Sessão da conta, cifrada com DPAPI junto da chave da IA.
+    public string? IdToken { get; set; }
+    public string? RefreshToken { get; set; }
+    public string? Uid { get; set; }
+    public long TokenExpiresAt { get; set; }
+
+    // Última sincronização com a conta (texto curto mostrado nos painéis).
+    public string LastSyncLabel { get; set; } = "";
+
+    // Marcador de que o documento da conta já existe (evita criar de novo).
+    public string RemoteCreatedAt { get; set; } = "";
     public bool StartWithWindows { get; set; } = true;
     public string GeminiModel { get; set; } = "gemini-2.0-flash";
     public int Volume { get; set; } = 50;
@@ -147,6 +163,61 @@ public static class Store
     }
 
     public static bool HasApiKey() => !string.IsNullOrWhiteSpace(LoadApiKey());
+
+    /* ---------------------- sessão da conta (DPAPI) ---------------------- */
+    private static string SessionPath => Path.Combine(Root, "session.bin");
+
+    public static void SaveSession(FirebaseSession? session)
+    {
+        try
+        {
+            Directory.CreateDirectory(Root);
+            if (session is null || string.IsNullOrWhiteSpace(session.RefreshToken))
+            {
+                if (File.Exists(SessionPath)) File.Delete(SessionPath);
+                var settings = Current;
+                settings.IdToken = null;
+                settings.RefreshToken = null;
+                settings.Uid = null;
+                settings.TokenExpiresAt = 0;
+                Save();
+                return;
+            }
+
+            var json = JsonSerializer.Serialize(session, Options);
+            var cipher = ProtectedData.Protect(Encoding.UTF8.GetBytes(json), null, DataProtectionScope.CurrentUser);
+            File.WriteAllBytes(SessionPath, cipher);
+        }
+        catch
+        {
+            // sem DPAPI: a sessão não persiste entre reinícios
+        }
+    }
+
+    public static FirebaseSession? LoadSession()
+    {
+        try
+        {
+            if (!File.Exists(SessionPath)) return null;
+            var cipher = File.ReadAllBytes(SessionPath);
+            var bytes = ProtectedData.Unprotect(cipher, null, DataProtectionScope.CurrentUser);
+            return JsonSerializer.Deserialize<FirebaseSession>(Encoding.UTF8.GetString(bytes), Options);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Texto curto de quando a conta foi sincronizada ("agora", "14:32").</summary>
+    public static string LastSyncText
+    {
+        get
+        {
+            var rotulo = Current.LastSyncLabel;
+            return string.IsNullOrWhiteSpace(rotulo) ? "aguardando" : "às " + rotulo;
+        }
+    }
 
     public static void PushClipboard(string text)
     {

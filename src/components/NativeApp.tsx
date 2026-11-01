@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Icon, Keycap, Mark } from "./ui";
 
-type Panel = "ferramentas" | "barra" | "ajustes" | "ia";
+type Panel = "ferramentas" | "barra" | "ajustes" | "conta";
 
 const PANELS: { id: Panel; label: string }[] = [
   { id: "barra", label: "A barra" },
   { id: "ferramentas", label: "Ferramentas" },
   { id: "ajustes", label: "Ajustes" },
-  { id: "ia", label: "IA" },
+  { id: "conta", label: "Conta" },
 ];
 
 const ROWS: Record<Panel, { title: string; detail: string; badge: string }[]> = {
@@ -32,12 +32,12 @@ const ROWS: Record<Panel, { title: string; detail: string; badge: string }[]> = 
     { title: "Iniciar com o Windows", detail: "fica quieto na bandeja", badge: "geral" },
     { title: "Backup dos seus dados", detail: "%APPDATA%\\Orbi, aberto no botão", badge: "sobre" },
   ],
-  ia: [
-    { title: "Chave do Gemini", detail: "cole uma vez, cifrada neste PC", badge: "obrigatória" },
-    { title: "Ver a tela", detail: "lê o que está aberto antes de agir", badge: "pc" },
-    { title: "Clicar e digitar", detail: "por coordenada, no campo em foco", badge: "pc" },
-    { title: "Vários passos", detail: "abrir, esperar, clicar, escrever, Enter", badge: "agente" },
-    { title: "Modelo", detail: "Gemini 2.5 Flash · Flash-Lite · 2.0", badge: "ia" },
+  conta: [
+    { title: "Memória", detail: "o dia inteiro, para perguntar depois", badge: "conta" },
+    { title: "Preferências", detail: "atalho, bloqueio, modelo da IA", badge: "conta" },
+    { title: "Apelidos", detail: "os atalhos de texto que você criou", badge: "conta" },
+    { title: "IA e chave", detail: "Gemini · chave cifrada com DPAPI", badge: "ia" },
+    { title: "Este PC", detail: "nome, versão e atualização", badge: "local" },
   ],
 };
 
