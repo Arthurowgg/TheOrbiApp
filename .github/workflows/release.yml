@@ -73,11 +73,14 @@ jobs:
       - name: Gerar o instalador
         shell: powershell
         run: |
+          # O runner liga $ErrorActionPreference=Stop: sem isso, qualquer linha
+          # que o ISCC escreve em stderr aborta o script antes de gravar o log.
+          $ErrorActionPreference = "Continue"
           $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-          $saida = & $iscc app\installer\orbi.iss 2>&1 | ForEach-Object { "$_" }
+          $saida = & $iscc "app\installer\orbi.iss" *>&1 | Out-String
+          Set-Content -Path "iscc.log" -Value $saida -Encoding utf8
           $codigo = $LASTEXITCODE
-          $saida | Set-Content -Path iscc.log -Encoding utf8
-          $saida | Select-Object -Last 25 | ForEach-Object { Write-Host "::error::$_" }
+          ($saida -split "`n") | Select-Object -Last 20 | ForEach-Object { Write-Host "::error::$_" }
           if ($codigo -ne 0) { throw "ISCC falhou com codigo $codigo" }
 
       - name: Salvar o log do instalador
