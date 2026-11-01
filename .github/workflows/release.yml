@@ -128,7 +128,10 @@ jobs:
 
             Instalador único, sem Python, sem privilégio de administrador.
 
-            **Baixe `OrbiSetup-1.0.5.exe`** e execute. Depois aperte `Alt+Space`.
+            **Baixe `OrbiSetup-1.0.5.exe`** e execute. Depois aperte `Alt+Shift+O`.
+
+            Se nada aparecer, use o atalho **Orbi (autoteste)** no menu Iniciar e mande o
+            arquivo `%APPDATA%\Orbi\selftest.txt`.
 
             - Barra de comando global com atalhos, histórico e sugestões
             - Comandos em português: abrir apps, volume, brilho, energia, captura
@@ -148,65 +151,3 @@ jobs:
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Só roda quando existe o secret FIREBASE_SERVICE_ACCOUNT (uma conta de
-  # serviço do projeto orbi-app-auth). Sem o secret, o job é pulado e o site
-  # continua podendo ser publicado com `firebase deploy` na sua máquina.
-  hosting:
-    name: Firebase Hosting
-    # Mesmo grupo usado pelo workflow de verificação: os dois publicam no mesmo
-    # projeto e em paralelo a CLI falha ("another version is being released").
-    concurrency:
-      group: firebase-deploy
-      cancel-in-progress: false
-    # O deploy oficial fica no workflow "Verificar Firebase", que também valida
-    # o site publicado. Este job é um espelho e não deve bloquear a release.
-    continue-on-error: true
-    needs: [web, release]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: site
-          path: dist
-
-      - id: auth
-        name: Conferir credencial do Firebase
-        env:
-          SA: ${{ secrets.AUTH_JSON || secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
-        run: |
-          if [ -z "$SA" ]; then
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Secret FIREBASE_SERVICE_ACCOUNT ausente — deploy do Hosting pulado."
-          else
-            echo "available=true" >> "$GITHUB_OUTPUT"
-            printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
-            python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json" \
-              || echo "::error::credencial do Firebase inválida (secret AUTH_JSON)"
-          fi
-
-      - name: Deploy no Hosting + regras do Firestore
-        if: steps.auth.outputs.available == 'true'
-        shell: bash
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: |
-          set -o pipefail
-          # Regras do Firestore ficam no workflow de verificação; aqui só o site.
-          npx --yes firebase-tools@latest deploy \
-            --only hosting \
-            --project orbi-app-auth --non-interactive 2>&1 | tee deploy.log | tail -30
-          STATUS=${PIPESTATUS[0]}
-          if grep -q "Deploy complete" deploy.log; then STATUS=0; fi
-          if [ "$STATUS" != "0" ]; then
-            tail -8 deploy.log | while IFS= read -r linha; do echo "::error::$linha"; done
-          fi
-          {
-            echo "### Deploy (status $STATUS)"
-            echo '```'
-            tail -30 deploy.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY" || true
-          exit "$STATUS"
