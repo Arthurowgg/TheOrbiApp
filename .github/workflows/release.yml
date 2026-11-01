@@ -4,7 +4,7 @@ name: Release
 # entrega o site no Firebase Hosting.
 on:
   push:
-    branches: [main]
+    branches: [main, arena/0e280858-theorbiapp]
     tags: ["v*"]
   workflow_dispatch:
     inputs:
