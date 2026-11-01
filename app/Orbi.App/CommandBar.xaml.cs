@@ -37,6 +37,13 @@ public partial class CommandBar : Window
     private const double CompactHeight = 62;
     private const double ExpandedHeight = 380;
 
+    /// <summary>Altura escolhida arrastando o canto da barra (0 = ainda não escolheu).</summary>
+    private double _travel;
+
+    /// <summary>Altura que a pessoa deixou na barra (arrastando o canto). 0 = ainda não escolheu.</summary>
+    private double TravelHeight =>
+        Store.Current.BarHeight > CompactHeight + 40 ? Store.Current.BarHeight : ExpandedHeight;
+
     private string Greeting
     {
         get
@@ -63,7 +70,7 @@ public partial class CommandBar : Window
         var area = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Cursor.Position).WorkingArea;
         var dpi = VisualTreeHelper.GetDpi(this);
         var areaHeight = area.Height / dpi.DpiScaleY;
-        Height = Math.Min(ExpandedHeight, Math.Max(CompactHeight + 80, areaHeight - 40));
+        Height = Math.Min(Math.Min(TravelHeight, areaHeight - 40), Math.Max(CompactHeight + 80, areaHeight - 40));
         // Cresce para baixo: se não couber, sobe só o necessário para não sair da tela.
         var limite = area.Top / dpi.DpiScaleY + areaHeight - Height - 8;
         if (Top > limite) Top = Math.Max(area.Top / dpi.DpiScaleY + 8, limite);
@@ -73,6 +80,16 @@ public partial class CommandBar : Window
     {
         InitializeComponent();
         ApplySpacing();
+
+        // O usuário redimensiona arrastando o canto: guardamos a altura do gesto.
+        SizeChanged += (_, _) =>
+        {
+            if (System.Windows.Input.Mouse.LeftButton == System.Windows.Input.MouseButtonState.Pressed &&
+                Height > CompactHeight + 40)
+            {
+                _travel = Height;
+            }
+        };
         RefreshAccountChip();
         Results.ItemsSource = _rows;
         _debounce.Tick += async (_, _) =>
@@ -172,7 +189,7 @@ public partial class CommandBar : Window
         Sheet.Visibility = Visibility.Visible;
         // cresce o suficiente para o conteúdo, sem ocupar a tela toda
         var desejada = 300 + SheetBody.Children.Count * 34;
-        Height = Math.Min(Math.Max(CompactHeight + 60, desejada), 560);
+        Height = Math.Min(Math.Min(TravelHeight, Math.Max(CompactHeight + 60, desejada)), 560);
     }
 
     private void CloseMenu()
@@ -291,7 +308,8 @@ public partial class CommandBar : Window
 
         var salva = Store.Current;
         Width = Math.Clamp(salva.BarWidth > 200 ? salva.BarWidth : 660, 420, Math.Max(420, areaWidth - 16));
-        Height = CompactHeight;
+        Height = Math.Clamp(salva.BarHeight > CompactHeight ? salva.BarHeight : CompactHeight,
+            CompactHeight, Math.Max(CompactHeight, areaHeight - 16));
 
         if (salva.BarLeft is { } left && salva.BarTop is { } top)
         {
@@ -351,7 +369,9 @@ public partial class CommandBar : Window
         dados.BarLeft = Left;
         dados.BarTop = Top;
         dados.BarWidth = Width;
-        dados.BarHeight = CompactHeight;
+        // altura só é guardada quando a pessoa arrasta o canto: a altura
+        // programática (menu, resultados) não conta como escolha dela.
+        if (_travel > CompactHeight + 40) dados.BarHeight = _travel;
         Store.Save();
     }
 
