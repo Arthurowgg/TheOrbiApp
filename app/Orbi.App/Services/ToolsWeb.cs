@@ -290,13 +290,453 @@ public static class ToolsWeb
         Add("desligar-o-wi-fi", "Desligar o Wi-Fi", "Rede e internet", "desligar,wifi", () => Rede("desligar-o-wi-fi"));
     }
 
+    /* ------------------------------ arquivos ------------------------------ */
+    private static string Busca(string nome)
+    {
+        foreach (var raiz in Raizes())
+        {
+            try
+            {
+                var achado = Directory.EnumerateFiles(raiz, "*" + nome + "*", SearchOption.AllDirectories)
+                    .Take(5).ToList();
+                if (achado.Count > 0) return string.Join("\n", achado);
+            }
+            catch { }
+        }
+        return "Não achei nenhum arquivo com esse nome.";
+    }
+
+    private static string BuscaPasta(string nome)
+    {
+        foreach (var raiz in Raizes())
+        {
+            try
+            {
+                var achado = Directory.EnumerateDirectories(raiz, "*" + nome + "*", SearchOption.AllDirectories)
+                    .Take(5).ToList();
+                if (achado.Count > 0) return string.Join("\n", achado);
+            }
+            catch { }
+        }
+        return "Não achei nenhuma pasta com esse nome.";
+    }
+
+    private static IEnumerable<string> Raizes()
+    {
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        yield return @"C:\ProgramData";
+    }
+
+    private static string AbrirPastaDe(string nome)
+    {
+        var lista = Busca(nome).Split('\n');
+        var caminho = lista.FirstOrDefault();
+        if (caminho is null || !File.Exists(caminho)) return "Não achei esse arquivo.";
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", "/select,\"" + caminho + "\"") { UseShellExecute = true });
+            return "Pasta aberta em " + Path.GetDirectoryName(caminho);
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
+
+    private static string Tamanho(string caminho)
+    {
+        try
+        {
+            if (File.Exists(caminho)) return $"{new FileInfo(caminho).Length / 1024.0 / 1024.0:0.#} MB.";
+            if (!Directory.Exists(caminho)) return "Não achei esse caminho.";
+            var total = new DirectoryInfo(caminho).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length);
+            return $"{total / 1024.0 / 1024.0:0.#} MB em {caminho}.";
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
+
+    private static string Contar(string caminho)
+    {
+        try
+        {
+            if (!Directory.Exists(caminho)) return "Não achei essa pasta.";
+            var arquivos = Directory.EnumerateFiles(caminho).Count();
+            var pastas = Directory.EnumerateDirectories(caminho).Count();
+            return $"{arquivos} arquivos e {pastas} pastas.";
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
+
+    private static string Listar(string caminho)
+    {
+        try
+        {
+            if (!Directory.Exists(caminho)) return "Não achei essa pasta.";
+            var itens = new DirectoryInfo(caminho).EnumerateFileSystemInfos()
+                .OrderByDescending(i => i.LastWriteTimeUtc).Take(20)
+                .Select(i => i.Name);
+            return string.Join("\n", itens);
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
+
+    private static string Pasta(string caminho) => Directory.Exists(caminho)
+        ? "Já existe."
+        : Criar(caminho);
+
+    private static string Criar(string caminho)
+    {
+        try
+        {
+            Directory.CreateDirectory(caminho);
+            return "Criado em " + caminho;
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
+
+    private static string CriarPasta(string caminho) => Criar(caminho);
+
+    private static string CriarArquivo(string caminho)
+    {
+        try
+        {
+            File.WriteAllText(caminho, "");
+            return "Arquivo criado em " + caminho;
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
+
+    private static (string A, string B) Dois(string dado)
+    {
+        var partes = dado.Split(new[] { "->", "→", " para ", "|" }, StringSplitOptions.TrimEntries);
+        return partes.Length >= 2 ? (partes[0], partes[1]) : (dado, dado);
+    }
+
+    private static string Renomear(string dado)
+    {
+        var (origem, destino) = Dois(dado);
+        try
+        {
+            File.Move(origem, destino);
+            return "Renomeado para " + destino;
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
+
+    private static string Copiar(string dado)
+    {
+        var (origem, destino) = Dois(dado);
+        try
+        {
+            File.Copy(origem, destino, true);
+            return "Copiado para " + destino;
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
+
+    private static string Mover(string dado)
+    {
+        var (origem, destino) = Dois(dado);
+        try
+        {
+            File.Move(origem, destino, true);
+            return "Movido para " + destino;
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
+
+    private static string Apagar(string caminho)
+    {
+        try
+        {
+            if (File.Exists(caminho)) { File.Delete(caminho); return "Apagado."; }
+            if (Directory.Exists(caminho)) { Directory.Delete(caminho, true); return "Pasta apagada."; }
+            return "Não achei esse caminho.";
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
+
+    private static string Ler(string caminho)
+    {
+        try
+        {
+            var texto = File.ReadAllText(caminho);
+            return texto.Length > 600 ? texto[..600] + "…" : texto;
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
+
     /* ------------------------------ texto ------------------------------ */
+    private static string SemAcento(string texto)
+    {
+        var normalizado = texto.Normalize(NormalizationForm.FormD);
+        var saida = new StringBuilder();
+        foreach (var c in normalizado)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark) saida.Append(c);
+        }
+        return saida.ToString().Normalize(NormalizationForm.FormC);
+    }
+
+    private static string Sortear(string texto)
+    {
+        var linhas = texto.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
+        return linhas.Count == 0 ? "Nada para sortear." : "Sorteado: " + linhas[Random.Shared.Next(linhas.Count)];
+    }
+
+    private static string Trocar(string dado)
+    {
+        var (de, para) = Dois(dado);
+        var alvo = ClipboardSafe();
+        return alvo.Length == 0 ? "Copie um texto primeiro." : "Trocado: " + Curto(alvo.Replace(de, para));
+    }
+
+    private static string Curto(string texto) => texto.Length > 140 ? texto[..140] + "…" : texto;
+
     private static string ClipboardSafe()
     {
         try { return System.Windows.Clipboard.GetText() ?? ""; }
         catch { return ""; }
     }
 
+    /* ------------------------------ conversões ------------------------------ */
+    private static string Conversao(string id, string dado)
+    {
+        var numeros = Regex.Matches(dado.Replace(",", " "), @"-?\d+([.,]\d+)?")
+            .Select(m => double.TryParse(m.Value.Replace(',', '.'), NumberStyles.Any, Cultura, out var n) ? n : 0)
+            .ToList();
+        if (numeros.Count == 0) return "Preciso dos números.";
+        double Um(Func<double, double> conta) => conta(numeros[0]);
+        var imc = numeros.Count >= 2 ? numeros[0] / Math.Pow(numeros[1], 2) : 0;
+
+        return id switch
+        {
+            "calcular-o-imc" => imc.ToString("0.0", Cultura) + " — " + (imc switch
+            {
+                < 18.5 => "abaixo do ideal",
+                < 25 => "dentro do ideal",
+                < 30 => "acima do ideal",
+                _ => "alto",
+            }),
+            "converter-celsius-para-fahrenheit" => Um(c => c * 9 / 5 + 32).ToString("0.#", Cultura) + " °F",
+            "converter-fahrenheit-para-celsius" => Um(f => (f - 32) * 5 / 9).ToString("0.#", Cultura) + " °C",
+            "converter-quilometros-para-milhas" => Um(km => km * 0.621371).ToString("0.##", Cultura) + " mi",
+            "converter-metros-para-pes" => Um(m => m * 3.28084).ToString("0.##", Cultura) + " ft",
+            "converter-quilos-para-libras" => Um(kg => kg * 2.20462).ToString("0.#", Cultura) + " lb",
+            "converter-litros-para-galoes" => Um(l => l * 0.264172).ToString("0.##", Cultura) + " gal",
+            "converter-reais-para-dolares" => Um(r => r / 5.4).ToString("0.00", Cultura) + " USD (câmbio ~5,40)",
+            "calcular-a-regra-de-tres" when numeros.Count >= 3 => (numeros[1] * numeros[2] / numeros[0]).ToString("0.###", Cultura),
+            "calcular-juros-simples" when numeros.Count >= 3 => (numeros[0] * numeros[1] / 100 * numeros[2]).ToString("0.00", Cultura) + " de juros",
+            "calcular-o-troco" when numeros.Count >= 2 => (numeros[0] - numeros[1]).ToString("0.00", Cultura),
+            _ => Calculo("somar", dado),
+        };
+    }
+
+    /* ------------------------------ cálculo ------------------------------ */
+    private static string Calculo(string tipo, string dado)
+    {
+        var numeros = Regex.Matches(dado.Replace(",", " "), @"-?\d+([.,]\d+)?")
+            .Select(m => double.TryParse(m.Value.Replace(',', '.'), NumberStyles.Any, Cultura, out var n) ? n : 0)
+            .Where(n => true).ToList();
+        if (numeros.Count == 0) return "Preciso dos números.";
+
+        double resultado;
+        try
+        {
+            resultado = tipo switch
+            {
+                "somar" => numeros.Sum(),
+                "subtrair" => numeros.Aggregate((a, b) => a - b),
+                "multiplicar" => numeros.Aggregate((a, b) => a * b),
+                "dividir" => numeros.Skip(1).Aggregate(numeros[0], (a, b) => b == 0 ? a : a / b),
+                "porcentagem" => numeros.Count >= 2 ? numeros[0] / 100 * numeros[1] : numeros[0] / 100,
+                "aumento" => numeros.Count >= 2 ? numeros[0] * (1 + numeros[1] / 100) : numeros[0],
+                "desconto" => numeros.Count >= 2 ? numeros[0] * (1 - numeros[1] / 100) : numeros[0],
+                "media" => numeros.Average(),
+                "rachar" => numeros.Count >= 2 ? numeros[0] / numeros[1] : numeros[0],
+                _ => numeros.Sum(),
+            };
+        }
+        catch (Exception error)
+        {
+            return "Não consegui calcular: " + error.Message;
+        }
+        return resultado.ToString("0.###", Cultura);
+    }
+
+    /* ------------------------------ datas ------------------------------ */
+    private static string Data(string id)
+    {
+        var hoje = DateTime.Now;
+        var dado = Args.Current;
+        return id switch
+        {
+            "ver-a-data-de-hoje" => hoje.ToString("dddd, dd 'de' MMMM 'de' yyyy", Cultura),
+            "ver-a-hora-agora" => hoje.ToString("HH:mm"),
+            "ver-o-dia-da-semana" => hoje.ToString("dddd", Cultura),
+            "ver-a-semana-do-ano" => "Semana " + ISOWeek.GetWeekOfYear(hoje) + " de " + hoje.Year,
+            "ver-o-mes-por-extenso" => hoje.ToString("MMMM 'de' yyyy", Cultura),
+            "ver-quanto-falta-para-o-fim-do-ano" => $"Faltam {(new DateTime(hoje.Year, 12, 31) - hoje).Days} dias.",
+            "ver-a-data-da-pascoa-deste-ano" => "Páscoa de " + hoje.Year + ": " + Pascoa(hoje.Year).ToString("dd/MM/yyyy"),
+            "ver-o-proximo-feriado" => ProximoFeriado(hoje),
+            _ => ComData(id, hoje, dado),
+        };
+    }
+
+    private static string ComData(string id, DateTime hoje, string dado)
+    {
+        switch (id)
+        {
+            case "ver-quantos-dias-faltam-para-uma-data":
+                return DateTime.TryParse(dado, Cultura, DateTimeStyles.None, out var alvo)
+                    ? $"{(alvo.Date - hoje.Date).Days} dias."
+                    : "Diga a data como 25/12.";
+            case "ver-quantos-dias-passaram-de-uma-data":
+                return DateTime.TryParse(dado, Cultura, DateTimeStyles.None, out var inicio)
+                    ? $"{(hoje.Date - inicio.Date).Days} dias."
+                    : "Diga a data como 01/01/2024.";
+            case "calcular-a-idade":
+                if (!DateTime.TryParse(dado, Cultura, DateTimeStyles.None, out var nascimento)) return "Diga a data de nascimento.";
+                var idade = hoje.Year - nascimento.Year;
+                if (hoje.DayOfYear < nascimento.DayOfYear) idade--;
+                return idade + " anos.";
+            case "somar-dias-a-hoje":
+                return int.TryParse(dado, out var dias) ? hoje.AddDays(dias).ToString("dd/MM/yyyy") : "Diga quantos dias.";
+            case "ver-a-diferenca-entre-duas-datas":
+            {
+                var partes = dado.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (partes.Length < 2) return "Diga as duas datas.";
+                if (!DateTime.TryParse(partes[0], Cultura, DateTimeStyles.None, out var a) ||
+                    !DateTime.TryParse(partes[1], Cultura, DateTimeStyles.None, out var b)) return "Não entendi as datas.";
+                return $"{(b.Date - a.Date).Days} dias.";
+            }
+            case "formatar-uma-data":
+                return DateTime.TryParse(dado, Cultura, DateTimeStyles.None, out var quando)
+                    ? quando.ToString("dddd, dd 'de' MMMM 'de' yyyy", Cultura)
+                    : "Diga a data.";
+            default:
+                return hoje.ToString("dddd, dd/MM/yyyy HH:mm", Cultura);
+        }
+    }
+
+    private static DateTime Pascoa(int ano)
+    {
+        // algoritmo de Meeus/Jones/Butcher
+        var a = ano % 19;
+        var b = ano / 100;
+        var c = ano % 100;
+        var e = b / 4;
+        var f = b % 4;
+        var g = (b + 8) / 25;
+        var h = (b - g + 1) / 3;
+        var i = (19 * a + b - e - h + 15) % 30;
+        var k = c / 4;
+        var l = c % 4;
+        var m = (32 + 2 * e + 2 * k - i - l) % 7;
+        var n = (a + 11 * i + 22 * m) / 451;
+        var mes = (i + m - 7 * n + 114) / 31;
+        var dia = (i + m - 7 * n + 114) % 31 + 1;
+        return new DateTime(ano, mes, dia);
+    }
+
+    private static readonly (int Mes, int Dia, string Nome)[] Fixos =
+    {
+        (1, 1, "Confraternização Universal"),
+        (4, 21, "Tiradentes"),
+        (5, 1, "Dia do Trabalho"),
+        (9, 7, "Independência"),
+        (10, 12, "Nossa Senhora Aparecida"),
+        (11, 2, "Finados"),
+        (11, 15, "Proclamação da República"),
+        (11, 20, "Consciência Negra"),
+        (12, 25, "Natal"),
+    };
+
+    private static string ProximoFeriado(DateTime hoje)
+    {
+        foreach (var (mes, dia, nome) in Fixos)
+        {
+            var candidato = new DateTime(hoje.Year, mes, dia);
+            if (candidato.Date > hoje.Date) return $"{nome} em {candidato:dd/MM}.";
+        }
+        var pascoa = Pascoa(hoje.Year + 1);
+        return $"Carnaval em {pascoa.AddDays(-48):dd/MM/(yyyy)} e Natal em 25/12/{hoje.Year + 1}.";
+    }
+
+    /* ------------------------------ área de transferência ------------------------------ */
+    private static string Clip(string id)
+    {
+        var texto = ClipboardSafe();
+        var dado = Args.Current;
+        switch (id)
+        {
+            case "copiar-para-a-area-de-transferencia":
+                try { System.Windows.Clipboard.SetText(dado); return "Copiado."; }
+                catch (Exception error) { return error.Message; }
+            case "colar-da-area-de-transferencia":
+            case "ver-o-que-esta-copiado":
+                return texto.Length == 0 ? "Nada copiado." : Curto(texto);
+            case "limpar-a-area-de-transferencia":
+                try { System.Windows.Clipboard.Clear(); return "Limpo."; }
+                catch (Exception error) { return error.Message; }
+            case "contar-as-palavras-do-texto-copiado":
+                return texto.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length + " palavras.";
+            case "guardar-o-texto-copiado":
+                if (texto.Length == 0) return "Nada copiado.";
+                Memory.Remember(texto, "guardado");
+                return "Guardado na memória.";
+            case "traduzir-o-texto-copiado":
+                return Abrir("https://translate.google.com/?sl=auto&tl=pt&text=" + Uri.EscapeDataString(texto));
+            case "pesquisar-o-texto-copiado":
+                return Abrir("https://duckduckgo.com/?q=" + Uri.EscapeDataString(texto));
+            default:
+                return texto.Length == 0 ? "Nada copiado." : Curto(texto);
+        }
+    }
+
+    /* ------------------------------ rede ------------------------------ */
+    private static async Task<string> HttpAsync(string url)
+    {
+        try
+        {
+            using var cliente = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
+            return await cliente.GetStringAsync(url);
+        }
+        catch (Exception error)
+        {
+            return "Erro: " + error.Message;
+        }
+    }
     private static string Rede(string id)
     {
         var dado = Args.Current;
