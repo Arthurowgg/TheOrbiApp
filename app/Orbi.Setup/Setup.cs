@@ -165,7 +165,7 @@ public static class Installer
 {
     public static readonly List<string> Log = new();
 
-    private static void Write(string line)
+    internal static void Write(string line)
     {
         Log.Add(line);
         App.Current.Dispatcher.BeginInvoke(() => (App.Current as App)?.AppendLog(line));
