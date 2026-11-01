@@ -82,7 +82,7 @@ public static class Payload
 
     private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromMinutes(15) };
 
-    public static bool Cached => File.Exists(Cache) && new FileInfo(Cache).Length > 500L * 1024;
+    public static bool Cached => File.Exists(Cache) && new FileInfo(Cache).Length > 100L * 1024;
 
     /// <summary>
     /// Pacote local (usado pelos testes e por quem instala sem internet):
@@ -170,7 +170,7 @@ public static class Payload
         }
 
         var info = new FileInfo(temp);
-        if (info.Length < 500L * 1024)
+        if (info.Length < 100L * 1024)
         {
             File.Delete(temp);
             throw new InvalidOperationException($"o pacote veio incompleto ({info.Length} bytes)");
