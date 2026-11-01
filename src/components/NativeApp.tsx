@@ -19,11 +19,11 @@ const ROWS: Record<Panel, { title: string; detail: string; badge: string }[]> = 
     { title: "o que eu anotei ontem?", detail: "responde da sua memória", badge: "memória" },
   ],
   ferramentas: [
-    { title: "Sistema", detail: "Gerenciador de tarefas · Serviços · Eventos…", badge: "18" },
+    { title: "Sistema", detail: "Gerenciador de tarefas · Serviços · Eventos…", badge: "39" },
     { title: "Painéis", detail: "Bluetooth · Wi-Fi · Impressoras · Fontes…", badge: "17" },
-    { title: "Janelas", detail: "Fixar à esquerda · Nova área de trabalho…", badge: "14" },
-    { title: "Energia", detail: "Dormir · Hibernar · Desligar em 1 min…", badge: "8" },
-    { title: "Rede", detail: "Limpar DNS · Meu IP · Testar a internet", badge: "4" },
+    { title: "Janelas", detail: "Fixar à esquerda · Nova área de trabalho…", badge: "34" },
+    { title: "Energia", detail: "Dormir · Hibernar · Desligar em 1 min…", badge: "22" },
+    { title: "Rede", detail: "Limpar DNS · Meu IP · Testar a internet", badge: "25" },
   ],
   ajustes: [
     { title: "Atalho global", detail: "Alt+Shift+O — troca em um clique", badge: "geral" },
@@ -33,9 +33,6 @@ const ROWS: Record<Panel, { title: string; detail: string; badge: string }[]> = 
     { title: "Backup dos seus dados", detail: "%APPDATA%\\Orbi, aberto no botão", badge: "sobre" },
   ],
   conta: [
-    { title: "Lembretes", detail: "o que você marcou no site aparece aqui", badge: "sync" },
-    { title: "Notas", detail: "as mesmas do site, sem colar e copiar", badge: "sync" },
-    { title: "Rotinas", detail: "“modo estudo” criado no site roda no PC", badge: "sync" },
     { title: "Memória", detail: "o dia inteiro, para perguntar depois", badge: "sync" },
     { title: "Downloads", detail: "cada versão que você baixou", badge: "site" },
   ],

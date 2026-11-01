@@ -362,7 +362,7 @@ export default function Login({
               <span className="text-signal">numa frase.</span>
             </h2>
             <p className="mt-4 max-w-[36ch] text-[13.5px] leading-[1.7] text-bone/55">
-              A conta guarda o que precisa ir junto: lembretes, notas, rotinas, preferências e a
+              A conta guarda o que precisa ir junto: preferências e a
               memória. O resto fica com você, no Windows.
             </p>
           </div>

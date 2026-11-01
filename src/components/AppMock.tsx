@@ -40,7 +40,7 @@ export default function AppMock({ name, email, color = "#c7452a", className = ""
       <div className="grid grid-cols-[112px_minmax(0,1fr)] sm:grid-cols-[132px_minmax(0,1fr)]">
         {/* navegação */}
         <nav className="space-y-0.5 border-r border-white/10 bg-[#16120e] p-2" aria-hidden>
-          {["Geral", "IA", "Segurança", "Conta", "Rotinas", "Aparência"].map((item) => (
+          {["Geral", "IA", "Conta", "Ferramentas", "Memória", "Segurança"].map((item) => (
             <div
               key={item}
               className={`px-2.5 py-2 font-mono text-[11px] ${

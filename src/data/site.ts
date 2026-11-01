@@ -45,13 +45,13 @@ export const STEPS = [
   },
   {
     title: "Entre na conta quando quiser",
-    body: "É a mesma conta do site: lembretes, notas, rotinas e memória passam a acompanhar você.",
+    body: "É a mesma conta do site: preferências e memória passam a acompanhar você.",
   },
 ];
 
 export const ACCOUNT_ITEMS = [
   { label: "Memória", body: "o que você pediu, o que o Orbi fez, o que você anotou." },
-  { label: "Rotinas", body: "sequências com nome, executadas no PC em um comando." },
+
   { label: "Lembretes e notas", body: "criados no site ou no app — é a mesma lista." },
   { label: "Preferências", body: "atalho global, bloqueio por inatividade, modo Cloud." },
 ];
@@ -79,11 +79,9 @@ export const FAQ = [
   },
 ];
 
-/** O que a conta guarda. São quatro coisas — e é só isso que o site diz. */
+/** O que a conta acompanha. Sem listar dados guardados, sem detalhes de banco. */
 export const SYNC_ITEMS = [
   { key: "memoria" as const, label: "Memória" },
-  { key: "lembretes" as const, label: "Lembretes e notas" },
-  { key: "rotinas" as const, label: "Rotinas" },
   { key: "preferencias" as const, label: "Preferências" },
 ];
 
@@ -92,6 +90,6 @@ export const RELEASE_NOTES = [
   "384 ferramentas do Windows na barra",
   "Barra compacta: Enter executa, / abre o catálogo, F1 também",
   "IA que usa o PC: vê a tela, clica, digita e encadeia ferramentas",
-  "Lembretes, notas, histórico de cópia e memória do dia",
-  "Rotinas e preferências na conta, iguais no site e no app",
+  "Memória do dia e histórico de cópia, no seu PC",
+  "Preferências na conta, iguais no site e no app",
 ];

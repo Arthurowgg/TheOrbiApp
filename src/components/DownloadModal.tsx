@@ -314,7 +314,7 @@ export default function DownloadModal({
             >
               criar conta
             </button>{" "}
-            para a memória e as rotinas acompanharem você.
+            para a memória acompanhar você.
           </p>
         )}
 

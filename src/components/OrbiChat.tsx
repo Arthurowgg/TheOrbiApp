@@ -218,7 +218,7 @@ export function interpret(input: string): Resposta {
 
   if (/^(oi|ola|eai|e ai|bom dia|boa tarde|boa noite|tudo bem|opa)\b/.test(text)) {
     return {
-      text: "Oi. Estou aqui. Posso abrir apps, ajustar o PC, criar lembretes e responder o que sei sem internet.",
+      text: "Oi. Posso abrir apps, ajustar o PC, clicar, digitar e responder perguntas.",
       signal: "local",
       actions: [
         { label: "Abre o zap", value: "try:whatsapp", primary: true },
@@ -238,7 +238,7 @@ export function interpret(input: string): Resposta {
 
   if (/(entrar|login|conta|cadastro|criar conta|vincular|sincroniz)/.test(text)) {
     return {
-      text: "É a mesma conta no site e no app: lembretes, notas, rotinas, preferências e memória acompanham você. Área de transferência e chave da API ficam só no PC.",
+      text: "É a mesma conta no site e no app: preferências e memória acompanham você.",
       signal: "privado",
       actions: [{ label: "Entrar ou criar conta", value: "app:login", primary: true }],
     };
@@ -246,7 +246,7 @@ export function interpret(input: string): Resposta {
 
   if (/(privacidade|senha|clipboard|area de transferencia|copiei|nuvem|webcam)/.test(text)) {
     return {
-      text: "Senhas, o que você copia, imagens da webcam e logs de segurança não saem do seu PC. A IA recebe só o texto do comando — nada mais.",
+      text: "A chave da IA fica cifrada neste PC e o que você copia não sai dele.",
       signal: "privado",
       detail: "A leitura da área de transferência só acontece quando você pede.",
     };
@@ -556,7 +556,7 @@ export default function OrbiChat({ onDownload, onLogin }: OrbiChatProps) {
       } else {
         push({
           from: "orbi",
-          text: "Não consegui falar com o Gemini agora. Mesmo sem ele eu abro apps, ajusto o volume, crio lembretes e mostro o status do PC — tenta um desses.",
+          text: "Não consegui falar com o Gemini agora. Mesmo sem ele eu abro apps, ajusto o volume e mostro o status do PC — tenta um desses.",
           signal: "privado",
           detail: "Sem internet, o app continua funcionando no modo local.",
           actions: [

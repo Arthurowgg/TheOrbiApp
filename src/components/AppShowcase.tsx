@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Icon, Keycap, Mark } from "./ui";
 
-type Scene = "comando" | "rotinas" | "sistema" | "bloqueio";
+type Scene = "comando" | "sequencia" | "sistema" | "bloqueio";
 
 const SCENES: {
   id: Scene;
@@ -18,10 +18,10 @@ const SCENES: {
     accent: "local",
   },
   {
-    id: "rotinas",
-    label: "Rotinas",
-    title: "Uma frase, cinco ajustes",
-    body: "Modo estudo, cinema, reunião. A Orbi abre, fecha, ajusta o áudio e ativa o Foco em sequência.",
+    id: "sequencia",
+    label: "Sequência",
+    title: "Um pedido, vários passos",
+    body: "“Deixa pronto pra aula”: abre o Word, silencia, diminui o brilho e abre a pasta do material, na ordem.",
     accent: "local",
   },
   {
@@ -137,45 +137,43 @@ function SceneCommand() {
   );
 }
 
-function SceneRotinas() {
-  const routines = [
-    { name: "Modo estudo", detail: "Word + Foco + volume 20%", on: true },
-    { name: "Modo cinema", detail: "Spotify + brilho 40% + silêncio", on: true },
-    { name: "Reunião", detail: "Teams + notificações off", on: false },
-    { name: "Encerrar o dia", detail: "fecha apps + bloqueia + desliga em 1 h", on: true },
+function SceneSequencia() {
+  const passos = [
+    { title: "ver a tela", detail: "janela em foco: navegador" },
+    { title: "abrir o Word", detail: "" },
+    { title: "silenciar o som", detail: "" },
+    { title: "brilho em 40%", detail: "" },
+    { title: "abrir a pasta do material", detail: "Documentos/Aula" },
   ];
   return (
     <div className="h-full min-h-[330px] bg-[#16120e] p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-bone/45">rotinas</p>
-        <span className="label border border-white/15 px-2 py-0.5 text-[9px] text-bone/50">4 ativas</span>
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-bone/45">executando</p>
+        <span className="label border border-white/15 px-2 py-0.5 text-[9px] text-bone/50">5 passos</span>
       </div>
+
+      <p className="mt-3 font-mono text-[12px] text-bone">
+        deixa pronto pra aula<span className="caret ml-0.5 inline-block h-[13px] w-[1.5px] translate-y-[2px] bg-signal" />
+      </p>
+
       <ul className="mt-3 divide-y divide-white/10 border-y border-white/10">
-        {routines.map((routine) => (
-          <li key={routine.name} className="flex items-center gap-3 py-3">
-            <span className="grid h-7 w-7 shrink-0 place-items-center border border-white/15 text-[#e9846a]">
-              <Icon name="bolt" className="h-3.5 w-3.5" />
+        {passos.map((passo, indice) => (
+          <li key={passo.title} className="flex items-center gap-3 py-2.5">
+            <span className="w-4 shrink-0 font-mono text-[10px] text-bone/35">{indice + 1}</span>
+            <span className="grid h-5 w-5 shrink-0 place-items-center text-[#e9846a]">
+              <Icon name="check" className="h-3.5 w-3.5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] text-bone">{routine.name}</span>
-              <span className="block truncate font-mono text-[10px] text-bone/45">{routine.detail}</span>
-            </span>
-            <span
-              className={`relative h-[18px] w-[32px] shrink-0 rounded-full ${
-                routine.on ? "bg-signal" : "bg-white/15"
-              }`}
-            >
-              <span
-                className={`absolute top-[2px] h-3.5 w-3.5 rounded-full bg-white ${
-                  routine.on ? "left-[16px]" : "left-[2px]"
-                }`}
-              />
+              <span className="block truncate text-[13px] text-bone">{passo.title}</span>
+              {passo.detail && (
+                <span className="block truncate font-mono text-[10px] text-bone/45">{passo.detail}</span>
+              )}
             </span>
           </li>
         ))}
       </ul>
-      <p className="mt-4 font-mono text-[10px] leading-relaxed text-bone/40">
-        Diga “modo estudo” na barra e a rotina roda inteira. As rotinas acompanham a sua conta.
+      <p className="mt-3 font-mono text-[10px] leading-relaxed text-bone/40">
+        Se o pedido tem vários passos, ele executa na ordem e mostra cada um.
       </p>
     </div>
   );
@@ -345,7 +343,7 @@ export default function AppShowcase() {
           </div>
           <div key={scene} className="animate-fade-up">
             {scene === "comando" && <SceneCommand />}
-            {scene === "rotinas" && <SceneRotinas />}
+            {scene === "sequencia" && <SceneSequencia />}
             {scene === "sistema" && <SceneSistema />}
             {scene === "bloqueio" && <SceneBloqueio />}
           </div>
