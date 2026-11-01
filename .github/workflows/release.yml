@@ -154,6 +154,9 @@ jobs:
   # continua podendo ser publicado com `firebase deploy` na sua máquina.
   hosting:
     name: Firebase Hosting
+    # O deploy oficial fica no workflow "Verificar Firebase", que também valida
+    # o site publicado. Este job é um espelho e não deve bloquear a release.
+    continue-on-error: true
     needs: [web, release]
     runs-on: ubuntu-latest
     steps:

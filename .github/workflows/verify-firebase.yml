@@ -11,7 +11,14 @@ permissions:
 on:
   workflow_dispatch:
   push:
+    branches: [main, arena/0e280858-theorbiapp]
     paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'firestore.rules'
+      - 'firebase.json'
       - '.github/workflows/verify-firebase.yml'
 
 jobs:
