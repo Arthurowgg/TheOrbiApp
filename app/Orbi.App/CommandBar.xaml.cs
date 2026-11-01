@@ -123,6 +123,8 @@ public partial class CommandBar : Window
     private Layout _layout = Layout.Compacta;
     private Layout _layoutSalvo = Layout.Compacta;
     private WindowStyle _modoSalvo = WindowStyle.None;
+    // retângulo exato de antes da tela cheia: a volta é simétrica
+    private (double Left, double Top, double Width, double Height, double Travel) _antes;
     public bool EmTelaCheia => _telaCheia;
     private bool _telaCheia;
 
@@ -242,6 +244,7 @@ public partial class CommandBar : Window
         if (_telaCheia)
         {
             RememberPlace();
+            _antes = (Left, Top, Width, Height, _travel);
             _layoutSalvo = _layout;
             // tela cheia de verdade: bounds (cobre a barra de tarefas), não a área útil
             var total = screen.Bounds;
@@ -269,6 +272,17 @@ public partial class CommandBar : Window
 
     private void Restaurar()
     {
+        if (_antes.Width >= 100 && !double.IsNaN(_antes.Left) && !double.IsNaN(_antes.Top))
+        {
+            Left = _antes.Left;
+            Top = _antes.Top;
+            Width = _antes.Width;
+            Height = _antes.Height;
+            _travel = _antes.Travel;
+            MostrarConteudo();
+            return;
+        }
+
         var screen = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Cursor.Position);
         var dpi = VisualTreeHelper.GetDpi(this);
         var area = screen.WorkingArea;
