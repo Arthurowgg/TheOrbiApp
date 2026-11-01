@@ -88,7 +88,7 @@ public static class Agent
     private static async Task<Decisao?> DecideAsync(string goal, List<string> roteiro,
         IEnumerable<(string Role, string Text)>? history, string? memory, CancellationToken token)
     {
-        var catalogo = Tools.ForAi(Tools.All.Count);
+        var catalogo = Tools.ForAi(goal);
         var feito = roteiro.Count == 0
             ? "nada até agora (este é o primeiro passo)"
             : string.Join("\n", roteiro.TakeLast(6));

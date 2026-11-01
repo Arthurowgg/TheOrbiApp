@@ -99,7 +99,7 @@ public static class Gemini
 
     private static async Task<string?> CallAsync(string model, string key, string prompt,
         IEnumerable<(string Role, string Text)>? history, string? memory)
-        => await CallAsync(model, key, prompt, history, memory is null ? null : System(memory), false, 400, default);
+        => await CallAsync(model, key, prompt, history, memory is null ? null : System(memory, prompt), false, 400, default);
 
     private static async Task<string?> CallAsync(string model, string key, string prompt,
         IEnumerable<(string Role, string Text)>? history, string? system, bool json, int maxTokens,
@@ -120,7 +120,7 @@ public static class Gemini
 
         var payload = new
         {
-            systemInstruction = new { parts = new[] { new { text = system ?? System(null) } } },
+            systemInstruction = new { parts = new[] { new { text = system ?? System(null, prompt) } } },
             contents,
             generationConfig = new
             {
@@ -161,14 +161,14 @@ public static class Gemini
         }
     }
 
-    private static string System(string? memory)
+    private static string System(string? memory, string? userText = null)
     {
         var name = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "amigo" : Store.Current.UserName;
         return "Você é o Orbi, o assistente do Windows do " + name + ". " +
                "Responda em português do Brasil, direto, no máximo 3 frases. " +
                "Você roda dentro de um app que executa ações no PC: quando a pessoa pedir algo do sistema, " +
                "responda com o comando exato em uma linha, começando com “/”. " +
-               "Ferramentas disponíveis: " + Tools.ForAi() + ". " +
+               "Ferramentas disponíveis: " + Tools.ForAi(userText) + ". " +
                "Exemplo: para abrir o gerenciador de tarefas, responda “/task-manager — abrindo”. " +
                "Nunca invente comandos fora dessa lista. " +
                $"Hoje é {DateTime.Now:dd/MM/yyyy}, agora são {DateTime.Now:HH:mm}. " +

@@ -483,9 +483,61 @@ public static class Tools
     /// O catálogo inteiro para a IA, com o dado que cada ferramenta espera.
     /// É isso que permite pedidos de vários passos com argumento.
     /// </summary>
-    public static string ForAi(int limit = int.MaxValue) =>
-        string.Join("\n", All.Take(limit).Select(tool =>
-            tool.NeedsArg
-                ? $"{tool.Id} — {tool.Name} (dado: {tool.Placeholder ?? "texto"})"
-                : $"{tool.Id} — {tool.Name}"));
+    private static readonly string[] Ruido =
+        { "de", "da", "do", "das", "dos", "a", "o", "as", "os", "um", "uma", "e", "em", "no", "na",
+          "para", "por", "com", "que", "meu", "minha", "me", "meu", "favor", "por", "aqui", "isso" };
+
+    private static IEnumerable<string> Termos(string texto) =>
+        texto.ToLowerInvariant()
+            .Split(new[] { ' ', ',', '.', '!', '?', '\n', '\t', ';', ':', '-', '/', '(', ')', '"' },
+                StringSplitOptions.RemoveEmptyEntries)
+            .Where(palavra => palavra.Length > 2 && !Ruido.Contains(palavra))
+            .Distinct();
+
+    /// <summary>
+    /// Catálogo enxuto para a IA: quando o pedido é conhecido, manda só as ferramentas
+    /// que casam com ele (mais as de controle sempre úteis), gastando menos contexto.
+    /// </summary>
+    public static string ForAi(string? pedido = null, int limitePorTermo = 4)
+    {
+        if (string.IsNullOrWhiteSpace(pedido)) return CatalogoCompleto();
+
+        var termos = Termos(pedido).ToArray();
+        if (termos.Length == 0) return CatalogoCompleto();
+
+        var pontos = new Dictionary<Tool, int>();
+        foreach (var tool in All)
+        {
+            var alvo = (tool.Id + " " + tool.Name + " " + tool.Group + " " +
+                        string.Join(" ", tool.Keywords)).ToLowerInvariant();
+            var acertos = termos.Count(termo => alvo.Contains(termo));
+            if (acertos > 0) pontos[tool] = acertos;
+        }
+
+        var escolhidas = All.Where(pontos.ContainsKey)
+            .OrderByDescending(tool => pontos[tool])
+            .ThenBy(tool => tool.Id)
+            .GroupBy(tool => tool.Group)
+            .SelectMany(grupo => grupo.Take(limitePorTermo))
+            .Take(60)
+            .ToList();
+
+        if (escolhidas.Count == 0) return CatalogoCompleto();
+
+        var linhas = All.Where(tool => !escolhidas.Contains(tool) && Sempre(tool))
+            .Select(tool => Linha(tool))
+            .ToList();
+        linhas.AddRange(escolhidas.Select(Linha));
+        return string.Join("\n", linhas);
+    }
+
+    private static bool Sempre(Tool tool) =>
+        tool.Group is "Janelas e mouse" or "Tela" or "Web e pesquisa";
+
+    private static string Linha(Tool tool) =>
+        tool.NeedsArg
+            ? $"{tool.Id} — {tool.Name} (dado: {tool.Placeholder ?? "texto"})"
+            : $"{tool.Id} — {tool.Name}";
+
+    public static string CatalogoCompleto() => string.Join("\n", All.Select(Linha));
 }

@@ -25,6 +25,7 @@ public class SetupWindow : Window
     private enum Etapa { BoasVindas, Removendo, Instalando, Pronto, Erro }
     private Etapa _etapa = Etapa.BoasVindas;
     private string _erro = "";
+    private const string TOOLS = "575";
 
     public SetupWindow(string[] args)
     {
@@ -266,8 +267,8 @@ public class SetupWindow : Window
             ("Instala em", Paths.Target),
             ("Versão", Installer.Versao),
             ("Tamanho", Tamanho()),
-            ("Conta", "opcional — a mesma do site"),
-            ("IA", "precisa de uma chave gratuita do Google AI Studio"),
+            ("Conta", "opcional — a mesma do site, para levar memória e ajustes"),
+            ("IA", "obrigatória — chave do Google AI Studio, gratuita"),
         };
         if (instalada is not null)
         {
@@ -301,8 +302,9 @@ public class SetupWindow : Window
 
         _conteudo.Children.Add(new TextBlock
         {
-            Text = "Para o Orbi pensar e agir ele usa a sua chave do Gemini. É gratuita, leva um minuto " +
-                   "em aistudio.google.com/apikey e fica cifrada neste PC. Sem ela, as ferramentas continuam funcionando.",
+            Text = "A IA do Orbi precisa de uma chave. Gere a sua em aistudio.google.com/apikey — é gratuita " +
+                   "e leva um minuto. A chave fica cifrada neste PC. As " + TOOLS + " ferramentas da barra " +
+                   "funcionam sem ela; a IA não.",
             FontSize = 12.5,
             Margin = new Thickness(0, 12, 0, 0),
             TextWrapping = TextWrapping.Wrap,
