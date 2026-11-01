@@ -232,11 +232,11 @@ jobs:
 
             - Instalador leve: baixa o app durante a instalação
             - IA com a sua chave gratuita do Google AI Studio
-            - **120+ ferramentas do Windows**: áudio, brilho, energia, painéis de
+            - **121 ferramentas do Windows**: áudio, brilho, energia, painéis de
               configuração, apps, janelas, pastas, rede e acessibilidade
             - Barra fina de comando: `Enter` executa, `/` abre o catálogo, `F1` também
-            - **Modo Cloud (Gemini)** opcional, com chave gratuita do Google AI Studio cifrada
-              com DPAPI — ou sem chave, usando só as ferramentas locais
+            - **IA (Gemini)** com a sua chave gratuita do Google AI Studio, guardada
+              cifrada com DPAPI neste PC
             - Lembretes, notas, histórico de cópia e memória do dia
             - **Conta única com o site**: o que você cria no site aparece no app
 
