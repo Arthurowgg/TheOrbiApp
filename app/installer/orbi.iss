@@ -73,7 +73,7 @@ end;
   depois desta etapa — era esse o motivo da limpeza nunca rodar. }
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  Script, Comando, Log: String;
+  Script, Comando, LogArquivo: String;
   Codigo: Integer;
 begin
   Result := '';
@@ -88,11 +88,11 @@ begin
   end;
 
   Script := ExpandConstant('{tmp}\limpar-antigas.ps1');
-  Log := ExpandConstant('{tmp}\orbi-limpeza.txt');
+  LogArquivo := ExpandConstant('{tmp}\orbi-limpeza.txt');
 
   WizardForm.StatusLabel.Caption := 'Removendo versões antigas do Orbi…';
   Comando := '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + Script +
-             '" -Silencioso -Log "' + Log + '"';
+             '" -Silencioso -Log "' + LogArquivo + '"';
 
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Comando,
               '', SW_HIDE, ewWaitUntilTerminated, Codigo) then

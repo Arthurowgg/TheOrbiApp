@@ -71,8 +71,16 @@ jobs:
         run: choco install innosetup --no-progress -y
 
       - name: Gerar o instalador
+        shell: powershell
         run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" app\installer\orbi.iss
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          & $iscc app\installer\orbi.iss 2>&1 | Tee-Object -FilePath iscc.log
+          if ($LASTEXITCODE -ne 0) {
+            # o log do runner não é legível pela API; a anotação é.
+            Get-Content iscc.log | Select-String -Pattern "Error|error|Line|linha|Warning" |
+              Select-Object -First 8 | ForEach-Object { Write-Host "::error::$($_.Line)" }
+            throw "ISCC falhou com código $LASTEXITCODE"
+          }
 
       - name: Checksums
         shell: powershell
