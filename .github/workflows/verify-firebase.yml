@@ -150,7 +150,8 @@ jobs:
             git config user.email "ci@orbi.local"
             git add -f relatorio-firebase.txt
             git commit -m "ci: relatório do Firebase [skip ci]" || true
-            git push origin "HEAD:${GITHUB_REF_NAME}" || true
+            echo "" >> relatorio-firebase.txt
+            echo "push: $(git push origin "HEAD:${GITHUB_REF_NAME}" 2>&1 | tr '\n' ' ')" >> relatorio-firebase.txt
           fi
 
       - name: Falhar se algum teste falhou
@@ -160,3 +161,11 @@ jobs:
             echo "Algum teste falhou — veja relatorio-firebase.txt"
             exit 1
           fi
+
+      - name: Guardar relatório como artefato
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-firebase
+          path: relatorio-firebase.txt
+          if-no-files-found: warn
