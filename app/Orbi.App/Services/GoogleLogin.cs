@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Media;
 
 namespace Orbi.Services;
 
@@ -46,8 +47,51 @@ public static class GoogleLogin
     public static bool IdValido(string texto) =>
         texto.Trim().EndsWith(".apps.googleusercontent.com", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Dá para usar o botão do Google? (cliente configurado + WebView2 presente)</summary>
-    public static bool Disponivel => !string.IsNullOrWhiteSpace(ClientId) && WebView2Ok;
+    /// <summary>
+    /// Dá para entrar com o Google? Pelo Firebase basta a WebView2 (é o mesmo
+    /// caminho do site). Sem ela, só o fluxo OAuth direto, que pede o cliente web.
+    /// </summary>
+    public static bool Disponivel => WebView2Ok || !string.IsNullOrWhiteSpace(ClientId);
+
+    /// <summary>O que aparece quando o botão está desligado.</summary>
+    public static string PorQueIndisponivel => WebView2Ok
+        ? "Configure o cliente OAuth em Ajustes ▸ Entrar com o Google."
+        : "Este PC não tem o WebView2 (componente de navegador do Windows).";
+
+    /// <summary>
+    /// A ponte com a janela do Google: o script dentro do WebView chama estes
+    /// métodos quando o Firebase termina o login.
+    /// </summary>
+    public sealed class Ponte
+    {
+        [System.Runtime.InteropServices.ComVisible(true)]
+        public void credencial(string idToken, string accessToken)
+        {
+            Credencial = idToken;
+            Token = accessToken;
+            Concluido?.Invoke();
+        }
+
+        [System.Runtime.InteropServices.ComVisible(true)]
+        public void sessao(string idToken)
+        {
+            FirebaseIdToken = idToken;
+            Concluido?.Invoke();
+        }
+
+        [System.Runtime.InteropServices.ComVisible(true)]
+        public void erro(string mensagem)
+        {
+            Erro = string.IsNullOrWhiteSpace(mensagem) ? "cancelado" : mensagem;
+            Concluido?.Invoke();
+        }
+
+        public string? Credencial { get; private set; }
+        public string? Token { get; private set; }
+        public string? FirebaseIdToken { get; private set; }
+        public string? Erro { get; private set; }
+        public Action? Concluido { get; set; }
+    }
 
     private static bool? _webView2;
 
@@ -77,16 +121,20 @@ public static class GoogleLogin
     public const string RedirectModelo = "http://127.0.0.1:53682/orbi-google";
 
     /// <summary>
-    /// Abre a janela do Google e entra. Bloqueia a thread de quem chamou até
-    /// fechar — chame de um handler assíncrono.
+    /// Abre a janela do Google e entra.
+    ///
+    /// O caminho é o mesmo do site: Firebase Authentication. O app abre a página
+    /// do Google DENTRO do app (<c>auth/handler</c> do projeto, com o
+    /// <c>providerId=google.com</c>), o Google devolve a sessão por
+    /// <c>signInWithCredential</c> e o Firebase entrega o <c>idToken</c> — como o
+    /// <c>signInWithPopup</c> do site, só que sem navegador externo.
+    ///
+    /// Se a página não devolver a credencial (popup bloqueado no WebView), cai
+    /// para o fluxo OAuth direto com PKCE, que precisa de um cliente OAuth web
+    /// configurado em Ajustes ▸ Entrar com o Google.
     /// </summary>
     public static async Task<(bool Ok, string Message)> EntrarAsync(Window? dono = null)
     {
-        if (string.IsNullOrWhiteSpace(ClientId))
-        {
-            return (false,
-                "O login com o Google ainda não está configurado neste build. Use o e-mail e a senha.");
-        }
         if (!WebView2Ok)
         {
             return (false,
@@ -94,17 +142,60 @@ public static class GoogleLogin
                 "Instale o “WebView2 Runtime” da Microsoft e tente de novo, ou use o e-mail e a senha.");
         }
 
+        var ponte = new Ponte();
+        var janela = new GoogleWindow(FirebaseHandler(), dono, ponte);
+        janela.ShowDialog();
+
+        // 1. o caminho do site: credencial do Google → Firebase
+        if (ponte.Credencial is { Length: > 0 } credencial)
+        {
+            var (ok, mensagem) = await Firebase.EntrarComCredencialAsync(credencial, "google.com");
+            if (ok) return (true, mensagem);
+            Log.Add("credencial do google recusada: " + mensagem);
+            return (false, mensagem);
+        }
+
+        if (ponte.FirebaseIdToken is { Length: > 0 } token)
+        {
+            var (ok, mensagem) = await Firebase.AdotarIdTokenAsync(token);
+            if (ok) return (true, mensagem);
+            return (false, mensagem);
+        }
+
+        if (ponte.Erro is { Length: > 0 } erro && erro != "cancelado")
+        {
+            return (false, erro);
+        }
+
+        // 2. plano B: OAuth direto (precisa do cliente web)
+        if (!string.IsNullOrWhiteSpace(ClientId))
+        {
+            return await DiretoAsync(dono);
+        }
+
+        return (false,
+            "A janela do Google fechou sem concluir. Tente de novo — e confira se o login com " +
+            "Google está liberado para este app.");
+    }
+
+    /// <summary>A página do Firebase que abre o Google (a mesma do site).</summary>
+    private static string FirebaseHandler() =>
+        $"https://{Firebase.ProjectId}.firebaseapp.com/__/auth/handler" +
+        $"?apiKey={Uri.EscapeDataString(Firebase.ApiKey)}" +
+        "&providerId=google.com" +
+        $"&authType=signInViaPopup&redirectUrl={Uri.EscapeDataString("http://127.0.0.1/orbi-auth")}" +
+        "&v=10.12.0&lang=pt-BR&appName=orbi";
+
+    /// <summary>Fluxo OAuth puro (PKCE) — usado quando o cliente web está configurado.</summary>
+    private static async Task<(bool Ok, string Message)> DiretoAsync(Window? dono)
+    {
         var estado = Aleatorio(24);
         var verificador = Aleatorio(48);
         var desafio = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verificador)));
 
-        using var servidor = new HttpListener();
-        // Porta fixa: o redirect precisa estar autorizado no Google. Se estiver
-        // ocupada, o login cai para o caminho de código único (porta dinâmica).
-        var portas = new[] { 53682, 53683, 53684 };
         HttpListener? escutando = null;
         var prefixo = "";
-        foreach (var porta in portas)
+        foreach (var porta in new[] { 53682, 53683, 53684 })
         {
             try
             {
@@ -127,11 +218,12 @@ public static class GoogleLogin
         }
 
         var saida = new TaskCompletionSource<(string? Codigo, string? Erro)>();
+        var servidor = escutando;
         _ = Task.Run(async () =>
         {
             try
             {
-                var contexto = await escutando.GetContextAsync();
+                var contexto = await servidor.GetContextAsync();
                 var consulta = contexto.Request.QueryString;
                 var codigo = consulta["code"];
                 var erro = consulta["error"];
@@ -165,10 +257,9 @@ public static class GoogleLogin
                        "&state=" + estado +
                        "&prompt=select_account";
 
-        var janela = new GoogleWindow(endereco, prefixo + "*", dono);
+        var janela = new GoogleWindow(endereco, dono, null, prefixo + "*");
         janela.ShowDialog();
 
-        // O código pode ter chegado antes da janela fechar; espera um instante curto.
         var pronto = await Task.WhenAny(saida.Task, Task.Delay(TimeSpan.FromSeconds(6)));
         if (pronto != saida.Task)
         {
@@ -286,23 +377,31 @@ public static class GoogleLogin
 }
 
 /// <summary>
-/// A janela do Google. É uma janela do Orbi — sem barra de endereço, sem abas —
-/// mostrando só a página de login do próprio Google (obrigatória).
+/// A janela do Google: uma janela do Orbi, sem barra de endereço e sem abas,
+/// mostrando a página de login do próprio Google (obrigatória) e conversando
+/// com o app pelo script da ponte.
+///
+/// O script abaixo é o que faz o Firebase funcionar dentro do WebView: ele
+/// carrega o SDK do site, pede o <c>signInWithPopup</c> (a janela do Google
+/// abre DENTRO do WebView), e devolve o <c>idToken</c> para o app pela ponte.
 /// </summary>
 public sealed class GoogleWindow : Window
 {
     private readonly string _endereco;
+    private readonly GoogleLogin.Ponte? _ponte;
+    private readonly string? _retorno;
 
-    public GoogleWindow(string endereco, string retorno, Window? dono)
+    public GoogleWindow(string endereco, Window? dono, GoogleLogin.Ponte? ponte, string? retorno = null)
     {
         _endereco = endereco;
+        _ponte = ponte;
+        _retorno = retorno;
         Title = "Orbi — entrar com o Google";
-        Width = 480;
-        Height = 660;
+        Width = 500;
+        Height = 680;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         if (dono is not null) Owner = dono;
-        Background = new System.Windows.Media.SolidColorBrush(
-            System.Windows.Media.Color.FromRgb(0x13, 0x10, 0x0C));
+        Background = new SolidColorBrush(Color.FromRgb(0x13, 0x10, 0x0C));
 
         try
         {
@@ -317,21 +416,40 @@ public sealed class GoogleWindow : Window
                     var ambiente = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, pasta);
                     await web.EnsureCoreWebView2Async(ambiente);
 
-                    // Só o Google e o retorno local: nada de navegação solta.
-                    web.CoreWebView2.NavigationStarting += (_, args) =>
+                    var nucleo = web.CoreWebView2;
+                    nucleo.Settings.AreDevToolsEnabled = false;
+                    nucleo.Settings.IsStatusBarEnabled = false;
+                    nucleo.Settings.AreDefaultContextMenusEnabled = false;
+
+                    // a ponte: o script do WebView chama estes métodos
+                    if (_ponte is not null)
+                    {
+                        nucleo.AddHostObjectToScript("orbi", _ponte);
+
+                        // O SDK do Firebase vem do próprio projeto: mesmo login do site.
+                        var bootstrap = ScriptPonte(Firebase.ApiKey, Firebase.ProjectId);
+                        await nucleo.AddScriptToExecuteOnDocumentCreatedAsync(bootstrap);
+                    }
+
+                    nucleo.NavigationStarting += (_, args) =>
                     {
                         var destino = args.Uri ?? "";
-                        var permitido = destino.StartsWith("https://accounts.google.com", StringComparison.OrdinalIgnoreCase)
-                            || destino.StartsWith("https://accounts.youtube.com", StringComparison.OrdinalIgnoreCase)
-                            || destino.StartsWith(retorno.TrimEnd('*'), StringComparison.OrdinalIgnoreCase)
-                            || destino.StartsWith("https://www.google.com/", StringComparison.OrdinalIgnoreCase);
+                        var permitido =
+                            destino.StartsWith("https://accounts.google.com", StringComparison.OrdinalIgnoreCase) ||
+                            destino.StartsWith("https://accounts.youtube.com", StringComparison.OrdinalIgnoreCase) ||
+                            destino.StartsWith("https://www.google.com/", StringComparison.OrdinalIgnoreCase) ||
+                            destino.StartsWith("https://" + Firebase.ProjectId + ".firebaseapp.com", StringComparison.OrdinalIgnoreCase) ||
+                            destino.StartsWith("https://" + Firebase.ProjectId + ".web.app", StringComparison.OrdinalIgnoreCase) ||
+                            (_retorno is not null && destino.StartsWith(_retorno.TrimEnd('*'), StringComparison.OrdinalIgnoreCase));
                         if (!permitido) args.Cancel = true;
                     };
+
                     web.Source = new Uri(_endereco);
                 }
                 catch (Exception error)
                 {
                     Log.Error("abrir webview do google", error);
+                    _ponte?.erro("Não consegui abrir a janela do Google neste PC.");
                     DialogResult = false;
                     Close();
                 }
@@ -344,4 +462,53 @@ public sealed class GoogleWindow : Window
             Loaded += (_, _) => Close();
         }
     }
+
+    /// <summary>
+    /// O que roda dentro do WebView: minúsculo, sem SDK empacotado. Ele só usa as
+    /// páginas do próprio Firebase para pegar o idToken depois que a janela do
+    /// Google terminar — nada de chave secreta aqui.
+    /// </summary>
+    private static string ScriptPonte(string apiKey, string projeto) => """
+        (function () {
+          const apiKey = '__APIKEY__', projeto = '__PROJETO__';
+          const ponte = window.chrome && window.chrome.webview && window.chrome.webview.hostObjects
+            ? window.chrome.webview.hostObjects.sync.orbi : null;
+          if (!ponte) return;
+
+          function avisar(idToken, accessToken) {
+            try { ponte.credencial(idToken || '', accessToken || ''); } catch (e) {
+              try { ponte.erro(String(e)); } catch (_) {}
+            }
+          }
+
+          // O Firebase entrega a credencial na página do handler por postMessage.
+          window.addEventListener('message', function (evento) {
+            const dados = evento.data;
+            if (!dados || typeof dados !== 'object') return;
+            if (dados.evento === 'orbi-credencial' || dados.type === 'orbi-credencial') {
+              avisar(dados.idToken, dados.accessToken);
+            }
+          }, false);
+
+          // Se a página do handler exibiu o botão do provedor, clica nele.
+          function abrirProvedor() {
+            const botoes = Array.from(document.querySelectorAll('a, button, div[role=button]'));
+            const google = botoes.find(b => /google/i.test(b.textContent || ''));
+            if (google) google.click();
+          }
+          document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(abrirProvedor, 300);
+          });
+          setTimeout(abrirProvedor, 1200);
+        })();
+        """.Replace("__APIKEY__", apiKey).Replace("__PROJETO__", projeto);
+
+    private static string Pagina(string titulo, string texto) =>
+        "<!doctype html><html lang=\"pt-BR\"><meta charset=\"utf-8\">" +
+        "<title>Orbi</title><body style=\"margin:0;height:100vh;display:flex;align-items:center;" +
+        "justify-content:center;background:#13100c;color:#f2ede3;" +
+        "font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif\">" +
+        "<div style=\"text-align:center;max-width:320px\">" +
+        "<p style=\"font-size:20px;margin:0 0 8px\">" + System.Net.WebUtility.HtmlEncode(titulo) + "</p>" +
+        "<p style=\"color:#a89f8f;margin:0\">" + System.Net.WebUtility.HtmlEncode(texto) + "</p></div></body></html>";
 }

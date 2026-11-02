@@ -1,297 +1,427 @@
+using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
+using System.Text.Json.Nodes;
 
 namespace Orbi.Services;
 
-/// <summary>Um passo executado pelo Orbi, mostrado na barra.</summary>
-public sealed record AgentStep(string Title, string Detail, bool Ok = true);
+/// <summary>Um passo do agente, como aparece no chat.</summary>
+public sealed record AgentStep(string Title, string Detail, bool Ok = true, string? Icone = null);
+
+/// <summary>Eventos do agente para a interface (chat animado em tempo real).</summary>
+public sealed class AgentEvents
+{
+    /// <summary>Texto que o modelo está pensando/juntando (aparece enquanto chega).</summary>
+    public Action<string>? Pensando { get; init; }
+    /// <summary>Resposta em streaming.</summary>
+    public Action<string>? Escrevendo { get; init; }
+    /// <summary>Começou um passo (ferramenta ou controle).</summary>
+    public Action<AgentStep>? Passo { get; init; }
+}
 
 /// <summary>
-/// O cérebro em sequência: a IA pede um comando por vez (em JSON), o Orbi
-/// executa, devolve o que mudou na tela e só então pede o próximo. Assim um
-/// pedido de vários passos — abrir o navegador, ver a tela, clicar no campo,
-/// digitar, apertar Enter — acontece sem adivinhar posições no escuro.
+/// O agente do Orbi: uma IA com 597 ferramentas, function calling e vários passos.
+///
+/// O laço é o clássico de agente:
+///   1. manda a conversa + as declarações de função;
+///   2. o modelo responde com texto (resposta) e/ou <c>functionCall</c>;
+///   3. o app executa cada chamada e devolve o resultado como
+///      <c>functionResponse</c>;
+///   4. volta ao passo 1 com o histórico atualizado, até o modelo parar de pedir
+///      ferramentas (ou bater o teto de passos).
+///
+/// Nada é adivinhado: o resultado de cada ferramenta volta para o modelo antes do
+/// próximo passo — é isso que permite “abrir o site, procurar o preço, anotar e
+/// me avisar” funcionar em sequência.
 /// </summary>
 public static class Agent
 {
-    private const int MaxSteps = 14;
+    /// <summary>Quantas rodadas de ferramenta antes de pedir ao modelo que conclua.</summary>
+    public const int MaxSteps = 10;
 
-    /// <summary>
-    /// Entende pedidos que precisam de mais de uma ferramenta, em uma ordem
-    /// específica. Devolve a resposta final e o que foi feito em cada passo.
-    /// </summary>
-    public static async Task<(string Answer, List<AgentStep> Steps)> RunAsync(
-        string goal,
-        IEnumerable<(string Role, string Text)>? history,
-        string? memory,
+    /// <summary>Histórico da conversa (fica no app; sobe só a memória resumida).</summary>
+    private static readonly List<(string Role, string Text)> Historico = new();
+
+    public static void LimparHistorico() => Historico.Clear();
+
+    public static async Task<(string Answer, List<AgentStep> Steps, bool Ok)> RunAsync(
+        string pedido,
+        AgentEvents? eventos = null,
         CancellationToken token = default)
     {
         var passos = new List<AgentStep>();
-        if (!Gemini.Available) return ("Cole a sua chave do Gemini para eu pensar e agir.", passos);
-
-        var roteiro = new List<string>();
-        string? respostaFinal = null;
-
-        for (var i = 0; i < MaxSteps; i++)
+        if (!Gemini.Available)
         {
-            token.ThrowIfCancellationRequested();
-
-            var decisao = await DecideAsync(goal, roteiro, i == 0 ? history : null, memory, token);
-            if (decisao is null)
-            {
-                if (roteiro.Count == 0) return ("Não consegui pensar agora. Tente de novo em instantes.", passos);
-                break;
-            }
-
-            if (decisao.Resposta is { Length: > 0 } pronta && decisao.Acoes.Count == 0)
-            {
-                respostaFinal = pronta;
-                break;
-            }
-
-            if (decisao.Acoes.Count == 0) break;
-
-            foreach (var acao in decisao.Acoes)
-            {
-                token.ThrowIfCancellationRequested();
-                var (titulo, resultado, ok) = Execute(acao);
-                passos.Add(new AgentStep(titulo, resultado, ok));
-                roteiro.Add($"{i + 1}. {titulo} → {resultado}");
-                if (!ok && acao.Kind is "ferramenta") goto encerrar;
-            }
-
-            if (decisao.Resposta is { Length: > 0 } parcial) respostaFinal = parcial;
-            if (decisao.Fim) break;
+            return (Gemini.Explicar("sem_chave"), passos, false);
         }
 
-    encerrar:
-
-        if (respostaFinal is null && roteiro.Count > 0)
+        var contents = new JsonArray();
+        foreach (var (papel, texto) in Historico.TakeLast(8))
         {
-            respostaFinal = await ResumirAsync(goal, roteiro, memory, token);
+            contents.Add(new JsonObject
+            {
+                ["role"] = papel == "user" ? "user" : "model",
+                ["parts"] = new JsonArray(new JsonObject { ["text"] = texto }),
+            });
         }
-
-        var fala = string.IsNullOrWhiteSpace(respostaFinal)
-            ? roteiro.Count == 0 ? "Não precisei mexer no PC." : "Feito."
-            : respostaFinal!.Trim();
-
-        if (roteiro.Count > 0) Memory.Remember(goal, "ação", fala);
-        return (fala, passos);
-    }
-
-    /* ------------------------------ decisão ------------------------------ */
-
-    private sealed record Acao(string Kind, string? Id, string? Texto, int? X, int? Y, string? Tecla, string? Alvo, string? Dado);
-
-    private sealed record Decisao(string? Resposta, List<Acao> Acoes, bool Fim);
-
-    private static async Task<Decisao?> DecideAsync(string goal, List<string> roteiro,
-        IEnumerable<(string Role, string Text)>? history, string? memory, CancellationToken token)
-    {
-        var catalogo = Tools.ForAi(goal);
-        var feito = roteiro.Count == 0
-            ? "nada até agora (este é o primeiro passo)"
-            : string.Join("\n", roteiro.TakeLast(6));
-
-        var conversa = "";
-        if (history is not null)
+        contents.Add(new JsonObject
         {
-            var linhas = history.TakeLast(6).Select(item => $"{item.Role}: {item.Text}").ToList();
-            if (linhas.Count > 0) conversa = "Conversa recente:\n" + string.Join("\n", linhas) + "\n\n";
-        }
+            ["role"] = "user",
+            ["parts"] = new JsonArray(new JsonObject { ["text"] = pedido }),
+        });
 
-        var pedido =
-            conversa +
-            "Pedido da pessoa: " + goal + "\n\n" +
-            "O que já foi feito, em ordem:\n" + feito + "\n\n" +
-            "Ferramentas disponíveis (use exatamente estes ids em \"ferramenta\"):\n" + catalogo + "\n\n" +
-            "Ações de controle do PC:\n" +
-            "  {\"acao\":\"ver\"}                      lê a tela, as janelas e o cursor\n" +
-            "  {\"acao\":\"ferramenta\",\"id\":\"...\",\"dado\":\"...\"} executa uma ferramenta (dado = o que ela pede)\n" +
-            "  {\"acao\":\"focar\",\"alvo\":\"chrome\"}   traz a janela para a frente\n" +
-            "  {\"acao\":\"clicar\",\"x\":640,\"y\":400}  clique na posição da tela\n" +
-            "  {\"acao\":\"digitar\",\"texto\":\"...\"}   digita no campo em foco\n" +
-            "  {\"acao\":\"atalho\",\"tecla\":\"ctrl+t\"} atalho de teclado\n" +
-            "  {\"acao\":\"pesquisar\",\"dado\":\"...\"} pesquisa na web e devolve os resultados\n" +
-            "  {\"acao\":\"abrir\",\"dado\":\"https://...\"} abre o resultado no navegador\n\n" +
-            "Responda APENAS com JSON:\n" +
-            "{\"acoes\":[{\"acao\":\"ver\"}],\"fim\":false,\"resposta\":\"só quando terminar\"}\n\n" +
-            "Regras: uma ação por passo quando o próximo depende do resultado (depois de \"ver\", " +
-            "use as coordenadas e os títulos que voltaram); várias ações juntas só quando são independentes; " +
-            "use \"fim\":true e escreva \"resposta\" quando o pedido estiver resolvido ou for só uma pergunta; " +
-            "se não souber onde clicar, peça {\"acao\":\"ver\"} primeiro; " +
-            "quando o pedido precisar de informação de fora (preço, notícia, clima, documentação), use " +
-            "{\"acao\":\"pesquisar\"} e leia os resultados antes de responder; " +
-            "sempre que uma ferramenta pedir um dado, preencha \"dado\"; nada de texto fora do JSON.";
+        var declaracoes = ToolSchema.Declaracoes();
+        var sistema = Sistema(pedido);
 
-        var bruto = await Gemini.CompleteAsync(pedido, SystemPrompt(memory), json: true, maxTokens: 700, token);
-        if (string.IsNullOrWhiteSpace(bruto)) return null;
+        var textoFinal = new StringBuilder();
+        var erroFinal = (string?)null;
+        var usouFerramenta = false;
 
         try
         {
-            using var documento = JsonDocument.Parse(Extrair(bruto!));
-            var raiz = documento.RootElement;
-
-            string? resposta = null;
-            if (raiz.TryGetProperty("resposta", out var r) && r.ValueKind == JsonValueKind.String)
+            for (var rodada = 0; rodada <= MaxSteps; rodada++)
             {
-                resposta = r.GetString();
-            }
+                token.ThrowIfCancellationRequested();
 
-            var fim = raiz.TryGetProperty("fim", out var f) && f.ValueKind is JsonValueKind.True;
+                var pedacos = new StringBuilder();
+                var resposta = await Gemini.ConversarAsync(
+                    contents, declaracoes, sistema,
+                    aoPensar: eventos?.Pensando,
+                    aoEscrever: trecho =>
+                    {
+                        pedacos.Append(trecho);
+                        eventos?.Escrevendo?.Invoke(trecho);
+                    },
+                    token);
 
-            var acoes = new List<Acao>();
-            if (raiz.TryGetProperty("acoes", out var lista) && lista.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var item in lista.EnumerateArray())
+                if (!resposta.Ok)
                 {
-                    var acao = Ler(item);
-                    if (acao is not null) acoes.Add(acao);
+                    erroFinal = resposta.Erro;
+                    break;
+                }
+
+                var texto = resposta.Texto.Trim();
+
+                if (resposta.Chamadas.Count == 0)
+                {
+                    if (texto.Length > 0) textoFinal.Append(texto);
+                    break;
+                }
+
+                // O modelo pediu ferramentas: guarda o que ele disse e devolve os resultados.
+                var partesModelo = new JsonArray();
+                if (texto.Length > 0)
+                {
+                    partesModelo.Add(new JsonObject { ["text"] = texto });
+                }
+                foreach (var chamada in resposta.Chamadas)
+                {
+                    partesModelo.Add(new JsonObject
+                    {
+                        ["functionCall"] = new JsonObject
+                        {
+                            ["name"] = chamada.Nome,
+                            ["args"] = JsonNode.Parse(chamada.Argumentos) ?? new JsonObject(),
+                        },
+                    });
+                }
+                contents.Add(new JsonObject { ["role"] = "model", ["parts"] = partesModelo });
+
+                var respostas = new JsonArray();
+                foreach (var chamada in resposta.Chamadas)
+                {
+                    token.ThrowIfCancellationRequested();
+                    var (passo, saida) = Executar(chamada.Nome, chamada.Argumentos);
+                    passos.Add(passo);
+                    usouFerramenta = true;
+                    eventos?.Passo?.Invoke(passo);
+
+                    respostas.Add(new JsonObject
+                    {
+                        ["functionResponse"] = new JsonObject
+                        {
+                            ["name"] = chamada.Nome,
+                            ["response"] = new JsonObject
+                            {
+                                ["resultado"] = saida.Resultado,
+                                ["ok"] = saida.Ok,
+                            },
+                        },
+                    });
+                }
+                contents.Add(new JsonObject { ["role"] = "user", ["parts"] = respostas });
+
+                // Teto de passos: pede a conclusão em vez de cortar seco.
+                if (rodada == MaxSteps)
+                {
+                    contents.Add(new JsonObject
+                    {
+                        ["role"] = "user",
+                        ["parts"] = new JsonArray(new JsonObject
+                        {
+                            ["text"] = "Chega de ferramentas por agora: responda à pessoa com o que você já tem.",
+                        }),
+                    });
+                    var ultimo = await Gemini.ConversarAsync(contents, null, sistema, null, null, token);
+                    if (ultimo.Ok && ultimo.Texto.Trim().Length > 0) textoFinal.Append(ultimo.Texto.Trim());
                 }
             }
-
-            // uma resposta pronta sem ações encerra o pedido
-            if (!string.IsNullOrWhiteSpace(resposta) && acoes.Count == 0) fim = true;
-            return new Decisao(resposta, acoes, fim);
         }
-        catch (Exception error)
+        catch (OperationCanceledException)
         {
-            Log.Error("passo do agente", error);
-            return null;
+            erroFinal = "cancelado";
         }
-    }
 
-    private static async Task<string> ResumirAsync(string goal, List<string> roteiro, string? memory,
-        CancellationToken token)
-    {
-        var resumo = string.Join("\n", roteiro);
-        var fala = await Gemini.CompleteAsync(
-            $"O que eu pedi: {goal}\nO que o app executou, em ordem:\n{resumo}\n\n" +
-            "Responda em no máximo duas frases, em português do Brasil, contando o que foi feito. " +
-            "Se algo falhou, diga só o essencial. Não use listas.",
-            SystemPrompt(memory), json: false, maxTokens: 160, token);
-        return string.IsNullOrWhiteSpace(fala) ? "Feito." : fala!.Trim();
-    }
-
-    private static Acao? Ler(JsonElement item)
-    {
-        string? Str(string nome) =>
-            item.TryGetProperty(nome, out var valor) && valor.ValueKind == JsonValueKind.String
-                ? valor.GetString() : null;
-
-        int? Num(string nome) =>
-            item.TryGetProperty(nome, out var valor) && valor.ValueKind == JsonValueKind.Number
-                ? valor.GetInt32() : null;
-
-        var acao = Str("acao")?.ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(acao)) return null;
-
-        // às vezes o modelo manda {"acao":"ferramenta","id":"..."} e às vezes {"ferramenta":"volume-up"}
-        var id = Str("id") ?? (acao == "ferramenta" ? null : Str("ferramenta"));
-        if (id is null && item.TryGetProperty("ferramenta", out var f) && f.ValueKind == JsonValueKind.String)
+        var fala = textoFinal.ToString().Trim();
+        if (fala.Length == 0)
         {
-            id = f.GetString();
-            acao = "ferramenta";
-        }
-        if (acao != "ferramenta" && acao != "ver" && acao != "clicar" && acao != "digitar" &&
-            acao != "atalho" && acao != "focar" && acao != "pesquisar" && acao != "abrir")
-        {
-            // nomes de ferramentas vieram direto no campo "acao"
-            id ??= acao;
-            acao = "ferramenta";
+            fala = erroFinal is not null
+                ? Gemini.Explicar(erroFinal)
+                : usouFerramenta ? "Feito." : "Não tenho o que responder sobre isso.";
         }
 
-        return new Acao(acao!, id, Str("texto"), Num("x"), Num("y"), Str("tecla") ?? Str("atalho"),
-            Str("alvo") ?? Str("janela"), Str("dado") ?? Str("arg") ?? Str("valor"));
-    }
+        // Conversa vira memória: é o que permite “o que eu fazia ontem?”.
+        Historico.Add(("user", pedido));
+        Historico.Add(("assistant", fala));
+        if (Historico.Count > 16) Historico.RemoveRange(0, Historico.Count - 16);
+        Memory.Remember(pedido, usouFerramenta ? "ação" : "conversa", fala);
 
-    private static string Extrair(string texto)
-    {
-        var inicio = texto.IndexOf('{');
-        var fim = texto.LastIndexOf('}');
-        if (inicio >= 0 && fim > inicio) return texto[inicio..(fim + 1)];
-        return texto;
+        return (fala, passos, erroFinal is null);
     }
 
     /* ------------------------------ execução ------------------------------ */
 
-    private static (string Titulo, string Resultado, bool Ok) Execute(Acao acao)
+    private static (AgentStep Passo, (string Resultado, bool Ok) Saida) Executar(string nome, string argumentosJson)
     {
-        switch (acao.Kind)
+        JsonObject args;
+        try { args = JsonNode.Parse(argumentosJson)?.AsObject() ?? new JsonObject(); }
+        catch { args = new JsonObject(); }
+
+        string Texto(string chave) => args[chave]?.GetValue<string>() ?? "";
+        int Numero(string chave) =>
+            int.TryParse(args[chave]?.ToString(), out var valor) ? valor : 0;
+
+        try
         {
-            case "ver":
-                return ("olhei a tela", Pc.DescribeScreen().Replace("\n", " · "), true);
-
-            case "pesquisar":
+            switch (nome.ToLowerInvariant())
             {
-                var consulta = acao.Dado ?? acao.Texto ?? "";
-                if (consulta.Length == 0) return ("pesquisar", "sem consulta", false);
-                var (titulo, trecho, ok) = Web.PesquisarAsync(consulta).GetAwaiter().GetResult();
-                return ($"pesquisei “{consulta}”", ok ? $"{titulo} — {trecho}" : trecho, ok);
-            }
-
-            case "abrir":
-            {
-                var link = acao.Dado ?? acao.Texto ?? "";
-                if (link.Length == 0) return ("abrir", "sem endereço", false);
-                return ("abri no navegador", Browser.Open(link), true);
-            }
-
-            case "clicar":
-            {
-                if (acao.X is not { } x || acao.Y is not { } y) return ("clicar", "sem posição", false);
-                Pc.Click(x, y);
-                return ($"cliquei em {x},{y}", "feito", true);
-            }
-
-            case "digitar":
-            {
-                if (string.IsNullOrEmpty(acao.Texto)) return ("digitar", "sem texto", false);
-                Pc.Type(acao.Texto);
-                var trecho = acao.Texto.Length > 40 ? acao.Texto[..40] + "…" : acao.Texto;
-                return ($"digitei “{trecho}”", "feito", true);
-            }
-
-            case "atalho":
-            {
-                if (string.IsNullOrEmpty(acao.Tecla)) return ("atalho", "sem tecla", false);
-                Pc.Hotkey(acao.Tecla);
-                return ($"atalho {acao.Tecla}", "feito", true);
-            }
-
-            case "focar":
-            {
-                if (string.IsNullOrEmpty(acao.Alvo)) return ("focar", "sem janela", false);
-                var ok = Pc.Focus(acao.Alvo);
-                return ($"trouxe {acao.Alvo}", ok ? "feito" : "não achei essa janela", ok);
-            }
-
-            default:
-            {
-                var id = acao.Id ?? "";
-                var ferramenta = Tools.Find(id) ?? Tools.Search(id).FirstOrDefault();
-                if (ferramenta is null) return ("ferramenta " + id, "não existe no catálogo", false);
-                if (ferramenta.NeedsArg && string.IsNullOrWhiteSpace(acao.Dado))
+                case "ver_a_tela":
                 {
-                    return (ferramenta.Name, "faltou o dado: " + (ferramenta.Placeholder ?? "o complemento"), false);
+                    var descricao = Pc.DescribeScreen();
+                    return (new AgentStep("olhei a tela", PrimeiraLinha(descricao), true, "eye"),
+                            (descricao, true));
                 }
-                var resultado = Tools.Run(ferramenta.Id, acao.Dado);
-                return (ferramenta.Name, resultado, !resultado.StartsWith("Não consegui", StringComparison.OrdinalIgnoreCase));
+
+                case "capturar_a_tela":
+                {
+                    var caminho = Pc.Capture();
+                    return (new AgentStep("tirei uma foto da tela", caminho, true, "camera"),
+                            ("Captura em " + caminho + ". " + Pc.ActiveWindowTitle(), true));
+                }
+
+                case "clicar":
+                {
+                    var x = Numero("x");
+                    var y = Numero("y");
+                    var botao = string.IsNullOrWhiteSpace(Texto("botao")) ? "left" : Texto("botao");
+                    if (x <= 0 || y <= 0) return (new AgentStep("clicar", "sem posição", false, "cursor"),
+                                                     ("Preciso das coordenadas x e y.", false));
+                    Pc.Click(x, y, botao);
+                    return (new AgentStep("cliquei", $"{x},{y} ({botao})", true, "cursor"), ("feito", true));
+                }
+
+                case "digitar":
+                {
+                    var texto = Texto("texto");
+                    if (texto.Length == 0) return (new AgentStep("digitar", "sem texto", false, "keyboard"),
+                                                   ("O texto veio vazio.", false));
+                    Pc.Type(texto);
+                    return (new AgentStep("digitei", Curto(texto), true, "keyboard"), ("feito", true));
+                }
+
+                case "atalho":
+                {
+                    var teclas = Texto("teclas");
+                    if (teclas.Length == 0) return (new AgentStep("atalho", "sem teclas", false, "keyboard"),
+                                                    ("A combinação veio vazia.", false));
+                    Pc.Hotkey(teclas);
+                    return (new AgentStep("atalho " + teclas, "enviado", true, "keyboard"), ("feito", true));
+                }
+
+                case "focar_janela":
+                {
+                    var alvo = Texto("alvo");
+                    var ok = Pc.Focus(alvo);
+                    return (new AgentStep("trouxe a janela", alvo, ok, "window"),
+                            (ok ? "A janela “" + alvo + "” está na frente." : "Não achei uma janela com “" + alvo + "”.", ok));
+                }
+
+                case "pesquisar_na_web":
+                {
+                    var consulta = Texto("consulta");
+                    var (titulo, trecho, ok) = Web.PesquisarAsync(consulta).GetAwaiter().GetResult();
+                    var saida = ok
+                        ? $"Resultado principal: {titulo}. {trecho}"
+                        : "A pesquisa não voltou resultados: " + trecho;
+                    return (new AgentStep("pesquisei", consulta, ok, "search"), (saida, ok));
+                }
+
+                case "ler_pagina":
+                {
+                    var endereco = Texto("endereco");
+                    var texto = Web.LerAsync(endereco).GetAwaiter().GetResult();
+                    var ok = !texto.StartsWith("Não consegui", StringComparison.OrdinalIgnoreCase);
+                    var titulo = texto.Split('\n').FirstOrDefault() ?? "";
+                    return (new AgentStep("li a página", Curto(titulo), ok, "page"), (texto, ok));
+                }
+
+                case "abrir_no_navegador":
+                {
+                    var endereco = Texto("endereco");
+                    var resolvido = Browser.Open(endereco);
+                    return (new AgentStep("abri no navegador", resolvido, true, "globe"), ("aberto: " + resolvido, true));
+                }
+
+                case "lembrar":
+                {
+                    var texto = Texto("texto");
+                    var tipo = string.IsNullOrWhiteSpace(Texto("tipo")) ? "fato" : Texto("tipo");
+                    Memory.Remember(texto, tipo);
+                    return (new AgentStep("guardei na memória", Curto(texto), true, "book"), ("guardado", true));
+                }
+
+                case "consultar_memoria":
+                {
+                    var termo = Texto("termo").ToLowerInvariant();
+                    var achados = Memory.All
+                        .Where(entrada => entrada.Text.ToLowerInvariant().Contains(termo) ||
+                                          (entrada.Answer ?? "").ToLowerInvariant().Contains(termo))
+                        .TakeLast(6)
+                        .Select(entrada => $"{entrada.At:dd/MM HH:mm} · {entrada.Text} → {entrada.Answer}")
+                        .ToList();
+                    return (new AgentStep("consultei a memória", termo, true, "book"),
+                            (achados.Count == 0 ? "Nada na memória sobre “" + termo + "”." : string.Join("\n", achados), true));
+                }
+
+                case "buscar_no_catalogo":
+                {
+                    var assunto = Texto("assunto");
+                    var achados = Tools.Search(assunto).Take(12)
+                        .Select(ferramenta => $"{ferramenta.Id} — {ferramenta.Name}" +
+                                              (ferramenta.NeedsArg ? $" (dado: {ferramenta.Placeholder})" : ""))
+                        .ToList();
+                    return (new AgentStep("busquei no catálogo", assunto, true, "grid"),
+                            (achados.Count == 0 ? "Nenhuma ferramenta para “" + assunto + "”." : string.Join("\n", achados), true));
+                }
             }
+
+            // Catálogo: nome da função → id da ferramenta
+            var id = ToolSchema.Resolver(nome);
+            if (id is null)
+            {
+                return (new AgentStep("ferramenta desconhecida", nome, false, "question"),
+                        ("Não existe ferramenta com esse nome. Use buscar_no_catalogo para achar a certa.", false));
+            }
+
+            var ferramenta = Tools.Find(id);
+            if (ferramenta is null)
+            {
+                return (new AgentStep(nome, "não está no catálogo", false, "question"), ("Ferramenta indisponível.", false));
+            }
+
+            var dado = args["dado"]?.ToString() ?? "";
+            if (ferramenta.NeedsArg && string.IsNullOrWhiteSpace(dado))
+            {
+                var falta = "Preciso do dado: " + (ferramenta.Placeholder ?? "o complemento");
+                return (new AgentStep(ferramenta.Name, falta, false, IconeDe(ferramenta.Group)), (falta, false));
+            }
+
+            var resultado = Tools.Run(ferramenta.Id, dado);
+            var deuCerto = !resultado.StartsWith("Não consegui", StringComparison.OrdinalIgnoreCase) &&
+                           !resultado.StartsWith("Preciso do dado", StringComparison.OrdinalIgnoreCase);
+            return (new AgentStep(ferramenta.Name, Curto(resultado), deuCerto, IconeDe(ferramenta.Group)),
+                    (resultado, deuCerto));
         }
+        catch (Exception error)
+        {
+            Log.Error("agente " + nome, error);
+            return (new AgentStep(nome, "falhou", false, "alert"),
+                    ("A ferramenta falhou: " + error.Message, false));
+        }
+    }
+
+    private static string IconeDe(string grupo) => grupo switch
+    {
+        "Arquivos e pastas" or "Pastas" => "folder",
+        "Rede e internet" or "Rede" => "wifi",
+        "Web e pesquisa" => "globe",
+        "Cálculos" => "calc",
+        "Datas" => "calendar",
+        "Texto" or "Texto e números" or "Área de transferência" => "text",
+        "Janelas e mouse" or "Janelas" => "window",
+        "Tela" or "Tela e captura" => "eye",
+        "Som e mídia" or "Áudio e vídeo" => "volume",
+        "Configurações do Windows" or "Painéis" => "sliders",
+        "Aplicativos" or "Apps" => "grid",
+        "Energia e bateria" or "Energia" => "battery",
+        "Sistema" => "chip",
+        _ => "spark",
+    };
+
+    private static string Curto(string texto)
+    {
+        var limpo = texto.Replace("\r", " ").Replace("\n", " · ").Trim();
+        return limpo.Length > 90 ? limpo[..90] + "…" : limpo;
+    }
+
+    private static string PrimeiraLinha(string texto)
+    {
+        var linha = texto.Split('\n').FirstOrDefault(l => l.Trim().Length > 0) ?? "";
+        return Curto(linha);
     }
 
     /* ------------------------------ sistema ------------------------------ */
 
-    private static string SystemPrompt(string? memory)
+    private static string Sistema(string pedido)
     {
-        var nome = string.IsNullOrWhiteSpace(Store.Current.UserName) ? "amigo" : Store.Current.UserName.Split(' ')[0];
+        var nome = string.IsNullOrWhiteSpace(Store.Current.UserName)
+            ? "amigo"
+            : Store.Current.UserName.Split(' ')[0];
         var janela = Pc.ActiveWindowTitle();
-        return "Você é o Orbi, o assistente que controla o Windows para " + nome + ". " +
-               "Você fala português do Brasil, direto e sem enrolação. " +
-               $"Agora: {DateTime.Now:dddd, dd/MM/yyyy HH:mm}. " +
-               (janela.Length > 0 ? $"A janela em foco é “{janela}”. " : "") +
-               "Você pode usar as ferramentas do app, clicar na tela, digitar, apertar atalhos e trocar de janela. " +
-               "Memória do dia: " + (string.IsNullOrWhiteSpace(memory) ? "nada registrado ainda." : memory);
+        var memoria = Memory.TodaySummary();
+        var total = Tools.All.Count;
+        var grupos = string.Join(", ", Tools.Groups.OrderBy(grupo => grupo));
+
+        var texto = new StringBuilder();
+        texto.AppendLine("Você é o Orbi, um agente que vive no Windows ao lado de " + nome + ".");
+        texto.AppendLine("Fale português do Brasil, próximo e direto. Nada de “claro!”, nada de repetir o pedido.");
+        texto.AppendLine();
+        texto.AppendLine("## O que você pode fazer");
+        texto.AppendLine($"Você tem {total} ferramentas do sistema declaradas como funções nesta conversa, " +
+                         "e funções de controle: ver_a_tela, capturar_a_tela, clicar, digitar, atalho, " +
+                         "focar_janela, pesquisar_na_web, ler_pagina, abrir_no_navegador, lembrar, " +
+                         "consultar_memoria, buscar_no_catalogo.");
+        texto.AppendLine("Grupos disponíveis: " + grupos + ".");
+        texto.AppendLine();
+        texto.AppendLine("## Como agir (multi-passos)");
+        texto.AppendLine("1. Se o pedido é pergunta ou conversa, responda direto, sem chamar função.");
+        texto.AppendLine("2. Se precisa fazer algo no PC, chame a função certa. Se não sabe o nome exato, " +
+                         "use buscar_no_catalogo antes.");
+        texto.AppendLine("3. Cada resultado volta para você: leia, e só então decida o próximo passo. " +
+                         "Vários passos são normais (abrir, esperar, ver a tela, clicar, digitar).");
+        texto.AppendLine("4. Antes de clicar em algo que não sabe onde está, chame ver_a_tela; use as " +
+                         "coordenadas e o tamanho das janelas que voltarem.");
+        texto.AppendLine("5. Quando precisar de informação de fora (preço, notícia, clima, documentação), " +
+                         "pesquisar_na_web e, se precisar de detalhe, ler_pagina antes de responder.");
+        texto.AppendLine("6. Se uma ferramenta falhar, tente outra parecida uma vez; se continuar, diga o " +
+                         "que aconteceu em uma frase e o que a pessoa pode tentar.");
+        texto.AppendLine("7. Só chame lembrar quando a pessoa disser algo que vale guardar (gosto, rotina, " +
+                         "recado). Não anote tudo.");
+        texto.AppendLine("8. No fim, responda em 1 a 3 frases contando o que ficou pronto. Sem listas, " +
+                         "sem markdown, sem emoji de enfeite.");
+        texto.AppendLine();
+        texto.AppendLine($"Agora: {DateTime.Now:dddd, dd/MM/yyyy HH:mm}.");
+        if (janela.Length > 0) texto.AppendLine($"A janela em foco é “{janela}”.");
+        texto.AppendLine("Memória do dia: " + (string.IsNullOrWhiteSpace(memoria) ? "nada registrado ainda." : memoria));
+        return texto.ToString();
     }
 }

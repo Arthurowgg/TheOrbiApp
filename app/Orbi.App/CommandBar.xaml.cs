@@ -383,6 +383,9 @@ public partial class CommandBar : Window
         }
 
         SheetBody.Children.Add(SheetDivider());
+        SheetBody.Children.Add(SheetRow("Conversar com o Orbi",
+            Gemini.HasKey ? $"{Gemini.Mode} · {Tools.All.Count} funções" : "falta a chave da IA",
+            () => { CloseMenu(); App.Instance.OpenChat(); }, destaque: Gemini.HasKey, aviso: !Gemini.HasKey));
         SheetBody.Children.Add(SheetRow("IA e chave", Gemini.HasKey ? Gemini.Mode : "cole a sua chave", () => Abrir("ia"),
             aviso: !Gemini.HasKey));
         SheetBody.Children.Add(SheetRow("Ferramentas", $"{Tools.All.Count} ações", () => Abrir("ferramentas")));
@@ -856,22 +859,21 @@ public partial class CommandBar : Window
             return;
         }
 
-        if (!Gemini.Available)
+        // Nada é pensado enquanto você digita: Enter abre o chat com a pergunta.
+        Expand();
+        Results.SelectedIndex = 0;
+        Add(new ResultRow
         {
-            Expand();
-            Results.SelectedIndex = 0;
-            Add(new ResultRow
-            {
-                Glyph = "?",
-                Text = "Preciso da chave do Gemini para responder isso.",
-                Detail = "Ajustes ▸ Modo Cloud. A chave é gratuita e fica cifrada neste PC.",
-                Command = "conta",
-                Badge = "configurar",
-                BadgeBrush = "#FFC7452A",
-                BadgeTextBrush = "#FFFFFFFF",
-            });
-            return;
-        }
+            Glyph = "\u2726",
+            Text = Gemini.Available ? "Conversar com o Orbi sobre isso" : "Abrir o chat (falta a chave da IA)",
+            Detail = Gemini.Available
+                ? "Enter abre o chat e manda a sua frase."
+                : "Ajustes ▸ IA: a chave é gratuita e fica cifrada neste PC.",
+            Badge = Gemini.Available ? "chat" : "configurar",
+            BadgeBrush = "#FFC7452A",
+            BadgeTextBrush = "#FFFFFFFF",
+        });
+        if (!Gemini.Available) return;
 
         // Nada é pensado enquanto você digita: só quando apertar Enter.
         UpdateFooter();
@@ -921,63 +923,6 @@ public partial class CommandBar : Window
     /// Texto livre: o Orbi planeja e age. Cada passo aparece na barra, e no fim
     /// vem a resposta em uma frase.
     /// </summary>
-    private async Task AskAiAsync(string prompt)
-    {
-        if (_thinking || string.IsNullOrWhiteSpace(prompt)) return;
-        _thinking = true;
-        Expand();
-        Footer.Text = "pensando…";
-        // A barra sai da frente: se o Orbi for clicar ou digitar, ela não pode
-        // roubar o foco nem cobrir o que precisa ser visto.
-        App.Instance.HideBarForAction();
-        await Task.Delay(150);
-        try
-        {
-            var (answer, steps) = await Agent.RunAsync(prompt, _history, Memory.TodaySummary());
-            _rows.Clear();
-
-            foreach (var passo in steps.TakeLast(6))
-            {
-                Add(new ResultRow
-                {
-                    Glyph = passo.Ok ? "\u2713" : "!",
-                    Text = passo.Title,
-                    Detail = passo.Detail,
-                    Badge = passo.Ok ? "" : "erro",
-                });
-            }
-
-            Add(new ResultRow
-            {
-                Glyph = "\u2726",
-                Text = answer,
-                Badge = Gemini.Available ? "IA" : "sem chave",
-                BadgeBrush = Gemini.Available ? "#FFC7452A" : "#1FFFFFFF",
-                BadgeTextBrush = Gemini.Available ? "#FFFFFFFF" : "#99F1EBDF",
-            });
-
-            if (Gemini.Available)
-            {
-                _history.Add(("user", prompt));
-                _history.Add(("assistant", answer));
-                if (_history.Count > 12) _history.RemoveRange(0, _history.Count - 12);
-            }
-        }
-        finally
-        {
-            _thinking = false;
-            UpdateFooter();
-            // Se a barra se escondeu para o Orbi agir, volta com o resultado.
-            if (!IsVisible && App.Instance.BarShouldReturn)
-            {
-                App.Instance.HideBarForAction(); // mantém a intenção para a próxima
-                Show();
-                Topmost = true;
-                Activate();
-            }
-        }
-    }
-
     /* ----------------------------- execução ----------------------------- */
     private void Input_KeyDown(object sender, KeyEventArgs e)
     {
@@ -1045,9 +990,12 @@ public partial class CommandBar : Window
 
         // Texto livre (não é ferramenta nem controle direto)? Aí sim pensa:
         // só com Enter, nunca enquanto digita.
+        // Texto livre é conversa: abre o chat com a pergunta já enviada.
         if (Interpreter.Interpret(text).Kind == ReplyKind.NeedsAi)
         {
-            _ = AskAiAsync(text);
+            _rows.Clear();
+            Input.Text = "";
+            App.Instance.OpenChat(text);
             return;
         }
 

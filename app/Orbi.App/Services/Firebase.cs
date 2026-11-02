@@ -90,6 +90,96 @@ public static class Firebase
     public static Task<(bool Ok, string Message)> SignUpAsync(string email, string password)
         => AuthAsync("accounts:signUp", email, password);
 
+    /// <summary>
+    /// Entra no Firebase com a credencial do Google — exatamente o que o site faz
+    /// no <c>signInWithCredential</c>. Devolve a sessão da conta Orbi.
+    /// </summary>
+    public static async Task<(bool Ok, string Message)> EntrarComCredencialAsync(
+        string idTokenDoGoogle, string provider)
+    {
+        if (string.IsNullOrWhiteSpace(idTokenDoGoogle)) return (false, "O Google não devolveu a credencial.");
+        try
+        {
+            var payload = new JsonObject
+            {
+                ["postBody"] = $"id_token={Uri.EscapeDataString(idTokenDoGoogle)}&providerId={provider}",
+                ["requestUri"] = "http://localhost",
+                ["returnIdpCredential"] = true,
+                ["returnSecureToken"] = true,
+            };
+            using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+            using var response = await Client.PostAsync(
+                $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={ApiKey}", content);
+            var json = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode) return (false, TranslateAuthError(json, response.StatusCode));
+
+            using var documento = JsonDocument.Parse(json);
+            var raiz = documento.RootElement;
+            var sessao = new FirebaseSession
+            {
+                IdToken = raiz.GetProperty("idToken").GetString() ?? "",
+                RefreshToken = raiz.GetProperty("refreshToken").GetString() ?? "",
+                Uid = raiz.GetProperty("localId").GetString() ?? "",
+                Email = raiz.TryGetProperty("email", out var email) ? email.GetString() ?? "" : "",
+                DisplayName = raiz.TryGetProperty("displayName", out var nome) ? nome.GetString() ?? "" : "",
+                PhotoUrl = raiz.TryGetProperty("photoUrl", out var foto) ? foto.GetString() ?? "" : "",
+                Provider = provider,
+                EmailVerified = true,
+                ExpiresAtUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + ParseSeconds(raiz, "expiresIn", 3600),
+            };
+            SetSession(sessao);
+            Store.Current.AccountEmail = sessao.Email;
+            Store.Save();
+            return (true, "Entrou com o Google.");
+        }
+        catch (Exception error)
+        {
+            Log.Error("entrar com google", error);
+            return (false, "Não consegui falar com a conta agora.");
+        }
+    }
+
+    /// <summary>Adota um idToken já emitido pelo Firebase (sem trocar nada).</summary>
+    public static async Task<(bool Ok, string Message)> AdotarIdTokenAsync(string idToken)
+    {
+        try
+        {
+            var payload = new JsonObject { ["idToken"] = idToken };
+            using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+            using var response = await Client.PostAsync(
+                $"https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={ApiKey}", content);
+            if (!response.IsSuccessStatusCode) return (false, "A conta não aceitou a sessão do Google.");
+
+            using var documento = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            if (!documento.RootElement.TryGetProperty("users", out var usuarios) || usuarios.GetArrayLength() == 0)
+            {
+                return (false, "A conta não aceitou a sessão do Google.");
+            }
+            var usuario = usuarios[0];
+            var sessao = new FirebaseSession
+            {
+                IdToken = idToken,
+                RefreshToken = "",
+                Uid = usuario.TryGetProperty("localId", out var uid) ? uid.GetString() ?? "" : "",
+                Email = usuario.TryGetProperty("email", out var email) ? email.GetString() ?? "" : "",
+                DisplayName = usuario.TryGetProperty("displayName", out var nome) ? nome.GetString() ?? "" : "",
+                PhotoUrl = usuario.TryGetProperty("photoUrl", out var foto) ? foto.GetString() ?? "" : "",
+                Provider = "google.com",
+                EmailVerified = true,
+                ExpiresAtUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3000,
+            };
+            SetSession(sessao);
+            Store.Current.AccountEmail = sessao.Email;
+            Store.Save();
+            return (true, "Entrou com o Google.");
+        }
+        catch (Exception error)
+        {
+            Log.Error("adotar token do google", error);
+            return (false, "Não consegui falar com a conta agora.");
+        }
+    }
+
     private static async Task<(bool, string)> AuthAsync(string endpoint, string email, string password)
     {
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))

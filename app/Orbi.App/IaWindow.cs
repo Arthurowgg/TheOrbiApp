@@ -63,6 +63,7 @@ public sealed class IaWindow : Window
         botoes.Children.Add(Panel.Primary("Salvar", Salvar));
         botoes.Children.Add(Panel.Ghost("Testar", Testar));
         botoes.Children.Add(Panel.Ghost("Remover", Remover));
+        botoes.Children.Add(Panel.Ghost("Conversar", () => { Close(); App.Instance.OpenChat(); }));
         corpo.Children.Add(botoes);
         corpo.Children.Add(_status);
 
@@ -80,7 +81,9 @@ public sealed class IaWindow : Window
                 _modelo,
                 new TextBlock
                 {
-                    Text = "O Orbi usa esta chave para entender o pedido, montar o plano e executar as ferramentas.",
+                    Text = "A chave é sua: ela vai direto do seu PC para o Google AI Studio. " +
+                           "O Orbi recebe as ferramentas do Windows como funções e decide sozinho qual usar, " +
+                           "em quantos passos precisar.",
                     FontSize = 12,
                     TextWrapping = TextWrapping.Wrap,
                     Foreground = Panel.Warm,
@@ -103,8 +106,8 @@ public sealed class IaWindow : Window
 
     private static string Estado() =>
         Gemini.HasKey
-            ? "Chave configurada. O Orbi pensa e age."
-            : "Nenhuma chave ainda. Sem ela o Orbi só executa as ferramentas.";
+            ? $"Chave configurada. {ToolSchema.Total} funções declaradas para {Gemini.Mode}."
+            : "Nenhuma chave ainda. Sem ela o Orbi só executa as ferramentas da barra.";
 
     private void Load()
     {

@@ -402,9 +402,34 @@ public partial class App : System.Windows.Application
                 var guardou = Store.Current.GoogleClientId.Contains("apps.googleusercontent.com");
                 var recusa = !GoogleLogin.IdValido("abc123");
                 GoogleLogin.ClientId = idAntes;
+                // O Google pelo Firebase (o caminho do site) precisa só do WebView2.
+                var temWebView = GoogleLogin.Disponivel || !string.IsNullOrWhiteSpace(idAntes);
                 ok &= guardou && recusa;
                 Nota($"google: identificador guardado={guardou} recusa inválido={recusa} " +
-                     $"webview2={GoogleLogin.Disponivel || string.IsNullOrEmpty(idAntes)}");
+                     $"caminho do firebase={temWebView}");
+
+                // O motor da IA: as 597 ferramentas viram funções declaradas, com o
+                // controle do PC por cima, e os nomes voltam para o id certo.
+                var funcoes = ToolSchema.Declaracoes();
+                var nomes = funcoes.Select(item => item!["name"]!.GetValue<string>()).ToHashSet();
+                var resolve = ToolSchema.Resolver("abrir_o_chrome") == "abrir-o-chrome" &&
+                              ToolSchema.Resolver("ver_a_tela") == "ver_a_tela" &&
+                              ToolSchema.Resolver("somar") == "somar";
+                var temControle = ToolSchema.Reservados.All(nome => nomes.Contains(nome));
+                var semDuplicata = nomes.Count == funcoes.Count;
+                ok &= resolve && temControle && semDuplicata && funcoes.Count > 590;
+                Nota($"funções para o modelo: {funcoes.Count} (catálogo {Tools.All.Count}) " +
+                     $"controle={temControle} nomes únicos={semDuplicata} resolve={resolve}");
+
+                // O chat abre, monta a conversa e responde sem chave com o aviso certo.
+                var chat = new ChatWindow();
+                chat.Show();
+                await Task.Delay(400);
+                var montou = chat.Pronto && chat.Baloes >= 1;
+                chat.Close();
+                await Task.Delay(200);
+                ok &= montou;
+                Nota($"chat: montou={montou} balões={chat.Baloes} chave={Gemini.HasKey}");
 
                 // abrir a barra de novo tem que fechar o painel: um na frente por vez
                 ShowBar();
@@ -544,6 +569,28 @@ public partial class App : System.Windows.Application
         }
         OpenPanel("perfil");
     }
+
+    /// <summary>
+    /// Abre o chat do Orbi — a conversa de verdade com a IA, com os passos do
+    /// agente aparecendo em tempo real. Uma janela só: se já está aberta, traz
+    /// para a frente em vez de abrir outra.
+    /// </summary>
+    public void OpenChat(string? primeiraMensagem = null)
+    {
+        if (_chat is not { IsLoaded: true })
+        {
+            _chat = new ChatWindow();
+            _chat.Closed += (_, _) => _chat = null;
+            _chat.Show();
+        }
+        else
+        {
+            _chat.Activate();
+        }
+        if (!string.IsNullOrWhiteSpace(primeiraMensagem)) _chat.Perguntar(primeiraMensagem!);
+    }
+
+    private ChatWindow? _chat;
 
     /// <summary>A conta mudou (entrou, saiu, salvou perfil): a barra reflete na hora.</summary>
     public void RefreshAccount()
