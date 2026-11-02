@@ -7,7 +7,7 @@
     publicar uma versão nova, mude a linha do OrbiVersion e rode:
 
         node scripts/version.mjs          # atualiza o site e o workflow
-        git commit -am "Orbi 1.3.0" && git push
+        git commit -am "Orbi 1.3.1" && git push
 
     O CI confere (scripts/version.mjs com a opção check) e falha se o site, o workflow ou o payload ficarem
     apontando para uma versão diferente desta.
@@ -16,7 +16,7 @@
     Windows usa para ordenar as versões instaladas.
   -->
   <PropertyGroup>
-    <OrbiVersion>1.3.0</OrbiVersion>
+    <OrbiVersion>1.3.1</OrbiVersion>
   </PropertyGroup>
 
   <PropertyGroup>

@@ -73,7 +73,7 @@ public static class Payload
 
     /// <summary>Pacote publicado junto com o instalador na mesma release.</summary>
     public const string Url =
-        "https://github.com/Arthurowgg/TheOrbiApp/releases/download/v1.3.0/orbi-payload-1.3.0.zip";
+        "https://github.com/Arthurowgg/TheOrbiApp/releases/download/v1.3.1/orbi-payload-1.3.1.zip";
 
     public const long ApproximateSize = 2L * 1024 * 1024;
 
@@ -444,7 +444,7 @@ public static class Installer
     public static string Versao =>
         System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
 
-    /// <summary>Tag da release que combina com esta versão (v1.3.0).</summary>
+    /// <summary>Tag da release que combina com esta versão (v1.3.1).</summary>
     public static string Tag => "v" + Versao;
 
     /// <summary>Desinstalação: encerra o app, apaga atalhos, registro e arquivos.</summary>
