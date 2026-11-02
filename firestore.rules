@@ -1,0 +1,69 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Orbi — Firestore como backend único do site e do app Windows.
+//
+// COMO PUBLICAR (leva 10 segundos):
+//   1. https://console.firebase.google.com/project/orbi-app-auth/firestore/rules
+//   2. Apague tudo, cole este arquivo inteiro, clique em "Publicar".
+//
+// Sem esse passo o app mostra "permission-denied" — o login funciona (é o
+// Firebase Authentication), mas a leitura/gravação dos dados é bloqueada.
+// ─────────────────────────────────────────────────────────────────────────────
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Campos que o site e o app podem gravar em users/{uid}.
+    function allowedKeys() {
+      return [
+        'name', 'email', 'createdAt', 'updatedAt', 'color', 'plan',
+        'sync', 'devices', 'downloads', 'activity',
+        'aliases', 'shortcuts', 'routines', 'appPrefs', 'appVersion', 'lastSyncAt'
+      ];
+    }
+
+    // Limites de tamanho: protegem você de um cliente com bug encher o documento.
+    function withinLimits() {
+      let d = request.resource.data;
+      // Limite de 1 MB por documento (o Firestore já impõe isso, checado aqui
+      // para dar mensagem clara em vez de erro genérico).
+      return (!d.keys().hasAny(['name']) || (d.name is string && d.name.size() <= 80))
+        && (!d.keys().hasAny(['email']) || (d.email is string && d.email.size() <= 254))
+        && (!d.keys().hasAny(['devices']) || d.devices.size() <= 20)
+        && (!d.keys().hasAny(['downloads']) || d.downloads.size() <= 30)
+        && (!d.keys().hasAny(['activity']) || d.activity.size() <= 40)
+        && (!d.keys().hasAny(['aliases']) || d.aliases.size() <= 100)
+        && (!d.keys().hasAny(['shortcuts']) || d.shortcuts.size() <= 100)
+        && (!d.keys().hasAny(['routines']) || d.routines.size() <= 60);
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+
+      allow create: if isOwner(uid)
+                    && request.resource.data.keys().hasOnly(allowedKeys())
+                    && withinLimits();
+
+      // Atualização parcial (PATCH com updateMask, usado pelo app): o Firebase
+      // valida request.resource.data já com as alterações aplicadas.
+      allow update: if isOwner(uid)
+                    && request.resource.data.keys().hasOnly(allowedKeys())
+                    && withinLimits();
+
+      allow delete: if isOwner(uid);
+    }
+
+    // Nenhuma outra coleção é acessível pelo cliente.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,88 @@
+name: Site no GitHub Pages
+
+# Espelho do site em https://arthurowgg.github.io/TheOrbiApp/
+#
+# Requer UM ajuste no repositório (uma vez):
+#   Settings ▸ Pages ▸ Build and deployment ▸ Source: "GitHub Actions"
+#
+# Dispara em push (o site é estático) e manualmente.
+
+on:
+  push:
+    branches: [main, arena/0e280858-theorbiapp]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'firebase.json'
+      - 'vite.config.ts'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/configure-pages@v5
+        id: pages
+
+      - run: npm ci
+
+      # O site fica em /TheOrbiApp/ (subpasta do domínio do Pages).
+      - name: Build com base do Pages
+        env:
+          VITE_BASE: ${{ steps.pages.outputs.base_path }}/
+        run: |
+          echo "VITE_BASE=$VITE_BASE"
+          npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Conferir a URL publicada
+        shell: bash
+        run: |
+          URL="https://arthurowgg.github.io/TheOrbiApp/"
+          CODE="000"
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -s -o /tmp/pagina.html -w '%{http_code}' "$URL")
+            echo "tentativa $i: HTTP $CODE"
+            [ "$CODE" = "200" ] && break
+            sleep 10
+          done
+          if [ "$CODE" != "200" ]; then
+            echo "::error::Pages respondeu HTTP $CODE em $URL"
+            exit 1
+          fi
+          echo "::notice::Pages no ar: $URL"
+          grep -o '<title>[^<]*</title>' /tmp/pagina.html || echo "::warning::HTML sem <title>"
+          grep -qi "orbi" /tmp/pagina.html && echo "conteúdo do Orbi presente" \
+            || echo "::error::a página não parece ser o site do Orbi (build errado?)"

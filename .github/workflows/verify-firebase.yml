@@ -1,0 +1,263 @@
+name: Verificar Firebase (Auth + Firestore)
+
+# Teste de ponta a ponta contra o projeto orbi-app-auth REAL:
+# cria uma conta descartável, grava/atualiza users/{uid} com o mesmo JSON que o
+# app envia, confere que uma escrita parcial não apaga os outros campos e apaga
+# tudo no fim. Usa só a apiKey pública do site (nada de credencial admin).
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, arena/0e280858-theorbiapp]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'firestore.rules'
+      - 'firebase.json'
+      - '.github/workflows/verify-firebase.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rodar verificação
+        shell: bash
+        run: |
+          set -u
+          API_KEY="AIzaSyDCpoYpdBiu_ENT8xFbvz0y1gl0W1CufFw"
+          PROJECT="orbi-app-auth"
+          STAMP=$(date +%s)
+          EMAIL="orbi-ci-${STAMP}@orbi-test.dev"
+          PASSWORD="OrbiTest!${STAMP}"
+          REPORT="relatorio-firebase.txt"
+          : > "$REPORT"
+          FAILED=0
+          log() { echo "$1" | tee -a "$REPORT"; }
+          pass() { log "PASS  $1"; }
+          fail() { log "FAIL  $1"; FAILED=1; }
+
+          log "Projeto: $PROJECT"
+          log "Conta de teste: $EMAIL"
+          log "Data: $(date -u +%FT%TZ)"
+          log ""
+
+          # 1. criar conta (exige E-mail/senha ativo no Authentication)
+          SIGNUP=$(curl -s -X POST \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$API_KEY" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\",\"returnSecureToken\":true}")
+
+          ID_TOKEN=$(echo "$SIGNUP" | jq -r '.idToken // empty')
+          UID_=$(echo "$SIGNUP" | jq -r '.localId // empty')
+          if [ -z "$ID_TOKEN" ]; then
+            fail "criar conta: $(echo "$SIGNUP" | jq -r '.error.message // "sem idToken"')"
+            log ""
+            log "Se a mensagem for OPERATION_NOT_ALLOWED, ative Authentication > Sign-in method > E-mail/senha."
+            echo "$FAILED" > failed.flag
+            exit 0
+          fi
+          echo "::add-mask::$ID_TOKEN"
+          pass "criar conta (uid ${UID_:0:8}…)"
+
+          DOC="https://firestore.googleapis.com/v1/projects/$PROJECT/databases/(default)/documents/users/$UID_"
+          AUTH=(-H "Authorization: Bearer $ID_TOKEN" -H 'Content-Type: application/json')
+
+          # 2. primeiro push do app (cria o documento) — mesmo formato de Services/Sync.cs
+          BODY='{"fields":{
+            "name":{"stringValue":"Teste CI"},
+            "color":{"stringValue":"#c7452a"},
+            "createdAt":{"timestampValue":"2026-01-01T00:00:00.000Z"},
+            "aliases":{"arrayValue":{"values":[
+              {"mapValue":{"fields":{"alias":{"stringValue":"zap"},"target":{"stringValue":"WhatsApp.exe"}}}}]}},
+            "shortcuts":{"arrayValue":{"values":[
+              {"mapValue":{"fields":{"trigger":{"stringValue":"assinatura"},"expansion":{"stringValue":"Ana Souza"}}}}]}},
+            "routines":{"arrayValue":{"values":[
+              {"mapValue":{"fields":{"name":{"stringValue":"modo estudo"},"commands":{"arrayValue":{"values":[{"stringValue":"abre o word"},{"stringValue":"brilho 40"}]}}}}}]}},
+            "appPrefs":{"mapValue":{"fields":{
+              "startWithWindows":{"booleanValue":true},
+              "volume":{"integerValue":"50"},
+              "lockEnabled":{"booleanValue":false},
+              "lockAfterMinutes":{"integerValue":"5"},
+              "geminiModel":{"stringValue":"gemini-2.0-flash"}}}},
+            "lastSyncAt":{"timestampValue":"2026-01-01T00:00:00.000Z"}}}'
+
+          CREATE=$(curl -s -w '\n%{http_code}' -X PATCH "$DOC" "${AUTH[@]}" -d "$BODY")
+          CODE=$(echo "$CREATE" | tail -1)
+          if [ "$CODE" = "200" ]; then pass "gravar users/{uid} (create)"; else
+            fail "gravar users/{uid} (create): HTTP $CODE $(echo "$CREATE" | head -1 | jq -c '.error // empty' 2>/dev/null)"
+          fi
+
+          # 3. escrita parcial: só appPrefs (como o app faz ao salvar preferências)
+          PARTIAL='{"fields":{"appPrefs":{"mapValue":{"fields":{
+            "startWithWindows":{"booleanValue":false},
+            "volume":{"integerValue":"70"},
+            "lockEnabled":{"booleanValue":true},
+            "lockAfterMinutes":{"integerValue":"10"},
+            "geminiModel":{"stringValue":"gemini-1.5-flash"}}}}}}'
+          MASK="updateMask.fieldPaths=appPrefs"
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' -X PATCH "$DOC?$MASK" "${AUTH[@]}" -d "$PARTIAL")
+          [ "$CODE" = "200" ] && pass "PATCH parcial com updateMask" || fail "PATCH parcial: HTTP $CODE"
+
+          # 4. o site grava campos dele (sync/devices/downloads/activity/plan) sem tocar nos do app
+          SITE='{"fields":{
+            "sync":{"mapValue":{"fields":{"preferencias":{"booleanValue":true},"apelidos":{"booleanValue":true}}}},
+            "devices":{"arrayValue":{"values":[{"mapValue":{"fields":{"name":{"stringValue":"PC da sala"}}}}]}},
+            "downloads":{"arrayValue":{"values":[{"stringValue":"OrbiSetup-1.0.0.exe"}]}},
+            "activity":{"arrayValue":{"values":[{"stringValue":"entrou"}]}},
+            "plan":{"stringValue":"free"},
+            "email":{"stringValue":"'$EMAIL'"}}}'
+          MASK="updateMask.fieldPaths=sync&updateMask.fieldPaths=devices&updateMask.fieldPaths=downloads&updateMask.fieldPaths=activity&updateMask.fieldPaths=plan&updateMask.fieldPaths=email"
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' -X PATCH "$DOC?$MASK" "${AUTH[@]}" -d "$SITE")
+          [ "$CODE" = "200" ] && pass "PATCH parcial do site (sync/devices/…) " || fail "PATCH do site: HTTP $CODE"
+
+          # 5. ler de volta e conferir que nada foi sobrescrito
+          GET=$(curl -s "$DOC" -H "Authorization: Bearer $ID_TOKEN")
+          A=$(echo "$GET" | jq -r '.fields.aliases.arrayValue.values[0].mapValue.fields.alias.stringValue // ""')
+          R=$(echo "$GET" | jq -r '.fields.routines.arrayValue.values[0].mapValue.fields.name.stringValue // ""')
+          V=$(echo "$GET" | jq -r '.fields.appPrefs.mapValue.fields.volume.integerValue // ""')
+          M=$(echo "$GET" | jq -r '.fields.plan.stringValue // ""')
+          [ "$A" = "zap" ]          && pass "aliases preservados após escritas parciais" || fail "aliases = '$A'"
+          [ "$R" = "modo estudo" ]  && pass "routines preservadas"                          || fail "routines = '$R'"
+          [ "$V" = "70" ]           && pass "appPrefs atualizadas (volume=70)"              || fail "appPrefs.volume = '$V'"
+          [ "$M" = "free" ]         && pass "campo do site gravável (plan=free)"            || fail "plan = '$M'"
+
+          # 6. regra negativa: outro documento não é acessível (deve dar 403)
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://firestore.googleapis.com/v1/projects/$PROJECT/databases/(default)/documents/users/outraPessoa123" \
+            -H "Authorization: Bearer $ID_TOKEN")
+          [ "$CODE" = "403" ] && pass "documento de outra pessoa bloqueado (403)" || fail "acesso indevido: HTTP $CODE (esperado 403)"
+
+          # 7. upload de campo proibido deve ser recusado
+          BAD='{"fields":{"admin":{"booleanValue":true}}}'
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' -X PATCH "$DOC?updateMask.fieldPaths=admin" "${AUTH[@]}" -d "$BAD")
+          [ "$CODE" = "403" ] && pass "campo fora da lista recusado (403)" || fail "campo 'admin' aceito: HTTP $CODE"
+
+          # 8. limpeza: apaga o documento e a conta de teste
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "$DOC" -H "Authorization: Bearer $ID_TOKEN")
+          [ "$CODE" = "200" ] && pass "documento removido" || fail "delete do documento: HTTP $CODE"
+          DEL=$(curl -s -X POST \
+            "https://identitytoolkit.googleapis.com/v1/accounts:delete?key=$API_KEY" \
+            -H 'Content-Type: application/json' -d "{\"idToken\":\"$ID_TOKEN\"}")
+          echo "$DEL" | jq -e '.error' >/dev/null 2>&1 && fail "remover conta de teste" || pass "conta de teste removida"
+
+          log ""
+          [ "$FAILED" = "0" ] && log "RESULTADO: tudo passou" || log "RESULTADO: há falhas acima"
+          echo "$FAILED" > failed.flag
+
+      - name: Guardar relatório como artefato
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-firebase
+          path: relatorio-firebase.txt
+          if-no-files-found: warn
+
+  # Deploy do site: roda só quando o secret existe. Usa a mesma credencial do
+  # job de Hosting do release.yml, mas aqui para publicar imediatamente.
+  hosting:
+    runs-on: ubuntu-latest
+    needs: verify
+    concurrency:
+      group: firebase-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Conferir secret
+        id: check
+        env:
+          SA: ${{ secrets.AUTH_JSON || secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Secret da conta de serviço ausente — deploy pulado."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.available == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.available == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - if: steps.check.outputs.available == 'true'
+        run: npm ci && npm run build
+
+      - if: steps.check.outputs.available == 'true'
+        name: Preparar credencial
+        env:
+          SA: ${{ secrets.AUTH_JSON || secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
+        shell: bash
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json"
+
+      - if: steps.check.outputs.available == 'true'
+        name: Conferir o build antes do deploy
+        shell: bash
+        run: |
+          # O CLI publica a pasta "public" do firebase.json (dist). Se ela não
+          # existir, o deploy "passa" e o site fica vazio: "Site Not Found".
+          echo "dist/index.html: $(test -f dist/index.html && echo ok || echo FALTA)"
+          test -f dist/index.html || { echo "::error::dist/index.html não existe"; exit 1; }
+          echo "arquivos em dist: $(find dist -type f | wc -l)"
+          echo "tamanho: $(du -sh dist | cut -f1)"
+          echo "primeira linha: $(head -c 80 dist/index.html)"
+          ls dist | head -10
+
+      - if: steps.check.outputs.available == 'true'
+        name: Deploy (hosting + regras)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        shell: bash
+        run: |
+          set -o pipefail
+          { npx --yes firebase-tools@latest deploy \
+              --only hosting,firestore:rules \
+              --project orbi-app-auth --non-interactive 2>&1 || true; } | tee deploy.log | tail -40
+          # guarda só as linhas úteis para o relatório no branch
+          grep -iE "error|forbidden|permission|invalid|failed|quota|http|warn|deploy" deploy.log | head -40 > deploy-resumo.txt || true
+          echo "exit original abaixo"
+          STATUS=$?
+          if grep -qE "Deploy complete|Hosting URL" deploy.log; then STATUS=0; fi
+          if [ "$STATUS" != "0" ]; then
+            echo "---- resumo para a API de checks ----"
+            tail -25 deploy.log | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            grep -iE "error|forbidden|permission|invalid|failed|quota|credential" deploy.log | head -10 | while IFS= read -r line; do
+              echo "::warning::$line"
+            done
+            exit "$STATUS"
+          fi
+
+      - if: steps.check.outputs.available == 'true'
+        name: Conferir o site publicado
+        run: |
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' https://orbi-app-auth.web.app/)
+            echo "tentativa $i: HTTP $CODE"
+            [ "$CODE" = "200" ] && break
+            sleep 10
+          done
+          PAGINA=$(curl -sL https://orbi-app-auth.web.app/ || true)
+          echo "$PAGINA" | grep -o '<title>[^<]*</title>' || true
+          echo "$PAGINA" | grep -qi "orbi" && echo "::notice::site do Orbi publicado" \
+            || echo "::error::a página publicada não parece o site do Orbi"
+          BUNDLE=$(echo "$PAGINA" | grep -o '/assets/[^"]*\.js' | head -1)
+          if [ -z "$BUNDLE" ]; then
+            echo "::error::o HTML publicado não referencia nenhum /assets/*.js — provavelmente o index.html foi publicado sem o build"
+          else
+            CODE_ASSET=$(curl -s -o /dev/null -w '%{http_code}' "https://orbi-app-auth.web.app$BUNDLE")
+            echo "bundle $BUNDLE → HTTP $CODE_ASSET"
+            [ "$CODE_ASSET" = "200" ] || echo "::error::o bundle do site não está acessível"
+          fi

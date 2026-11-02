@@ -1,0 +1,356 @@
+name: Release
+
+# Compila o app Windows, gera o instalador Inno Setup, publica a release e
+# entrega o site no Firebase Hosting.
+on:
+  push:
+    branches: [main, arena/0e280858-theorbiapp]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publicar uma release no GitHub"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  checks: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  # true: uma execução travada (runner preso) não bloqueia as próximas — o push
+  # novo cancela a antiga e roda.
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Site (build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # O site anuncia o mesmo catálogo que o app executa. Se divergir, falha aqui.
+      - name: Catálogo do site igual ao do app
+        run: node scripts/tools-catalog.mjs --check
+
+      # Versão, nome do instalador e tag saem todos de Directory.Build.props.
+      - name: Versão do site e do workflow igual à do app
+        run: node scripts/version.mjs --check
+
+      - run: npx tsc --noEmit
+      - run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist
+          retention-days: 14
+
+  windows:
+    name: App + instalador
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # Publica uma PASTA, não um exe único: nada de extração na partida (era o
+      # que fazia o app morrer antes de escrever qualquer log).
+      - name: Publish (pasta)
+        run: >
+          dotnet publish app/Orbi.App/Orbi.App.csproj
+          -c Release -r win-x64 --self-contained false
+          -o artifacts/publish
+
+      # O pacote do app é publicado ao lado do setup. O setup fica pequeno e
+      # baixa esse arquivo durante a instalação.
+      - name: Empacotar o app (payload da release)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path artifacts/Installer | Out-Null
+          Compress-Archive -Path "artifacts\publish\*" -DestinationPath "artifacts\Installer\orbi-payload-1.3.1.zip" -CompressionLevel Optimal -Force
+          $zip = Get-Item "artifacts\Installer\orbi-payload-1.3.1.zip"
+          Write-Host ("payload: " + [math]::Round($zip.Length/1MB,1) + " MB")
+          if ($zip.Length -lt 0.1MB) {
+            $pub = (Get-ChildItem "artifacts\publish" -Recurse | Measure-Object Length -Sum)
+            Write-Host "::error::payload pequeno demais: $([math]::Round($zip.Length/1MB,1)) MB; publish tem $([math]::Round($pub.Sum/1MB,1)) MB em $($pub.Count) arquivos"
+            throw "payload incompleto"
+          }
+
+      # WPF próprio, self-contained: o instalador abre mesmo em PC sem .NET.
+      # Ele é maior, e tudo bem — o que precisa ser leve é o app que fica instalado.
+      - name: Compilar o instalador
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          dotnet publish app/Orbi.Setup/Orbi.Setup.csproj -c Release -r win-x64 `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false -p:SelfContained=true -o artifacts/setup
+          New-Item -ItemType Directory -Force -Path artifacts/Installer | Out-Null
+          Move-Item artifacts/setup/OrbiSetup.exe "artifacts/Installer/OrbiSetup-1.3.1.exe" -Force
+          $exe = Get-Item "artifacts/Installer/OrbiSetup-1.3.1.exe"
+          Write-Host ("setup: " + [math]::Round($exe.Length/1MB,1) + " MB")
+          if ($exe.Length -gt 110MB) { throw "instalador pesado demais: $([math]::Round($exe.Length/1MB,1)) MB" }
+          if ($exe.Length -lt 5MB) { throw "instalador suspeito: $([math]::Round($exe.Length/1MB,1)) MB" }
+
+      - name: Checksums
+        shell: powershell
+        run: |
+          $arquivos = Get-ChildItem artifacts\Installer -File | Where-Object { $_.Extension -in ".exe", ".zip" }
+          $linhas = foreach ($file in $arquivos) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($file.Name)"
+          }
+          $linhas | Out-File -Encoding ascii artifacts\Installer\SHA256SUMS.txt
+          $linhas | ForEach-Object { Write-Host $_ }
+
+      # Instalador silencioso de verdade: instala, confere os arquivos e desinstala.
+      - name: Instalar e desinstalar sem interface
+        shell: powershell
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = "Stop"
+          function Falhar($msg) {
+            Write-Host "::error::$msg"
+            $log = Join-Path $env:LOCALAPPDATA "Orbi-setup.log"
+            if (Test-Path $log) { Get-Content $log | ForEach-Object { Write-Host "::error::setup: $_" } }
+            $target = Join-Path $env:LOCALAPPDATA "Programs\Orbi"
+            if (Test-Path $target) { Get-ChildItem $target -Recurse | ForEach-Object { Write-Host "::error::arquivo: $($_.FullName)" } }
+            exit 1
+          }
+
+          $exe = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
+          $zip = (Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1).FullName
+          $target = Join-Path $env:LOCALAPPDATA "Programs\Orbi"
+
+          # Pacote local: o download público só existe depois da release publicada.
+          $p = Start-Process -FilePath $exe -ArgumentList "--silent","--payload=$zip" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { Falhar "instalação silenciosa falhou ($($p.ExitCode))" }
+
+          if (-not (Test-Path (Join-Path $target "Orbi.exe"))) { Falhar "Orbi.exe não foi instalado em $target" }
+          $lnk = Get-ChildItem (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Orbi") -Filter *.lnk -ErrorAction SilentlyContinue
+          if (-not $lnk) { Falhar "atalhos do menu iniciar não foram criados" }
+          $tamanho = [math]::Round((Get-ChildItem $target -Recurse | Measure-Object Length -Sum).Sum / 1MB, 1)
+          Write-Host "instalado: $tamanho MB em $target"
+
+          # O app instalado abre? É a prova que importa depois de instalar.
+          $logApp = Join-Path $env:APPDATA "Orbi\orbi.log"
+          if (Test-Path $logApp) { Remove-Item $logApp -Force }
+          $app = Start-Process -FilePath (Join-Path $target "Orbi.exe") -ArgumentList "--tray" -PassThru
+          Start-Sleep -Seconds 15
+          if ($app.HasExited) { Falhar "o Orbi instalado fechou sozinho (código $($app.ExitCode))" }
+          if (-not (Test-Path $logApp)) { Falhar "o Orbi instalado está aberto mas não escreveu orbi.log" }
+          Get-Content $logApp | Select-Object -Last 5 | ForEach-Object { Write-Host "app: $_" }
+          Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
+
+          $u = Start-Process -FilePath $exe -ArgumentList "--silent","--uninstall" -PassThru -Wait
+          if ($u.ExitCode -ne 0) { Falhar "desinstalação silenciosa falhou ($($u.ExitCode))" }
+          if (Test-Path (Join-Path $target "Orbi.exe")) { Falhar "Orbi.exe continuou depois de desinstalar" }
+          if (Test-Path (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Orbi")) { Falhar "os atalhos do menu iniciar continuaram" }
+          $chave = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Orbi"
+          if (Test-Path $chave) { Falhar "a entrada de desinstalação continuou no registro" }
+          Write-Host "::notice::instalação e desinstalação conferidas ($tamanho MB instalados)"
+
+      # Os painéis (IA, Ferramentas, Perfil) abrem sem erro? A barra também?
+      - name: Abrir a barra e os painéis
+        shell: powershell
+        timeout-minutes: 5
+        run: |
+          $ErrorActionPreference = "Stop"
+          # O passo anterior termina desinstalando: reinstala antes de abrir.
+          $setup = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
+          $zip = (Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1).FullName
+          $app = Join-Path $env:LOCALAPPDATA "Programs\Orbi\Orbi.exe"
+          if (-not (Test-Path $app)) {
+            $i = Start-Process -FilePath $setup -ArgumentList "--silent","--payload=$zip" -PassThru -Wait
+            if ($i.ExitCode -ne 0) { throw "reinstalação para o autoteste falhou ($($i.ExitCode))" }
+          }
+          if (-not (Test-Path $app)) { throw "Orbi instalado não encontrado em $app" }
+          $log = Join-Path $env:APPDATA "Orbi\orbi.log"
+          $auto = Join-Path $env:APPDATA "Orbi\autoteste.log"
+          if (Test-Path $auto) { Remove-Item $auto -Force }
+          $p = Start-Process -FilePath $app -ArgumentList "--self-test" -PassThru -Wait
+          $texto = if (Test-Path $auto) { Get-Content $auto -Raw } else { "(sem autoteste.log)" }
+          Write-Host "::notice::app (código $($p.ExitCode)): $($texto -replace "`r?`n", ' | ')"
+          if ($p.ExitCode -ne 0) { throw "o app ou um dos painéis falhou (código $($p.ExitCode)): $texto" }
+
+      # A janela abre mesmo? Janela em branco que fecha sozinha já aconteceu uma
+      # vez; este passo abre, mede e fecha o instalador sozinho.
+      - name: A janela do instalador abre
+        shell: powershell
+        timeout-minutes: 5
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = (Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1).FullName
+          $p = Start-Process -FilePath $exe -ArgumentList "--self-test" -PassThru -Wait
+          $log = Join-Path $env:LOCALAPPDATA "Orbi-setup.log"
+          $texto = if (Test-Path $log) { Get-Content $log -Raw } else { "" }
+          Write-Host "::notice::janela: $($texto.Trim())"
+          if ($p.ExitCode -ne 0) { throw "a janela do instalador não abriu direito (código $($p.ExitCode)): $texto" }
+
+      - name: Smoke test do instalador
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = Get-ChildItem artifacts\Installer\OrbiSetup-*.exe | Select-Object -First 1
+          $zip = Get-ChildItem artifacts\Installer\orbi-payload-*.zip | Select-Object -First 1
+          
+          
+          if ($zip.Length -lt 0.1MB) { throw "payload suspeito: $([math]::Round($zip.Length/1MB,1)) MB" }
+          Write-Host "::notice::instalador $($exe.Name) com $([math]::Round($exe.Length/1MB,1)) MB · payload $([math]::Round($zip.Length/1MB,1)) MB"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: |
+            artifacts/Installer/OrbiSetup-*.exe
+            artifacts/Installer/orbi-payload-*.zip
+            artifacts/Installer/SHA256SUMS.txt
+          retention-days: 14
+
+  # Prova real: executa o app no Windows e lê o relatório do autoteste.
+  # Antes disso, "build verde" não significava "o app abre" — e foi assim que
+  # um tema XAML quebrado passou por seis versões.
+  autoteste:
+    name: Autoteste no Windows
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publicar (exatamente como o instalador publica)
+        run: >
+          dotnet publish app/Orbi.App/Orbi.App.csproj
+          -c Release -r win-x64 --self-contained false
+          -o artifacts/publish
+
+      # O app abre de verdade? É isso que importa — build verde não prova nada.
+      # Com a chave do Google AI Studio (secret GEMINI_API_KEY), o autoteste fala
+      # com a IA de verdade: uma pergunta e uma ordem que exige ferramenta.
+      - name: Abrir o Orbi e conferir o log
+        shell: powershell
+        timeout-minutes: 5
+        env:
+          ORBI_GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          function Falhar($msg) {
+            Write-Host "::error::$msg"
+            $pasta = "$env:APPDATA\Orbi"
+            Write-Host "pasta existe: $(Test-Path $pasta)"
+            if (Test-Path $pasta) { Get-ChildItem $pasta | Select-Object Name, Length | Format-Table | Out-String | Write-Host }
+            Write-Host "eventos de aplicativo (últimos):"
+            try {
+              Get-WinEvent -LogName Application -MaxEvents 8 |
+                Where-Object { $_.ProviderName -match "Application Error|.NET Runtime" } |
+                ForEach-Object { Write-Host ("::error::" + ($_.Message -split "`n")[0..3] -join " ") }
+            } catch { }
+            exit 1
+          }
+
+          $exe = (Resolve-Path "artifacts\publish\Orbi.exe").Path
+          Write-Host "exe: $exe ($([math]::Round((Get-Item $exe).Length/1MB,1)) MB)"
+
+          $p = Start-Process -FilePath $exe -ArgumentList "--tray" -PassThru
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) { Falhar "o Orbi fechou sozinho (código $($p.ExitCode))" }
+
+          if (-not $env:ORBI_GEMINI_KEY) {
+            Write-Host "::warning::sem GEMINI_API_KEY: a chamada real da IA não será testada"
+          }
+
+          $log = "$env:APPDATA\Orbi\orbi.log"
+          if (-not (Test-Path $log)) {
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            Falhar "o Orbi está rodando mas não escreveu orbi.log (travou numa janela de erro?)"
+          }
+
+          Get-Content $log | ForEach-Object { Write-Host "  $_" }
+          $texto = Get-Content $log -Raw
+          if ($texto -notmatch "Orbi iniciando") {
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            Falhar "log sem a linha de inicialização"
+          }
+
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          Write-Host "::notice::o Orbi abriu e registrou a inicialização"
+
+      - name: Guardar o log do Orbi
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autoteste-logs
+          path: C:/Users/runneradmin/AppData/Roaming/Orbi/orbi.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  release:
+    name: Publicar release
+    needs: [windows, autoteste]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: installer
+          path: artifacts
+
+      - name: Criar/atualizar a release
+        uses: softprops/action-gh-release@v2
+        with:
+          # nome fixo: o asset é substituído pelo build mais novo
+          fail_on_unmatched_files: true
+          tag_name: v1.3.1
+          name: Orbi 1.3.1
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: |
+            artifacts/OrbiSetup-1.3.1.exe
+            artifacts/orbi-payload-1.3.1.zip
+            artifacts/SHA256SUMS.txt
+          body: |
+            ## Orbi 1.3.1 — para Windows 11
+
+            Instalador leve: o app é baixado durante a instalação, e o .NET Desktop 8
+            só entra se o seu PC ainda não tiver. Sem privilégio de administrador.
+
+            **Baixe `OrbiSetup-1.3.1.exe`** e execute. O Orbi abre como uma barra de
+            comando; aperte `Alt+Shift+O` em qualquer lugar do Windows para chamar.
+
+            - **597 ferramentas do Windows** na barra: arquivos, janelas, tela,
+              configurações, apps, cálculos, datas, rede, texto e área de transferência
+            - **IA que usa o PC**: vê a tela, clica em um ponto, digita, aperta atalhos,
+              pesquisa na web e encadeia ferramentas para pedidos com vários passos
+            - **Só pensa no Enter**: nada roda enquanto você digita; `/ferramenta dado`
+              executa na hora, sem gastar chamada
+            - **Tela cheia** e barra que se adapta ao tamanho, lembrando posição e altura
+            - **Conta única com o site**: memória e ajustes acompanham você
+            - **Aviso de versão nova** dentro do app (Ajustes ▸ Sobre)
+            - Chave do Google AI Studio obrigatória para a IA — gratuita e cifrada no PC;
+              as ferramentas da barra funcionam sem ela
+
+            **Verificação:** compare o SHA-256 com `SHA256SUMS.txt`.
+
+            ```powershell
+            certutil -hashfile OrbiSetup-1.3.1.exe SHA256
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

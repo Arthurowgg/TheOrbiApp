@@ -1,0 +1,136 @@
+<Window x:Class="Orbi.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Orbi — Ajustes"
+        Width="760" Height="600"
+        MinWidth="620" MinHeight="480"
+        Background="{StaticResource Paper}"
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Ideal">
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- cabeçalho -->
+    <Border Grid.Row="0" Background="{StaticResource Paper}" BorderBrush="{StaticResource Rule}"
+            BorderThickness="0,0,0,1" Padding="20,14">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Width="34" Height="34" Background="{StaticResource Ink}"
+                CornerRadius="3" Margin="0,0,12,0">
+          <TextBlock Text="&#x25CF;" Foreground="{StaticResource SignalBrush}" FontSize="15"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock Text="ORBI" Style="{StaticResource H2}" FontSize="17"/>
+          <TextBlock Text="ajustes deste PC" Style="{StaticResource Label}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button x:Name="OpenBarButton" Content="Abrir a barra" Style="{StaticResource SecondaryButton}"
+                  Click="OpenBar_Click" Margin="0,0,8,0"/>
+          <Button Content="Sair do Orbi" Style="{StaticResource GhostButton}" Click="Exit_Click"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- corpo: uma página só, sem abas e sem rodapé -->
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="28,24">
+      <StackPanel MaxWidth="620" HorizontalAlignment="Left">
+
+        <TextBlock Text="Comportamento" Style="{StaticResource Label}"/>
+        <Border Style="{StaticResource Card}" Margin="0,8,0,0">
+          <StackPanel>
+            <TextBlock Text="Seu nome" Style="{StaticResource Label}"/>
+            <TextBox x:Name="NameBox" Style="{StaticResource Field}" Margin="0,6,0,0"/>
+
+            <Border Style="{StaticResource Divider}"/>
+
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="Abrir com o Windows" Style="{StaticResource Body}"
+                         FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <ToggleButton x:Name="StartupToggle" Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                            VerticalAlignment="Center"/>
+            </Grid>
+
+            <Border Style="{StaticResource Divider}"/>
+
+            <TextBlock Text="Atalho global" Style="{StaticResource Label}"/>
+            <ComboBox x:Name="HotkeyBox" Width="220" HorizontalAlignment="Left" Margin="0,6,0,0"
+                      SelectionChanged="HotkeyBox_SelectionChanged"/>
+            <TextBlock x:Name="HotkeyState" Style="{StaticResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <TextBlock Text="Segurança" Style="{StaticResource Label}" Margin="0,24,0,0"/>
+        <Border Style="{StaticResource Card}" Margin="0,8,0,0">
+          <StackPanel>
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="Bloquear por inatividade" Style="{StaticResource Body}"
+                         FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <ToggleButton x:Name="LockToggle" Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                            VerticalAlignment="Center"/>
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <TextBlock Text="Depois de" Style="{StaticResource Body}" VerticalAlignment="Center"/>
+              <TextBox x:Name="LockMinutes" Width="52" Style="{StaticResource Field}" Margin="8,0" TextAlignment="Center"/>
+              <TextBlock Text="minutos" Style="{StaticResource Body}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <TextBlock Text="Entrar com o Google" Style="{StaticResource Label}" Margin="0,24,0,0"/>
+        <Border Style="{StaticResource Card}" Margin="0,8,0,0">
+          <StackPanel>
+            <TextBlock x:Name="GoogleState" Style="{StaticResource Body}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Style="{StaticResource Muted}" Margin="0,4,0,0" TextWrapping="Wrap"
+                       Text="Cole o identificador do cliente OAuth do projeto. Ele é público; o login acontece dentro do Orbi."/>
+            <TextBox x:Name="GoogleClientBox" Style="{StaticResource Field}" Margin="0,8,0,0"/>
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+              <Button Content="Salvar identificador" Style="{StaticResource PrimaryButton}" Click="SalvarGoogle_Click"/>
+              <Button Content="Testar" Style="{StaticResource GhostButton}" Margin="8,0,0,0" Click="TestarGoogle_Click"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <TextBlock Text="Sobre" Style="{StaticResource Label}" Margin="0,24,0,0"/>
+        <Border Style="{StaticResource Card}" Margin="0,8,0,0">
+          <StackPanel>
+            <TextBlock x:Name="VersionLine" Text="Orbi" Style="{StaticResource Body}" FontWeight="SemiBold"/>
+            <TextBlock Style="{StaticResource Muted}" Margin="0,4,0,0" TextWrapping="Wrap"
+                       Text="A chave da IA fica cifrada neste PC, presa ao seu usuário do Windows."/>
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <Button x:Name="UpdateButton" Content="Procurar atualização" Style="{StaticResource GhostButton}"
+                      Click="ProcurarAtualizacao_Click"/>
+              <Button Content="Ver as versões" Style="{StaticResource GhostButton}" Margin="8,0,0,0"
+                      Click="OpenSiteReleases_Click"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Button Content="Salvar" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
+                Margin="0,24,0,0" Click="SaveAll_Click"/>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Window>

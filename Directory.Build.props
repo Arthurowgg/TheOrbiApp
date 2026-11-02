@@ -1,0 +1,29 @@
+<Project>
+
+  <!--
+    A versão do Orbi vive SÓ aqui.
+
+    O app, o instalador e o nome do payload/release saem todos daqui. Para
+    publicar uma versão nova, mude a linha do OrbiVersion e rode:
+
+        node scripts/version.mjs          # atualiza o site e o workflow
+        git commit -am "Orbi 1.3.1" && git push
+
+    O CI confere (scripts/version.mjs com a opção check) e falha se o site, o workflow ou o payload ficarem
+    apontando para uma versão diferente desta.
+
+    FileVersion e AssemblyVersion repetem o OrbiVersion com um .0 no fim, que o
+    Windows usa para ordenar as versões instaladas.
+  -->
+  <PropertyGroup>
+    <OrbiVersion>1.3.1</OrbiVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Version>$(OrbiVersion)</Version>
+    <FileVersion>$(OrbiVersion).0</FileVersion>
+    <AssemblyVersion>$(OrbiVersion).0</AssemblyVersion>
+    <InformationalVersion>$(OrbiVersion)</InformationalVersion>
+  </PropertyGroup>
+
+</Project>

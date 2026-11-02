@@ -1,0 +1,76 @@
+name: Publicar site no Firebase Hosting
+
+# Publica dist/ + firestore.rules em orbi-app-auth.
+# Requer o secret FIREBASE_SERVICE_ACCOUNT (Settings > Secrets and variables > Actions).
+# Sem o secret, o job falha com instrução — nunca tenta credencial embutida.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conferir secret
+        env:
+          SA: ${{ secrets.AUTH_JSON || secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::error::Falta o secret com o JSON da conta de serviço (AUTH_JSON)."
+            echo "Settings > Secrets and variables > Actions > New repository secret"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Preparar credencial
+        env:
+          SA: ${{ secrets.AUTH_JSON || secrets.FIREBASE_SERVICE_ACCOUNT || secrets.AUTH_KEY || secrets.FIREBASE_KEY }}
+        shell: bash
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          python3 scripts/checar-credencial.py "$RUNNER_TEMP/sa.json"
+
+      - name: Conferir o build antes do deploy
+        shell: bash
+        run: |
+          test -f dist/index.html || { echo "::error::dist/index.html não existe"; exit 1; }
+          echo "arquivos em dist: $(find dist -type f | wc -l)"
+
+      - name: Deploy (hosting + regras)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        shell: bash
+        run: |
+          set -o pipefail
+          npx --yes firebase-tools@latest deploy \
+            --only hosting,firestore:rules \
+            --project orbi-app-auth --non-interactive 2>&1 | tee deploy.log | tail -40
+          STATUS=${PIPESTATUS[0]}
+          if [ "$STATUS" != "0" ]; then
+            grep -iE "error|forbidden|permission|invalid|failed|not found|quota" deploy.log | tail -8 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            exit "$STATUS"
+          fi
+
+      - name: Conferir o site publicado
+        run: |
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' https://orbi-app-auth.web.app/)
+            echo "tentativa $i: HTTP $CODE"
+            [ "$CODE" = "200" ] && break
+            sleep 10
+          done
+          curl -s https://orbi-app-auth.web.app/ | grep -o '<title>[^<]*</title>' || true

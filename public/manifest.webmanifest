@@ -1,0 +1,13 @@
+{
+  "name": "Orbi",
+  "short_name": "Orbi",
+  "description": "Barra de comando em português para o Windows, com uma IA que age no PC.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#13100c",
+  "theme_color": "#13100c",
+  "icons": [
+    { "src": "orbi-256.png", "sizes": "256x256", "type": "image/png" },
+    { "src": "orbi-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

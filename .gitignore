@@ -1,0 +1,26 @@
+node_modules
+dist
+dist-ssr
+build
+.DS_Store
+*.local
+.env
+.env.local
+.env.*.local
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+service-account*.json
+app/frontend/Orbi/bin
+app/frontend/Orbi/obj
+app/frontend/Orbi/installer/OrbiSetup.exe
+coverage
+*.tgz
+ci-build.log
+deploy-resultado.md
+relatorio-firebase.txt
+
+# payload do instalador (gerado no CI)
+app/Orbi.Setup/assets/payload.zip
+app/Orbi.Setup/bin/
+app/Orbi.Setup/obj/

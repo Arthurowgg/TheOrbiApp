@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>Orbi</AssemblyName>
+    <RootNamespace>Orbi</RootNamespace>
+    <ApplicationIcon>Assets/orbi.ico</ApplicationIcon>
+    <Product>Orbi</Product>
+    <Company>Orbi</Company>
+    <Description>Assistente em português para Windows 11</Description>
+    <Copyright>© 2026 Orbi</Copyright>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <SelfContained>false</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <PublishTrimmed>false</PublishTrimmed>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Entrada em código (App.Main): o App.xaml deixa de ser ponto de falha. -->
+    <StartupObject>Orbi.App</StartupObject>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WPF + WinForms no mesmo projeto: remove os usings implícitos do WinForms
+         para evitar tipos ambíguos (Application, KeyEventArgs, Clipboard…). -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <!-- Janela do Google dentro do app (login sem navegador externo). -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2592.51" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets/orbi.ico" />
+    <Resource Include="Assets/orbi-512.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Sem ApplicationDefinition: nada de App.g.cs, nada de StartupUri. -->
+    <ApplicationDefinition Remove="App.xaml" />
+    <None Include="App.xaml" />
+  </ItemGroup>
+
+</Project>
