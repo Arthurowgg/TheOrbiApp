@@ -396,6 +396,16 @@ public partial class App : System.Windows.Application
                 ok &= _panel is ProfileWindow && extra == 0;
                 Nota($"entrar abre a própria conta: {_panel is ProfileWindow} janelas={janelas} extras={extra}");
 
+                // O identificador do Google é aceito, validado e guardado.
+                var idAntes = Store.Current.GoogleClientId;
+                GoogleLogin.ClientId = "123-orbi.apps.googleusercontent.com";
+                var guardou = Store.Current.GoogleClientId.Contains("apps.googleusercontent.com");
+                var recusa = !GoogleLogin.IdValido("abc123");
+                GoogleLogin.ClientId = idAntes;
+                ok &= guardou && recusa;
+                Nota($"google: identificador guardado={guardou} recusa inválido={recusa} " +
+                     $"webview2={GoogleLogin.Disponivel || string.IsNullOrEmpty(idAntes)}");
+
                 // abrir a barra de novo tem que fechar o painel: um na frente por vez
                 ShowBar();
                 await Task.Delay(200);

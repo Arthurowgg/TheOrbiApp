@@ -182,6 +182,10 @@ public sealed class ProfileWindow : Window
         _entrar.Children.Add(Divisor());
         _entrar.Children.Add(google);
         _entrar.Children.Add(esqueci);
+        _googleNota = Nota("Para liberar o Google, cole o identificador do cliente em " +
+                           "Ajustes ▸ Entrar com o Google.");
+        _googleNota.Visibility = Visibility.Collapsed;
+        _entrar.Children.Add(_googleNota);
         _entrar.Children.Add(Nota("A conta guarda a sua memória e os seus ajustes. " +
                                   "Sem ela o Orbi continua funcionando, só neste PC."));
 
@@ -240,6 +244,7 @@ public sealed class ProfileWindow : Window
 
     private Button? _google;
     private TextBlock? _googleRotulo;
+    private TextBlock? _googleNota;
 
     private Border MontarDentro()
     {
@@ -371,6 +376,10 @@ public sealed class ProfileWindow : Window
             if (_googleRotulo is not null)
             {
                 _googleRotulo.Text = GoogleLogin.Disponivel ? "Continuar com o Google" : "Google indisponível neste PC";
+            }
+            if (_googleNota is not null)
+            {
+                _googleNota.Visibility = GoogleLogin.Disponivel ? Visibility.Collapsed : Visibility.Visible;
             }
             return;
         }

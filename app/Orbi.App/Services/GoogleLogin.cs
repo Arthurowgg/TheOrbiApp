@@ -30,8 +30,21 @@ public static class GoogleLogin
     /// protege o fluxo é o PKCE e o retorno só em 127.0.0.1.
     /// Pode ser trocado por variável de ambiente ORBI_GOOGLE_CLIENT_ID no build.
     /// </summary>
-    public static string ClientId { get; set; } =
-        Environment.GetEnvironmentVariable("ORBI_GOOGLE_CLIENT_ID") ?? "";
+    public static string ClientId
+    {
+        get => !string.IsNullOrWhiteSpace(Store.Current.GoogleClientId)
+            ? Store.Current.GoogleClientId.Trim()
+            : Environment.GetEnvironmentVariable("ORBI_GOOGLE_CLIENT_ID") ?? "";
+        set
+        {
+            Store.Current.GoogleClientId = value?.Trim() ?? "";
+            Store.Save();
+        }
+    }
+
+    /// <summary>O endereço parece um cliente OAuth do Google?</summary>
+    public static bool IdValido(string texto) =>
+        texto.Trim().EndsWith(".apps.googleusercontent.com", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Dá para usar o botão do Google? (cliente configurado + WebView2 presente)</summary>
     public static bool Disponivel => !string.IsNullOrWhiteSpace(ClientId) && WebView2Ok;

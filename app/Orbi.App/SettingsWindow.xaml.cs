@@ -14,6 +14,50 @@ public partial class SettingsWindow : Window
         VersionLine.Text = "Orbi " + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "?") +
                            " · Windows 11 x64";
         Load();
+        MostrarEstadoGoogle();
+    }
+
+    /* ------------------------- entrar com o Google ------------------------- */
+
+    private void MostrarEstadoGoogle()
+    {
+        GoogleClientBox.Text = Store.Current.GoogleClientId;
+        GoogleState.Text = GoogleLogin.Disponivel
+            ? "Pronto — a conta pode entrar pelo Google dentro do app."
+            : string.IsNullOrWhiteSpace(Store.Current.GoogleClientId)
+                ? "Falta o identificador do cliente OAuth."
+                : "Identificador salvo, mas este PC não tem o componente de navegador (WebView2).";
+    }
+
+    private async void SalvarGoogle_Click(object sender, RoutedEventArgs e)
+    {
+        var texto = GoogleClientBox.Text.Trim();
+        if (texto.Length > 0 && !GoogleLogin.IdValido(texto))
+        {
+            GoogleState.Text = "Isso não parece um identificador do Google (termina em .apps.googleusercontent.com).";
+            return;
+        }
+        GoogleLogin.ClientId = texto;
+        MostrarEstadoGoogle();
+        if (GoogleLogin.Disponivel) await Sync.PushFieldsAsync(new System.Text.Json.Nodes.JsonObject { ["googleReady"] = Firebase.Bool(true) });
+    }
+
+    private async void TestarGoogle_Click(object sender, RoutedEventArgs e)
+    {
+        if (!GoogleLogin.Disponivel)
+        {
+            MostrarEstadoGoogle();
+            return;
+        }
+        GoogleState.Text = "Abrindo a janela do Google…";
+        // await, e não espera bloqueante: a janela do Google precisa da thread da interface.
+        var (ok, mensagem) = await GoogleLogin.EntrarAsync(this);
+        GoogleState.Text = mensagem;
+        if (ok)
+        {
+            App.Instance.RefreshAccount();
+            _ = Sync.PullAsync(true);
+        }
     }
 
 

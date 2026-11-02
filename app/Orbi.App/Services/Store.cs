@@ -24,6 +24,10 @@ public sealed class OrbiSettings
     // Última sincronização com a conta (texto curto mostrado nos painéis).
     public string LastSyncLabel { get; set; } = "";
 
+    // Cliente OAuth do Google usado pelo login dentro do app. É público (não é
+    // segredo): o que protege o login é o PKCE e o retorno só em 127.0.0.1.
+    public string GoogleClientId { get; set; } = "";
+
     // Marcador de que o documento da conta já existe (evita criar de novo).
     public string RemoteCreatedAt { get; set; } = "";
     public bool StartWithWindows { get; set; } = true;
