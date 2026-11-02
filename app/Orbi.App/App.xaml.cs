@@ -388,9 +388,13 @@ public partial class App : System.Windows.Application
                 // Entrar não abre uma segunda janela: o painel de conta é o formulário.
                 ShowLogin();
                 await Task.Delay(250);
-                ok &= _panel is ProfileWindow && System.Windows.Application.Current.Windows.Count == 1;
-                Nota($"entrar abre a própria conta: {_panel is ProfileWindow} " +
-                     $"janelas={System.Windows.Application.Current.Windows.Count}");
+                // A barra e os painéis já criados contam como janelas; o que não pode
+                // acontecer é uma janela de login por cima da página de conta.
+                var janelas = System.Windows.Application.Current.Windows.Count;
+                var extra = System.Windows.Application.Current.Windows
+                    .OfType<Window>().Count(janela => janela is not CommandBar && janela != _panel && janela.IsVisible);
+                ok &= _panel is ProfileWindow && extra == 0;
+                Nota($"entrar abre a própria conta: {_panel is ProfileWindow} janelas={janelas} extras={extra}");
 
                 // abrir a barra de novo tem que fechar o painel: um na frente por vez
                 ShowBar();
