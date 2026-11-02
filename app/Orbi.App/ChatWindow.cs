@@ -260,7 +260,6 @@ public sealed class ChatWindow : Window
         _sugestoes.Margin = new Thickness(18, 8, 18, 4);
 
         var rodape = new StackPanel { Margin = new Thickness(0, 6, 0, 14) };
-        rodape.Children.Add(_sugestoes);
         rodape.Children.Add(_caixaEntrada);
 
         var dica = new TextBlock
@@ -389,10 +388,9 @@ public sealed class ChatWindow : Window
             _sugestoes.Children.Add(pilula);
         }
 
-        if (!_conversa.Children.Contains(_sugestoes))
-        {
-            _conversa.Children.Add(_sugestoes);
-        }
+        // um pai só: já removida da conversa anterior, entra na atual
+        if (_sugestoes.Parent is Panel antigo) antigo.Children.Remove(_sugestoes);
+        _conversa.Children.Add(_sugestoes);
         ChatKit.Entrar(_sugestoes, 120);
     }
 
@@ -464,6 +462,7 @@ public sealed class ChatWindow : Window
 
         corpo.Children.Add(estado);
         corpo.Children.Add(passos);
+        textoResposta.Visibility = Visibility.Collapsed;
         corpo.Children.Add(textoResposta);
 
         var balaoOrbi = ChatKit.BalaoOrbi(corpo);
@@ -481,6 +480,7 @@ public sealed class ChatWindow : Window
         void MostrarParcial(string parcial)
         {
             if (estado.Visibility == Visibility.Visible) estado.Visibility = Visibility.Collapsed;
+            textoResposta.Visibility = Visibility.Visible;
             textoResposta.Text = parcial;
             RolarParaFim();
         }

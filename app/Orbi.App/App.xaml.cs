@@ -49,6 +49,9 @@ public partial class App : System.Windows.Application
 
     public static App Instance => (App)System.Windows.Application.Current;
 
+    /// <summary>Última exceção de pintura/interação (o autoteste falha se houver).</summary>
+    public static string? UltimoErroDeInterface { get; set; }
+
     public bool BarCreated => _bar is not null;
     public bool TrayVisible => _tray?.Visible == true;
 
@@ -58,6 +61,7 @@ public partial class App : System.Windows.Application
         DispatcherUnhandledException += (_, args) =>
         {
             Log.Error("interface", args.Exception);
+            UltimoErroDeInterface = args.Exception.GetType().Name + ": " + args.Exception.Message;
             var nota = Path.Combine(Store.Root, "autoteste.log");
             try
             {
@@ -429,7 +433,7 @@ public partial class App : System.Windows.Application
                 var funcoes = ToolSchema.Declaracoes();
                 var nomes = funcoes.Select(item => item!["name"]!.GetValue<string>()).ToHashSet();
                 var resolve = ToolSchema.Resolver("abrir_o_chrome") == "abrir-o-chrome" &&
-                              ToolSchema.Resolver("ver_a_tela") == "ver_a_tela" &&
+                              ToolSchema.Resolver("pc_ver_a_tela") == "pc_ver_a_tela" &&
                               ToolSchema.Resolver("somar") == "somar";
                 var temControle = ToolSchema.Reservados.All(nome => nomes.Contains(nome));
                 var semDuplicata = nomes.Count == funcoes.Count;
@@ -438,6 +442,7 @@ public partial class App : System.Windows.Application
                      $"controle={temControle} nomes únicos={semDuplicata} resolve={resolve}");
 
                 // O chat abre, monta a conversa e desenha os balões.
+                UltimoErroDeInterface = null;
                 try
                 {
                     // primeira as peças, uma por uma: se algo estourar, o log diz qual
@@ -461,7 +466,9 @@ public partial class App : System.Windows.Application
                     Nota("chat: janela mostrada");
                     await Task.Delay(600);
                     var montou = chat.Pronto && chat.Baloes >= 1;
-                    Nota($"chat: montou={montou} balões={chat.Baloes} chave={Gemini.HasKey}");
+                    Nota($"chat: montou={montou} balões={chat.Baloes} chave={Gemini.HasKey} " +
+                         $"erros de interface={UltimoErroDeInterface ?? "nenhum"}");
+                    ok &= UltimoErroDeInterface is null;
                     chat.Close();
                     await Task.Delay(200);
                     ok &= montou;
