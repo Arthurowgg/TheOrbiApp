@@ -188,6 +188,7 @@ public partial class App : System.Windows.Application
             }
         };
         menu.Items.Add("Abrir o Orbi", null, (_, _) => ShowBar());
+        menu.Items.Add("Conversar com o Orbi", null, (_, _) => OpenChat());
         menu.Items.Add("Ajustes…", null, (_, _) => ShowSettings());
         menu.Items.Add("Conta…", null, (_, _) => ShowAccount());
         menu.Items.Add("Ferramentas…", null, (_, _) => ShowSettings("ferramentas"));
@@ -428,7 +429,7 @@ public partial class App : System.Windows.Application
                 Nota($"google: identificador guardado={guardou} recusa inválido={recusa} " +
                      $"caminho do firebase={temWebView}");
 
-                // O motor da IA: as 597 ferramentas viram funções declaradas, com o
+                // O motor da IA: as 598 ferramentas viram funções declaradas, com o
                 // controle do PC por cima, e os nomes voltam para o id certo.
                 var funcoes = ToolSchema.Declaracoes();
                 var nomes = funcoes.Select(item => item!["name"]!.GetValue<string>()).ToHashSet();

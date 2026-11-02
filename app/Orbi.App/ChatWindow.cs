@@ -533,6 +533,8 @@ public sealed class ChatWindow : Window
                 };
                 corpo.Children.Add(final);
                 ChatKit.Entrar(final, 0, 260);
+                // um traço curto na cor do Orbi marca o fim da resposta
+                corpo.Children.Add(ChatKit.Faisca());
 
                 if (listaPassos.Count > 0)
                 {

@@ -539,6 +539,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
       "Copiar em MAIÚSCULAS",
       "Copiar em minúsculas",
       "Limpar a área de transferência",
+      "Conversar com o Orbi",
       "Abrir a barra do Orbi",
       "Ajustes do Orbi",
       "Abrir o perfil",

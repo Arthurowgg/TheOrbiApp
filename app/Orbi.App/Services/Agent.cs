@@ -19,7 +19,7 @@ public sealed class AgentEvents
 }
 
 /// <summary>
-/// O agente do Orbi: uma IA com 597 ferramentas, function calling e vários passos.
+/// O agente do Orbi: uma IA com 598 ferramentas, function calling e vários passos.
 ///
 /// O laço é o clássico de agente:
 ///   1. manda a conversa + as declarações de função;

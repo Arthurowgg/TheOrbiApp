@@ -6,7 +6,7 @@ namespace Orbi.Services;
 /// O catálogo do app virando <b>declaração de função</b> do Gemini.
 ///
 /// Nada de "aqui está uma lista de comandos, responda com JSON": o modelo recebe
-/// as 597 ferramentas como funções de verdade, com nome, descrição e o dado que
+/// as 598 ferramentas como funções de verdade, com nome, descrição e o dado que
 /// cada uma espera. É isso que faz a IA saber todas elas e escolher a certa.
 ///
 /// Além do catálogo, existem funções de controle que só o agente tem:

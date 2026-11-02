@@ -154,6 +154,32 @@ public static class ChatKit
         rotacao.BeginAnimation(RotateTransform.AngleProperty, animacao);
     }
 
+    /// <summary>Barra fina que aparece e some (usada quando a resposta termina).</summary>
+    public static Border Faisca()
+    {
+        var faisca = new Border
+        {
+            Height = 2,
+            CornerRadius = new CornerRadius(1),
+            Background = new SolidColorBrush(Color.FromArgb(0xFF, Sinal.R, Sinal.G, Sinal.B)),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 8, 0, 0),
+            Width = 40,
+        };
+        var largura = new DoubleAnimation(40, 120, TimeSpan.FromMilliseconds(420))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+        var sumir = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(520))
+        {
+            BeginTime = TimeSpan.FromMilliseconds(320),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn },
+        };
+        faisca.BeginAnimation(FrameworkElement.WidthProperty, largura);
+        faisca.BeginAnimation(UIElement.OpacityProperty, sumir);
+        return faisca;
+    }
+
     /// <summary>Três pontos que pulsam em sequência (indicador de digitação).</summary>
     public static FrameworkElement Pontos()
     {

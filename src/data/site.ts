@@ -87,7 +87,7 @@ export const SYNC_ITEMS = [
 
 /** Notas da versão mostradas na área da conta. */
 export const RELEASE_NOTES = [
-  "597 ferramentas do Windows na barra",
+  "598 ferramentas do Windows na barra",
   "Tela cheia, com volta no tamanho que você deixou",
   "IA que só pensa no Enter e gasta menos contexto",
   "IA que usa o PC: vê a tela, clica, digita e encadeia ferramentas",

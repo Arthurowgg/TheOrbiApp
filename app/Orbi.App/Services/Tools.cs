@@ -358,6 +358,12 @@ public static class Tools
             try { System.Windows.Clipboard.Clear(); return "Área de transferência limpa."; }
             catch { return "Não consegui limpar agora."; }
         });
+        Add("orbi-chat", "Conversar com o Orbi", "Produtividade", "chat,conversar,ia,perguntar",
+            () =>
+            {
+                App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.OpenChat()));
+                return "Abrindo o chat.";
+            });
         Add("orbi-bar", "Abrir a barra do Orbi", "Produtividade", "barra,abrir,orbi", () =>
         {
             App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.ShowBar()));
