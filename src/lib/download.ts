@@ -16,13 +16,13 @@ import type { Account } from "./accounts";
 
 export const BUILD = {
   product: "Orbi",
-  version: "1.2.0",
+  version: "1.3.0",
   channel: "estável",
   os: "Windows 11",
   arch: "x64",
   minimum: "Windows 11 22H2 ou superior (Windows 10 1809+)",
-  installer: "OrbiSetup-1.2.0.exe",
-  packageName: "Orbi-1.2.0",
+  installer: "OrbiSetup-1.3.0.exe",
+  packageName: "Orbi-1.3.0",
   sizeHint: "≈ 70 MB",
   repo: "Arthurowgg/TheOrbiApp",
 };
