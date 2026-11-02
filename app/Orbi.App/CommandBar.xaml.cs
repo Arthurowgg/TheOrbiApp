@@ -27,7 +27,6 @@ public partial class CommandBar : Window
 {
     private readonly ObservableCollection<ResultRow> _rows = new();
     private readonly List<(string Role, string Text)> _history = new();
-    private bool _thinking;
     private string _panel = "menu";
     private string _sheetTitle = "menu";
     private string _sheetNote = "";
