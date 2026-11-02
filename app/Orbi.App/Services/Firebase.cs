@@ -143,6 +143,7 @@ public static class Firebase
         }
         catch (Exception error)
         {
+            Log.Error("entrar na conta", error);
             return (false, "Sem conexão com a conta. Confira a internet e tente de novo.");
         }
     }
