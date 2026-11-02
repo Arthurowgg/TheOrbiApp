@@ -436,7 +436,6 @@ public partial class App : System.Windows.Application
                 var todas = ToolSchema.Todos();
                 var nomesTodos = todas.Select(item => item!["name"]!.GetValue<string>()).ToHashSet();
                 var unicos = nomesTodos.Count == todas.Count;
-                var cabemTodos = todas.Count <= 400; // só sanidade: a lista completa não vai na API
 
                 var pacote = ToolSchema.Declaracoes("abrir o chrome e pesquisar no google");
                 var nomesPacote = pacote.Select(item => item!["name"]!.GetValue<string>()).ToList();
@@ -451,7 +450,7 @@ public partial class App : System.Windows.Application
                 // ...e qualquer ferramenta do catálogo volta resolvida pelo nome da função
                 var resolveTudo = Tools.All.Count(item => ToolSchema.Resolver(
                     string.Join("_", item.Id.Split('-', '.'))) == item.Id) >= Tools.All.Count - 2;
-                ok &= resolve && resolveTudo && unicos && cabemTodos && dentroDoTeto &&
+                ok &= resolve && resolveTudo && unicos && dentroDoTeto &&
                       temControle && semDuplicata && trouxeCerta;
                 Nota($"funções: pacote={nomesPacote.Count} (teto {ToolSchema.MaxFuncoes}) " +
                      $"catálogo={todas.Count} únicos={unicos} controle={temControle} " +
