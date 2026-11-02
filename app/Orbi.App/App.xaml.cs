@@ -54,6 +54,22 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // Exceção de interface não pode derrubar o app sem deixar rastro.
+        DispatcherUnhandledException += (_, args) =>
+        {
+            Log.Error("interface", args.Exception);
+            var nota = Path.Combine(Store.Root, "autoteste.log");
+            try
+            {
+                File.AppendAllText(nota, "exceção de interface: " + args.Exception.GetType().Name +
+                                          ": " + args.Exception.Message + Environment.NewLine);
+            }
+            catch { }
+            args.Handled = true;
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            Log.Error("app", args.ExceptionObject as Exception ?? new Exception("erro desconhecido"));
+
         base.OnStartup(e);
         Log.Add("Orbi iniciando", typeof(App).Assembly.GetName().Version?.ToString() ?? "?");
 
@@ -424,10 +440,25 @@ public partial class App : System.Windows.Application
                 // O chat abre, monta a conversa e desenha os balões.
                 try
                 {
+                    // primeira as peças, uma por uma: se algo estourar, o log diz qual
+                    foreach (var (nome, criar) in new (string, Func<object>)[]
+                    {
+                        ("icone", () => ChatKit.Icone("spark", 16)),
+                        ("balaoPessoa", () => ChatKit.BalaoPessoa("teste")),
+                        ("balaoOrbi", () => ChatKit.BalaoOrbi(new TextBlock { Text = "oi" })),
+                        ("cartaoPasso", () => ChatKit.CartaoPasso("check", "t", "d", true)),
+                        ("pontos", () => ChatKit.Pontos()),
+                    })
+                    {
+                        try { _ = criar(); }
+                        catch (Exception peca) { Nota($"chat: peça {nome} falhou: {peca.GetType().Name}: {peca.Message}"); ok = false; }
+                    }
+
                     Nota("chat: criando a janela");
                     var chat = new ChatWindow();
                     Nota("chat: janela criada");
                     chat.Show();
+                    Nota("chat: janela mostrada");
                     await Task.Delay(600);
                     var montou = chat.Pronto && chat.Baloes >= 1;
                     Nota($"chat: montou={montou} balões={chat.Baloes} chave={Gemini.HasKey}");

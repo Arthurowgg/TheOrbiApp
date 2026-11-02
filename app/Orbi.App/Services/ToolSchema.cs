@@ -206,6 +206,9 @@ public static class ToolSchema
     /// <summary>Id do catálogo por trás do nome da função (ou null).</summary>
     public static string? Resolver(string nomeFuncao)
     {
+        // funções de controle não estão no catálogo: o nome já é o destino
+        if (EhReservada(nomeFuncao)) return NomeFuncao(nomeFuncao);
+
         if (Mapa.Count == 0) Declaracoes();
         var chave = NomeFuncao(nomeFuncao);
         if (Mapa.TryGetValue(chave, out var id)) return id;
