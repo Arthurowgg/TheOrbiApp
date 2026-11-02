@@ -389,7 +389,7 @@ public sealed class ChatWindow : Window
         }
 
         // um pai só: já removida da conversa anterior, entra na atual
-        if (_sugestoes.Parent is Panel antigo) antigo.Children.Remove(_sugestoes);
+        if (_sugestoes.Parent is System.Windows.Controls.Panel antigo) antigo.Children.Remove(_sugestoes);
         _conversa.Children.Add(_sugestoes);
         ChatKit.Entrar(_sugestoes, 120);
     }
