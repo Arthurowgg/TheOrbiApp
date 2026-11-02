@@ -204,21 +204,21 @@ public static class Agent
         {
             switch (nome.ToLowerInvariant())
             {
-                case "ver_a_tela":
+                case "pc_ver_a_tela":
                 {
                     var descricao = Pc.DescribeScreen();
                     return (new AgentStep("olhei a tela", PrimeiraLinha(descricao), true, "eye"),
                             (descricao, true));
                 }
 
-                case "capturar_a_tela":
+                case "pc_capturar_a_tela":
                 {
                     var caminho = Pc.Capture();
                     return (new AgentStep("tirei uma foto da tela", caminho, true, "camera"),
                             ("Captura em " + caminho + ". " + Pc.ActiveWindowTitle(), true));
                 }
 
-                case "clicar":
+                case "pc_clicar":
                 {
                     var x = Numero("x");
                     var y = Numero("y");
@@ -229,7 +229,7 @@ public static class Agent
                     return (new AgentStep("cliquei", $"{x},{y} ({botao})", true, "cursor"), ("feito", true));
                 }
 
-                case "digitar":
+                case "pc_digitar":
                 {
                     var texto = Texto("texto");
                     if (texto.Length == 0) return (new AgentStep("digitar", "sem texto", false, "keyboard"),
@@ -238,7 +238,7 @@ public static class Agent
                     return (new AgentStep("digitei", Curto(texto), true, "keyboard"), ("feito", true));
                 }
 
-                case "atalho":
+                case "pc_atalho":
                 {
                     var teclas = Texto("teclas");
                     if (teclas.Length == 0) return (new AgentStep("atalho", "sem teclas", false, "keyboard"),
@@ -247,7 +247,7 @@ public static class Agent
                     return (new AgentStep("atalho " + teclas, "enviado", true, "keyboard"), ("feito", true));
                 }
 
-                case "focar_janela":
+                case "pc_focar_janela":
                 {
                     var alvo = Texto("alvo");
                     var ok = Pc.Focus(alvo);
@@ -255,7 +255,7 @@ public static class Agent
                             (ok ? "A janela “" + alvo + "” está na frente." : "Não achei uma janela com “" + alvo + "”.", ok));
                 }
 
-                case "pesquisar_na_web":
+                case "pc_pesquisar_na_web":
                 {
                     var consulta = Texto("consulta");
                     var (titulo, trecho, ok) = Web.PesquisarAsync(consulta).GetAwaiter().GetResult();
@@ -265,7 +265,7 @@ public static class Agent
                     return (new AgentStep("pesquisei", consulta, ok, "search"), (saida, ok));
                 }
 
-                case "ler_pagina":
+                case "pc_ler_pagina":
                 {
                     var endereco = Texto("endereco");
                     var texto = Web.LerAsync(endereco).GetAwaiter().GetResult();
@@ -274,14 +274,14 @@ public static class Agent
                     return (new AgentStep("li a página", Curto(titulo), ok, "page"), (texto, ok));
                 }
 
-                case "abrir_no_navegador":
+                case "pc_abrir_no_navegador":
                 {
                     var endereco = Texto("endereco");
                     var resolvido = Browser.Open(endereco);
                     return (new AgentStep("abri no navegador", resolvido, true, "globe"), ("aberto: " + resolvido, true));
                 }
 
-                case "lembrar":
+                case "pc_lembrar":
                 {
                     var texto = Texto("texto");
                     var tipo = string.IsNullOrWhiteSpace(Texto("tipo")) ? "fato" : Texto("tipo");
@@ -289,7 +289,7 @@ public static class Agent
                     return (new AgentStep("guardei na memória", Curto(texto), true, "book"), ("guardado", true));
                 }
 
-                case "consultar_memoria":
+                case "pc_consultar_memoria":
                 {
                     var termo = Texto("termo").ToLowerInvariant();
                     var achados = Memory.All
@@ -302,7 +302,7 @@ public static class Agent
                             (achados.Count == 0 ? "Nada na memória sobre “" + termo + "”." : string.Join("\n", achados), true));
                 }
 
-                case "buscar_no_catalogo":
+                case "pc_buscar_no_catalogo":
                 {
                     var assunto = Texto("assunto");
                     var achados = Tools.Search(assunto).Take(12)
@@ -319,7 +319,7 @@ public static class Agent
             if (id is null)
             {
                 return (new AgentStep("ferramenta desconhecida", nome, false, "question"),
-                        ("Não existe ferramenta com esse nome. Use buscar_no_catalogo para achar a certa.", false));
+                        ("Não existe ferramenta com esse nome. Use pc_buscar_no_catalogo para achar a certa.", false));
             }
 
             var ferramenta = Tools.Find(id);
@@ -396,25 +396,23 @@ public static class Agent
         texto.AppendLine("Fale português do Brasil, próximo e direto. Nada de “claro!”, nada de repetir o pedido.");
         texto.AppendLine();
         texto.AppendLine("## O que você pode fazer");
-        texto.AppendLine($"Você tem {total} ferramentas do sistema declaradas como funções nesta conversa, " +
-                         "e funções de controle: ver_a_tela, capturar_a_tela, clicar, digitar, atalho, " +
-                         "focar_janela, pesquisar_na_web, ler_pagina, abrir_no_navegador, lembrar, " +
-                         "consultar_memoria, buscar_no_catalogo.");
+        texto.AppendLine($"Você tem {total} ferramentas do sistema declaradas como funções nesta conversa " +
+                         "(os nomes com pc_ são o controle do próprio PC).");
         texto.AppendLine("Grupos disponíveis: " + grupos + ".");
         texto.AppendLine();
         texto.AppendLine("## Como agir (multi-passos)");
         texto.AppendLine("1. Se o pedido é pergunta ou conversa, responda direto, sem chamar função.");
         texto.AppendLine("2. Se precisa fazer algo no PC, chame a função certa. Se não sabe o nome exato, " +
-                         "use buscar_no_catalogo antes.");
+                         "use pc_buscar_no_catalogo antes.");
         texto.AppendLine("3. Cada resultado volta para você: leia, e só então decida o próximo passo. " +
                          "Vários passos são normais (abrir, esperar, ver a tela, clicar, digitar).");
         texto.AppendLine("4. Antes de clicar em algo que não sabe onde está, chame ver_a_tela; use as " +
                          "coordenadas e o tamanho das janelas que voltarem.");
         texto.AppendLine("5. Quando precisar de informação de fora (preço, notícia, clima, documentação), " +
-                         "pesquisar_na_web e, se precisar de detalhe, ler_pagina antes de responder.");
+                         "pc_pesquisar_na_web e, se precisar de detalhe, pc_ler_pagina antes de responder.");
         texto.AppendLine("6. Se uma ferramenta falhar, tente outra parecida uma vez; se continuar, diga o " +
                          "que aconteceu em uma frase e o que a pessoa pode tentar.");
-        texto.AppendLine("7. Só chame lembrar quando a pessoa disser algo que vale guardar (gosto, rotina, " +
+        texto.AppendLine("7. Só chame pc_lembrar quando a pessoa disser algo que vale guardar (gosto, rotina, " +
                          "recado). Não anote tudo.");
         texto.AppendLine("8. No fim, responda em 1 a 3 frases contando o que ficou pronto. Sem listas, " +
                          "sem markdown, sem emoji de enfeite.");

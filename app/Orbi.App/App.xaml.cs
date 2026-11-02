@@ -421,15 +421,25 @@ public partial class App : System.Windows.Application
                 Nota($"funções para o modelo: {funcoes.Count} (catálogo {Tools.All.Count}) " +
                      $"controle={temControle} nomes únicos={semDuplicata} resolve={resolve}");
 
-                // O chat abre, monta a conversa e responde sem chave com o aviso certo.
-                var chat = new ChatWindow();
-                chat.Show();
-                await Task.Delay(400);
-                var montou = chat.Pronto && chat.Baloes >= 1;
-                chat.Close();
-                await Task.Delay(200);
-                ok &= montou;
-                Nota($"chat: montou={montou} balões={chat.Baloes} chave={Gemini.HasKey}");
+                // O chat abre, monta a conversa e desenha os balões.
+                try
+                {
+                    Nota("chat: criando a janela");
+                    var chat = new ChatWindow();
+                    Nota("chat: janela criada");
+                    chat.Show();
+                    await Task.Delay(600);
+                    var montou = chat.Pronto && chat.Baloes >= 1;
+                    Nota($"chat: montou={montou} balões={chat.Baloes} chave={Gemini.HasKey}");
+                    chat.Close();
+                    await Task.Delay(200);
+                    ok &= montou;
+                }
+                catch (Exception error)
+                {
+                    ok = false;
+                    Nota("chat falhou: " + error.GetType().Name + ": " + error.Message);
+                }
 
                 // abrir a barra de novo tem que fechar o painel: um na frente por vez
                 ShowBar();

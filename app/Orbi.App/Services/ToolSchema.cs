@@ -59,15 +59,15 @@ public static class ToolSchema
     /// <summary>As funções de controle: o que só um agente de PC faz.</summary>
     private static IEnumerable<JsonObject> Controle()
     {
-        yield return Funcao("ver_a_tela",
+        yield return Funcao("pc_ver_a_tela",
             "Lê o que está acontecendo agora: resolução, posição do mouse, janela em foco e a lista " +
             "das janelas abertas com posição e tamanho. Use antes de clicar em algo que não sabe onde está.");
 
-        yield return Funcao("capturar_a_tela",
+        yield return Funcao("pc_capturar_a_tela",
             "Tira uma foto da tela e devolve o caminho do arquivo e o que está em foco. " +
             "Use quando precisar descrever detalhes visuais para a pessoa.");
 
-        yield return Funcao("clicar",
+        yield return Funcao("pc_clicar",
             "Clica em um ponto da tela, em coordenadas de pixel (origem no canto superior esquerdo).",
             new JsonObject
             {
@@ -77,39 +77,39 @@ public static class ToolSchema
             },
             new[] { "x", "y" });
 
-        yield return Funcao("digitar",
+        yield return Funcao("pc_digitar",
             "Digita um texto no campo que está em foco (o teclado de verdade, letra por letra).",
             new JsonObject { ["texto"] = Prop("string", "o texto exato a digitar") },
             new[] { "texto" });
 
-        yield return Funcao("atalho",
+        yield return Funcao("pc_atalho",
             "Aperta uma combinação de teclas, tipo \"ctrl+t\", \"alt+tab\", \"ctrl+shift+s\" ou \"win+e\".",
             new JsonObject { ["teclas"] = Prop("string", "a combinação, com + entre as teclas") },
             new[] { "teclas" });
 
-        yield return Funcao("focar_janela",
+        yield return Funcao("pc_focar_janela",
             "Traz para a frente a janela que combina com o título ou o nome do programa.",
             new JsonObject { ["alvo"] = Prop("string", "parte do título ou o nome do processo, tipo \"chrome\"") },
             new[] { "alvo" });
 
-        yield return Funcao("pesquisar_na_web",
+        yield return Funcao("pc_pesquisar_na_web",
             "Pesquisa na internet e devolve os primeiros resultados (título e resumo). " +
             "Use para preço, notícia, clima, documentação, qualquer coisa fora deste PC.",
             new JsonObject { ["consulta"] = Prop("string", "o que pesquisar") },
             new[] { "consulta" });
 
-        yield return Funcao("ler_pagina",
+        yield return Funcao("pc_ler_pagina",
             "Abre um endereço e devolve o título e o começo do texto da página, para você ler de verdade " +
             "em vez de adivinhar pelo título.",
             new JsonObject { ["endereco"] = Prop("string", "URL completa, começando com https://") },
             new[] { "endereco" });
 
-        yield return Funcao("abrir_no_navegador",
+        yield return Funcao("pc_abrir_no_navegador",
             "Abre um endereço no navegador padrão do Windows.",
             new JsonObject { ["endereco"] = Prop("string", "URL ou site") },
             new[] { "endereco" });
 
-        yield return Funcao("lembrar",
+        yield return Funcao("pc_lembrar",
             "Guarda uma informação na memória da pessoa (ela vê depois em “o que eu fiz hoje”). " +
             "Use quando ela disser algo que vale lembrar.",
             new JsonObject
@@ -119,12 +119,12 @@ public static class ToolSchema
             },
             new[] { "texto" });
 
-        yield return Funcao("consultar_memoria",
+        yield return Funcao("pc_consultar_memoria",
             "Procura na memória do Orbi o que já foi dito, pedido ou guardado antes.",
             new JsonObject { ["termo"] = Prop("string", "palavra ou assunto a procurar") },
             new[] { "termo" });
 
-        yield return Funcao("buscar_no_catalogo",
+        yield return Funcao("pc_buscar_no_catalogo",
             "Procura ferramentas do Orbi por assunto — use quando não tiver certeza do nome exato " +
             "de uma ferramenta. Devolve id, nome e o dado que ela pede.",
             new JsonObject { ["assunto"] = Prop("string", "o que você quer fazer") },
@@ -195,9 +195,9 @@ public static class ToolSchema
     /// <summary>Nomes que o agente trata fora do catálogo.</summary>
     public static readonly string[] Reservados =
     {
-        "ver_a_tela", "capturar_a_tela", "clicar", "digitar", "atalho", "focar_janela",
-        "pesquisar_na_web", "ler_pagina", "abrir_no_navegador", "lembrar", "consultar_memoria",
-        "buscar_no_catalogo",
+        "pc_ver_a_tela", "pc_capturar_a_tela", "pc_clicar", "pc_digitar", "pc_atalho", "pc_focar_janela",
+        "pc_pesquisar_na_web", "pc_ler_pagina", "pc_abrir_no_navegador", "pc_lembrar", "pc_consultar_memoria",
+        "pc_buscar_no_catalogo",
     };
 
     public static bool EhReservada(string nome) =>
