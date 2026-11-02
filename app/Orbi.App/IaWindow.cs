@@ -106,7 +106,7 @@ public sealed class IaWindow : Window
 
     private static string Estado() =>
         Gemini.HasKey
-            ? $"Chave configurada. {ToolSchema.Total} funções declaradas para {Gemini.Mode}."
+            ? $"Chave configurada. {ToolSchema.TotalDoCatalogo} ferramentas ao alcance de {Gemini.Mode}, até {ToolSchema.MaxFuncoes} funções por pedido."
             : "Nenhuma chave ainda. Sem ela o Orbi só executa as ferramentas da barra.";
 
     private void Load()

@@ -179,7 +179,7 @@ public sealed class ChatWindow : Window
     private void AtualizarMotor()
     {
         _motor.Text = Gemini.Available
-            ? $"{Gemini.Mode} · {ToolSchema.Total} funções · memória {Memory.All.Count}"
+            ? $"{Gemini.Mode} · {ToolSchema.TotalDoCatalogo} ferramentas · memória {Memory.All.Count}"
             : "sem chave — abra os ajustes da IA";
         _motor.Foreground = Gemini.Available ? ChatKit.QuenteBrush : ChatKit.SinalBrush;
     }

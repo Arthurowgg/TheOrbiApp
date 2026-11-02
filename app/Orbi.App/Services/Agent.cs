@@ -41,7 +41,20 @@ public static class Agent
     /// <summary>Histórico da conversa (fica no app; sobe só a memória resumida).</summary>
     private static readonly List<(string Role, string Text)> Historico = new();
 
-    public static void LimparHistorico() => Historico.Clear();
+    /// <summary>Ferramentas já usadas nesta conversa: continuam declaradas.</summary>
+    private static readonly HashSet<string> Usadas = new(StringComparer.OrdinalIgnoreCase);
+
+    private static void GuardarUsada(string nomeFuncao)
+    {
+        var id = ToolSchema.Resolver(nomeFuncao);
+        if (id is not null) Usadas.Add(id);
+    }
+
+    public static void LimparHistorico()
+    {
+        Historico.Clear();
+        Usadas.Clear();
+    }
 
     public static async Task<(string Answer, List<AgentStep> Steps, bool Ok)> RunAsync(
         string pedido,
@@ -69,8 +82,12 @@ public static class Agent
             ["parts"] = new JsonArray(new JsonObject { ["text"] = pedido }),
         });
 
-        var declaracoes = ToolSchema.Declaracoes();
+        // O teto da API é 128 funções: vão as de controle + as que casam com o pedido.
+        var declaracoes = ToolSchema.Declaracoes(pedido, Usadas);
         var sistema = Sistema(pedido);
+        var nomesDeclarados = declaracoes
+            .Select(item => item!["name"]!.GetValue<string>())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var textoFinal = new StringBuilder();
         var erroFinal = (string?)null;
@@ -132,6 +149,7 @@ public static class Agent
                     token.ThrowIfCancellationRequested();
                     var (passo, saida) = Executar(chamada.Nome, chamada.Argumentos);
                     passos.Add(passo);
+                    GuardarUsada(chamada.Nome);
                     usouFerramenta = true;
                     eventos?.Passo?.Invoke(passo);
 
@@ -302,6 +320,28 @@ public static class Agent
                             (achados.Count == 0 ? "Nada na memória sobre “" + termo + "”." : string.Join("\n", achados), true));
                 }
 
+                case "pc_usar_ferramenta":
+                {
+                    var id = Texto("id").Trim();
+                    var dado = Texto("dado");
+                    var ferramenta = Tools.Find(id) ?? Tools.Find(id.Replace('_', '-'));
+                    if (ferramenta is null)
+                    {
+                        var achados = Tools.Search(id.Replace('_', ' ')).Take(5)
+                            .Select(item => item.Id).ToList();
+                        return (new AgentStep("não achei essa ferramenta", id, false, "question"),
+                                ("Não existe ferramenta com esse id. " +
+                                 (achados.Count > 0
+                                     ? "Parecidas: " + string.Join(", ", achados) + "."
+                                     : "Use pc_buscar_no_catalogo para achar a certa."), false));
+                    }
+                    var saiu = Tools.Run(ferramenta.Id, dado);
+                    var foi = !saiu.StartsWith("Não consegui", StringComparison.OrdinalIgnoreCase) &&
+                              !saiu.StartsWith("Preciso do dado", StringComparison.OrdinalIgnoreCase);
+                    return (new AgentStep(ferramenta.Name, Curto(saiu), foi, IconeDe(ferramenta.Group)),
+                            (saiu, foi));
+                }
+
                 case "pc_buscar_no_catalogo":
                 {
                     var assunto = Texto("assunto");
@@ -315,6 +355,11 @@ public static class Agent
             }
 
             // Catálogo: nome da função → id da ferramenta
+            if (!nomesDeclarados.Contains(nome))
+            {
+                // veio do pacote de outra conversa (ou o modelo inventou): o resolver ainda acha
+                Log.Add("agente: função fora do pacote desta conversa: " + nome);
+            }
             var id = ToolSchema.Resolver(nome);
             if (id is null)
             {
@@ -396,17 +441,19 @@ public static class Agent
         texto.AppendLine("Fale português do Brasil, próximo e direto. Nada de “claro!”, nada de repetir o pedido.");
         texto.AppendLine();
         texto.AppendLine("## O que você pode fazer");
-        texto.AppendLine($"Você tem {total} ferramentas do sistema declaradas como funções nesta conversa " +
-                         "(os nomes com pc_ são o controle do próprio PC).");
-        texto.AppendLine("Grupos disponíveis: " + grupos + ".");
+        texto.AppendLine($"O Orbi tem {total} ferramentas do Windows, em {Tools.Groups.Count()} grupos: " + grupos + ".");
+        texto.AppendLine($"Nesta conversa, as mais prováveis para este pedido estão declaradas como funções ({ToolSchema.MaxFuncoes} é o máximo que a API aceita por pedido). " +
+                         "As outras continuam ao seu alcance de dois jeitos: pc_buscar_no_catalogo acha os ids por assunto " +
+                         "e pc_usar_ferramenta executa qualquer uma pelo id. Nunca diga que não sabe fazer algo antes de procurar no catálogo.");
         texto.AppendLine();
         texto.AppendLine("## Como agir (multi-passos)");
         texto.AppendLine("1. Se o pedido é pergunta ou conversa, responda direto, sem chamar função.");
-        texto.AppendLine("2. Se precisa fazer algo no PC, chame a função certa. Se não sabe o nome exato, " +
-                         "use pc_buscar_no_catalogo antes.");
+        texto.AppendLine("2. Se precisa fazer algo no PC, chame a função certa. Se não houver função " +
+                         "para isso, chame pc_buscar_no_catalogo e depois pc_usar_ferramenta com o id — " +
+                         "não existe tarefa do Windows fora do catálogo.");
         texto.AppendLine("3. Cada resultado volta para você: leia, e só então decida o próximo passo. " +
                          "Vários passos são normais (abrir, esperar, ver a tela, clicar, digitar).");
-        texto.AppendLine("4. Antes de clicar em algo que não sabe onde está, chame ver_a_tela; use as " +
+        texto.AppendLine("4. Antes de clicar em algo que não sabe onde está, chame pc_ver_a_tela; use as " +
                          "coordenadas e o tamanho das janelas que voltarem.");
         texto.AppendLine("5. Quando precisar de informação de fora (preço, notícia, clima, documentação), " +
                          "pc_pesquisar_na_web e, se precisar de detalhe, pc_ler_pagina antes de responder.");

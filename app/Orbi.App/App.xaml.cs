@@ -431,16 +431,31 @@ public partial class App : System.Windows.Application
 
                 // O motor da IA: as 598 ferramentas viram funções declaradas, com o
                 // controle do PC por cima, e os nomes voltam para o id certo.
-                var funcoes = ToolSchema.Declaracoes();
-                var nomes = funcoes.Select(item => item!["name"]!.GetValue<string>()).ToHashSet();
+                // Teto de 128 por pedido: o pacote é escolhido pelo pedido e o catálogo
+                // inteiro continua alcançável por pc_buscar_no_catalogo + pc_usar_ferramenta.
+                var todas = ToolSchema.Todos();
+                var nomesTodos = todas.Select(item => item!["name"]!.GetValue<string>()).ToHashSet();
+                var unicos = nomesTodos.Count == todas.Count;
+                var cabemTodos = todas.Count <= 400; // só sanidade: a lista completa não vai na API
+
+                var pacote = ToolSchema.Declaracoes("abrir o chrome e pesquisar no google");
+                var nomesPacote = pacote.Select(item => item!["name"]!.GetValue<string>()).ToList();
+                var dentroDoTeto = nomesPacote.Count <= ToolSchema.MaxFuncoes;
+                var temControle = ToolSchema.Reservados.All(nomesPacote.Contains);
+                var semDuplicata = nomesPacote.Count == nomesPacote.Distinct().Count();
+                var trouxeCerta = ToolSchema.Escolher("abrir o chrome e pesquisar no google")
+                    .Any(item => item.Id.Contains("chrome", StringComparison.OrdinalIgnoreCase));
                 var resolve = ToolSchema.Resolver("abrir_o_chrome") == "abrir-o-chrome" &&
                               ToolSchema.Resolver("pc_ver_a_tela") == "pc_ver_a_tela" &&
                               ToolSchema.Resolver("somar") == "somar";
-                var temControle = ToolSchema.Reservados.All(nome => nomes.Contains(nome));
-                var semDuplicata = nomes.Count == funcoes.Count;
-                ok &= resolve && temControle && semDuplicata && funcoes.Count > 590;
-                Nota($"funções para o modelo: {funcoes.Count} (catálogo {Tools.All.Count}) " +
-                     $"controle={temControle} nomes únicos={semDuplicata} resolve={resolve}");
+                // ...e qualquer ferramenta do catálogo volta resolvida pelo nome da função
+                var resolveTudo = Tools.All.Count(item => ToolSchema.Resolver(
+                    string.Join("_", item.Id.Split('-', '.'))) == item.Id) >= Tools.All.Count - 2;
+                ok &= resolve && resolveTudo && unicos && cabemTodos && dentroDoTeto &&
+                      temControle && semDuplicata && trouxeCerta;
+                Nota($"funções: pacote={nomesPacote.Count} (teto {ToolSchema.MaxFuncoes}) " +
+                     $"catálogo={todas.Count} únicos={unicos} controle={temControle} " +
+                     $"relevante={trouxeCerta} resolve={resolve}/{resolveTudo}");
 
                 // O chat abre, monta a conversa e desenha os balões.
                 UltimoErroDeInterface = null;
