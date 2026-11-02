@@ -737,8 +737,12 @@ public static class ToolsExtra
             App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.ShowSettings("memoria")));
             return "Abrindo a memória.";
         });
-        Add("orbi-account-site", "Abrir a minha conta no site", orbi, "conta,site,navegador",
-            () => Open("https://orbi-app.web.app/conta"));
+        Add("orbi-account", "Abrir a minha conta", orbi, "conta,perfil,login,google",
+            () =>
+            {
+                App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.OpenPanel("perfil")));
+                return "Abrindo a sua conta.";
+            });
         Add("orbi-quiet", "Esconder a barra", orbi, "esconder,fechar,barra",
             () => { App.Instance.Dispatcher.BeginInvoke(new Action(() => App.Instance.HideBar())); return "Barra escondida."; });
     }

@@ -37,6 +37,8 @@
   <ItemGroup>
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <!-- Janela do Google dentro do app (login sem navegador externo). -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2592.51" />
   </ItemGroup>
 
   <ItemGroup>

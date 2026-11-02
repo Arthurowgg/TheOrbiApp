@@ -377,9 +377,9 @@ public partial class CommandBar : Window
         }
         else
         {
-            SheetBody.Children.Add(SheetRow("Entrar na conta", "a memória acompanha você",
+            // Conta é uma página do app: entrar, criar e Google acontecem aqui dentro.
+            SheetBody.Children.Add(SheetRow("Entrar na conta", "e-mail, Google ou criar agora",
                 () => App.Instance.ShowLogin(), destaque: true));
-            SheetBody.Children.Add(SheetRow("Criar conta", "", () => { Browser.Open("https://orbi-app.web.app/conta"); }));
         }
 
         SheetBody.Children.Add(SheetDivider());

@@ -486,7 +486,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
       "Voltar a barra ao centro",
       "Ajustar a IA",
       "Ajustar a memória",
-      "Abrir a minha conta no site",
+      "Abrir a minha conta",
       "Esconder a barra",
     ],
   },

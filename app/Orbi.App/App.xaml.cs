@@ -369,6 +369,29 @@ public partial class App : System.Windows.Application
                 ok &= enxuto.Contains("converter-celsius-para-fahrenheit") && enxuto.Length < Tools.CatalogoCompleto().Length;
                 Nota($"catálogo para a IA: {enxuto.Split('\n').Length} de {Tools.All.Count} linhas");
 
+                // A página de conta: sem conta ela é o formulário; com conta, o painel.
+                OpenPanel("perfil");
+                await Task.Delay(300);
+                if (_panel is ProfileWindow conta)
+                {
+                    ok &= conta.FormularioVisivel && !conta.PainelDaContaVisivel;
+                    Nota($"conta: formulário visível={conta.FormularioVisivel} " +
+                         $"google disponível={conta.GoogleDisponivel} " +
+                         $"senha acompanha={conta.SenhaAcompanha()}");
+                }
+                else
+                {
+                    ok = false;
+                    Nota("conta: a página não abriu");
+                }
+
+                // Entrar não abre uma segunda janela: o painel de conta é o formulário.
+                ShowLogin();
+                await Task.Delay(250);
+                ok &= _panel is ProfileWindow && System.Windows.Application.Current.Windows.Count == 1;
+                Nota($"entrar abre a própria conta: {_panel is ProfileWindow} " +
+                     $"janelas={System.Windows.Application.Current.Windows.Count}");
+
                 // abrir a barra de novo tem que fechar o painel: um na frente por vez
                 ShowBar();
                 await Task.Delay(200);
@@ -508,14 +531,18 @@ public partial class App : System.Windows.Application
         OpenPanel("perfil");
     }
 
-    public void ShowLogin()
+    /// <summary>A conta mudou (entrou, saiu, salvou perfil): a barra reflete na hora.</summary>
+    public void RefreshAccount()
     {
-        var login = new LoginWindow();
-        if (login.ShowDialog() != true) return;
         _bar?.RefreshAccountChip();
-        if (_panel is ProfileWindow perfil) perfil.Refresh();
-        _ = Sync.PullAsync(true);
+        if (_panel is ProfileWindow conta) conta.Refresh();
     }
+
+    /// <summary>
+    /// Entrar acontece dentro da página de conta: o painel já abre com o
+    /// formulário, sem uma segunda janela por cima.
+    /// </summary>
+    public void ShowLogin() => OpenPanel("perfil");
 
     public void ShowSettings(string? tab = null) => OpenPanel(Mapear(tab));
 

@@ -14,6 +14,11 @@ public sealed class FirebaseSession
     public string Uid { get; set; } = "";
     public string Email { get; set; } = "";
     public long ExpiresAtUnix { get; set; }
+    /// <summary>"google.com" ou "password" — de onde veio a conta.</summary>
+    public string Provider { get; set; } = "password";
+    public string DisplayName { get; set; } = "";
+    public string PhotoUrl { get; set; } = "";
+    public bool EmailVerified { get; set; }
 
     public bool Expired => DateTimeOffset.UtcNow.ToUnixTimeSeconds() > ExpiresAtUnix - 120;
 }
@@ -63,6 +68,14 @@ public static class Firebase
         Changed?.Invoke();
     }
 
+    /// <summary>Deixa a sessão pronta (usado pelo login do Google, que monta os tokens fora).</summary>
+    public static void AdoptSession(FirebaseSession session)
+    {
+        SetSession(session);
+        Store.Current.AccountEmail = session.Email;
+        Store.Save();
+    }
+
     public static void SignOut()
     {
         Session = null;
@@ -85,7 +98,7 @@ public static class Firebase
         }
         if (password.Length < 6)
         {
-            return (false, "A senha precisa de pelo menos 6 caracteres. O site pede 8.");
+            return (false, "A senha precisa de pelo menos 6 caracteres.");
         }
 
         try
@@ -115,6 +128,10 @@ public static class Firebase
                 Uid = root.GetProperty("localId").GetString() ?? "",
                 Email = root.GetProperty("email").GetString() ?? email.Trim().ToLowerInvariant(),
                 ExpiresAtUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + ParseSeconds(root, "expiresIn", 3600),
+                Provider = "password",
+                DisplayName = root.TryGetProperty("displayName", out var nome) ? nome.GetString() ?? "" : "",
+                PhotoUrl = root.TryGetProperty("photoUrl", out var foto) ? foto.GetString() ?? "" : "",
+                EmailVerified = root.TryGetProperty("emailVerified", out var visto) && visto.ValueKind == JsonValueKind.True,
             };
             SetSession(session);
             Store.Current.AccountEmail = session.Email;
@@ -126,7 +143,7 @@ public static class Firebase
         }
         catch (Exception error)
         {
-            return (false, $"Sem conexão com o Firebase: {error.Message}");
+            return (false, "Sem conexão com a conta. Confira a internet e tente de novo.");
         }
     }
 
@@ -164,17 +181,16 @@ public static class Firebase
                 "EMAIL_EXISTS" => "Já existe uma conta com este e-mail. Use Entrar.",
                 "WEAK_PASSWORD : Password should be at least 6 characters" =>
                     "A senha precisa de pelo menos 6 caracteres.",
-                "OPERATION_NOT_ALLOWED" =>
-                    "Ative o login por e-mail/senha no console do Firebase (Authentication ▸ Sign-in method).",
+                "OPERATION_NOT_ALLOWED" => "O login por e-mail não está disponível agora.",
                 "TOO_MANY_ATTEMPTS_TRY_LATER" => "Muitas tentativas. Espere um minuto.",
-                "API_KEY_INVALID" => "A configuração do Firebase está incorreta neste build.",
+                "NETWORK_REQUEST_FAILED" => "Sem conexão agora.",
                 _ when status == HttpStatusCode.BadRequest => "Confira o e-mail e a senha.",
-                _ => $"Falha do Firebase ({code}).",
+                _ => "Não consegui falar com a conta agora.",
             };
         }
         catch
         {
-            return "Falha ao falar com o Firebase.";
+            return "Não consegui falar com a conta agora.";
         }
     }
 
@@ -318,6 +334,269 @@ public static class Firebase
     }
 
     private static string Trim(string json) => json.Length > 160 ? json[..160] + "…" : json;
+
+    /* ------------------------- perfil e segurança ------------------------- */
+
+    /// <summary>Nome e foto no perfil da conta. O nome também vai para users/{uid}.</summary>
+    public static async Task<(bool Ok, string Message)> SaveProfileAsync(string name, string photoUrl)
+    {
+        var token = await TokenAsync();
+        if (token is null) return (false, "Entre na conta primeiro.");
+        try
+        {
+            var payload = new JsonObject
+            {
+                ["displayName"] = name.Trim(),
+                ["photoUrl"] = photoUrl.Trim(),
+                ["returnSecureToken"] = true,
+            };
+            using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+            using var response = await Client.PostAsync(
+                $"https://identitytoolkit.googleapis.com/v1/accounts:update?key={ApiKey}", content);
+            var json = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode) return (false, TranslateAuthError(json, response.StatusCode));
+
+            if (Session is not null)
+            {
+                Session.DisplayName = name.Trim();
+                Session.PhotoUrl = photoUrl.Trim();
+                Store.SaveSession(Session);
+            }
+            await PatchAsync(new JsonObject
+            {
+                ["name"] = Str(name.Trim()),
+                ["photoUrl"] = Str(photoUrl.Trim()),
+            });
+            Changed?.Invoke();
+            return (true, "Perfil salvo.");
+        }
+        catch (Exception error)
+        {
+            Log.Error("salvar perfil", error);
+            return (false, "Não consegui salvar agora.");
+        }
+    }
+
+    public static async Task<(bool Ok, string Message)> ChangePasswordAsync(string current, string next)
+    {
+        if (Session is null) return (false, "Entre na conta primeiro.");
+        if (next.Length < 6) return (false, "A senha nova precisa de pelo menos 6 caracteres.");
+
+        var (entrou, mensagem) = await SignInAsync(Session.Email, current);
+        if (!entrou) return (false, "A senha atual não confere.");
+        _ = mensagem;
+
+        var token = await TokenAsync();
+        if (token is null) return (false, "Entre na conta primeiro.");
+        try
+        {
+            var payload = new JsonObject { ["password"] = next, ["returnSecureToken"] = true };
+            using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+            using var response = await Client.PostAsync(
+                $"https://identitytoolkit.googleapis.com/v1/accounts:update?key={ApiKey}", content);
+            var json = await response.Content.ReadAsStringAsync();
+            return response.IsSuccessStatusCode
+                ? (true, "Senha trocada.")
+                : (false, TranslateAuthError(json, response.StatusCode));
+        }
+        catch (Exception error)
+        {
+            Log.Error("trocar senha", error);
+            return (false, "Não consegui trocar a senha agora.");
+        }
+    }
+
+    /// <summary>Manda o e-mail de confirmação para o endereço da conta.</summary>
+    public static async Task<(bool Ok, string Message)> SendVerificationAsync()
+    {
+        var token = await TokenAsync();
+        if (token is null || Session is null) return (false, "Entre na conta primeiro.");
+        if (Session.EmailVerified) return (true, "Este e-mail já está confirmado.");
+        try
+        {
+            var payload = new JsonObject { ["requestType"] = "VERIFY_EMAIL", ["idToken"] = token };
+            using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+            using var response = await Client.PostAsync(
+                $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={ApiKey}", content);
+            var json = await response.Content.ReadAsStringAsync();
+            return response.IsSuccessStatusCode
+                ? (true, "Link enviado para " + Session.Email + ".")
+                : (false, TranslateAuthError(json, response.StatusCode));
+        }
+        catch (Exception error)
+        {
+            Log.Error("enviar verificação", error);
+            return (false, "Não consegui enviar o link agora.");
+        }
+    }
+
+    /// <summary>Relê a conta para saber se o e-mail foi confirmado (o link chega por e-mail).</summary>
+    public static async Task<bool> RefreshProfileAsync()
+    {
+        var token = await TokenAsync();
+        if (token is null || Session is null) return false;
+        try
+        {
+            var payload = new JsonObject { ["idToken"] = token };
+            using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+            using var response = await Client.PostAsync(
+                $"https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={ApiKey}", content);
+            if (!response.IsSuccessStatusCode) return false;
+
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            if (!document.RootElement.TryGetProperty("users", out var users) || users.GetArrayLength() == 0) return false;
+            var user = users[0];
+            Session.EmailVerified = user.TryGetProperty("emailVerified", out var visto) && visto.ValueKind == JsonValueKind.True;
+            Session.DisplayName = user.TryGetProperty("displayName", out var nome) ? nome.GetString() ?? "" : "";
+            Session.PhotoUrl = user.TryGetProperty("photoUrl", out var foto) ? foto.GetString() ?? "" : "";
+            Store.SaveSession(Session);
+            Changed?.Invoke();
+            return Session.EmailVerified;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Apaga a conta de vez (Auth + documento). Exige a sessão recente.</summary>
+    public static async Task<(bool Ok, string Message)> DeleteAccountAsync()
+    {
+        var token = await TokenAsync();
+        if (token is null) return (false, "Entre na conta primeiro.");
+        try
+        {
+            // 1. o documento: se falhar, a conta continua inteira
+            using (var request = new HttpRequestMessage(HttpMethod.Delete, DocUrl()))
+            {
+                request.Headers.Add("Authorization", $"Bearer {token}");
+                using var resposta = await Client.SendAsync(request);
+                if (!resposta.IsSuccessStatusCode && resposta.StatusCode != HttpStatusCode.NotFound)
+                {
+                    return (false, "Não consegui apagar os dados da conta agora.");
+                }
+            }
+
+            // 2. a conta em si
+            var payload = new JsonObject { ["idToken"] = token };
+            using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+            using var response = await Client.PostAsync(
+                $"https://identitytoolkit.googleapis.com/v1/accounts:delete?key={ApiKey}", content);
+            if (!response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                return (false, TranslateAuthError(json, response.StatusCode));
+            }
+
+            SignOut();
+            Memory.Forget();
+            return (true, "Conta apagada.");
+        }
+        catch (Exception error)
+        {
+            Log.Error("apagar conta", error);
+            return (false, "Não consegui apagar a conta agora.");
+        }
+    }
+
+    /* ------------------------------ aparelhos ------------------------------ */
+
+    private static string DevicesUrl() =>
+        $"https://firestore.googleapis.com/v1/projects/{ProjectId}/databases/(default)/documents/users/{Session?.Uid}/devices";
+
+    public sealed record Aparelho(string Id, string Nome, string UltimoAcesso, bool Atual);
+
+    /// <summary>
+    /// Aparelhos que usam esta conta. O app registra o próprio a cada entrada;
+    /// os outros vêm do que o site gravou.
+    /// </summary>
+    public static async Task<List<Aparelho>> GetDevicesAsync()
+    {
+        var lista = new List<Aparelho>();
+        var token = await TokenAsync();
+        if (token is null) return lista;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, DevicesUrl() + "?pageSize=20");
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            using var response = await Client.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return lista;
+
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            if (!document.RootElement.TryGetProperty("documents", out var documentos)) return lista;
+            foreach (var documento in documentos.EnumerateArray())
+            {
+                var id = documento.TryGetProperty("name", out var nome) ? nome.GetString()?.Split('/').Last() ?? "" : "";
+                // Os campos vêm como JSON do Firestore; ReadString trabalha com JsonObject.
+                var campos = documento.TryGetProperty("fields", out var f)
+                    ? JsonNode.Parse(f.GetRawText())?.AsObject()
+                    : null;
+                lista.Add(new Aparelho(
+                    id,
+                    ReadString(campos, "name", "Aparelho"),
+                    ReadString(campos, "lastSeen", ""),
+                    ReadString(campos, "kind", "") == "app"));
+            }
+        }
+        catch (Exception error)
+        {
+            Log.Error("listar aparelhos", error);
+        }
+        return lista;
+    }
+
+    /// <summary>Marca este PC como um dos aparelhos da conta (sem duplicar).</summary>
+    public static async Task RegisterDeviceAsync()
+    {
+        var token = await TokenAsync();
+        if (token is null) return;
+        try
+        {
+            var url = DevicesUrl() + "/" + Environment.MachineName.ToLowerInvariant().Replace(' ', '-') +
+                      "?updateMask.fieldPaths=name&updateMask.fieldPaths=kind&updateMask.fieldPaths=lastSeen";
+            var body = new JsonObject
+            {
+                ["fields"] = new JsonObject
+                {
+                    ["name"] = Str(Environment.MachineName),
+                    ["kind"] = Str("app"),
+                    ["lastSeen"] = Str(DateTime.Now.ToString("dd/MM/yyyy HH:mm")),
+                },
+            };
+            using var request = new HttpRequestMessage(HttpMethod.Patch, url)
+            {
+                Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"),
+            };
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            using var response = await Client.SendAsync(request);
+            if (!response.IsSuccessStatusCode) Log.Add("aparelho não registrado: " + (int)response.StatusCode);
+        }
+        catch (Exception error)
+        {
+            Log.Error("registrar aparelho", error);
+        }
+    }
+
+    /// <summary>Remove um aparelho da lista (não derruba a sessão dele em outro PC).</summary>
+    public static async Task<(bool Ok, string Message)> ForgetDeviceAsync(string id)
+    {
+        var token = await TokenAsync();
+        if (token is null) return (false, "Entre na conta primeiro.");
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Delete, DevicesUrl() + "/" + Uri.EscapeDataString(id));
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            using var response = await Client.SendAsync(request);
+            return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound
+                ? (true, "Aparelho removido da lista.")
+                : (false, "Não consegui remover esse aparelho.");
+        }
+        catch (Exception error)
+        {
+            Log.Error("remover aparelho", error);
+            return (false, "Não consegui remover esse aparelho.");
+        }
+    }
 
     /* ------------------------- conversão de valores ------------------------- */
     public static JsonNode Str(string value) => new JsonObject { ["stringValue"] = value ?? "" };
