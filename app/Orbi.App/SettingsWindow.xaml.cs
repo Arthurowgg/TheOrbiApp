@@ -95,6 +95,48 @@ public partial class SettingsWindow : Window
         App.Instance.ExitApp();
     }
 
+    /// <summary>
+    /// Procura versão nova na release publicada. Se existir, o próprio botão vira
+    /// o convite para instalar; se não, diz que está em dia — sem caixa de diálogo.
+    /// </summary>
+    private async void ProcurarAtualizacao_Click(object sender, RoutedEventArgs e)
+    {
+        UpdateButton.IsEnabled = false;
+        UpdateButton.Content = "Procurando…";
+        try
+        {
+            var nova = await Update.ProcurarAsync();
+            if (nova is null)
+            {
+                UpdateButton.Content = "Você está na " + Update.Instalada + " — em dia";
+                return;
+            }
+
+            UpdateButton.Content = "Instalar a " + nova.Versao;
+            UpdateButton.Tag = nova;
+            UpdateButton.Click -= ProcurarAtualizacao_Click;
+            UpdateButton.Click += InstalarAtualizacao_Click;
+            UpdateButton.IsEnabled = true;
+        }
+        catch (Exception error)
+        {
+            Log.Error("procurar atualização", error);
+            UpdateButton.Content = "Não consegui verificar agora";
+        }
+        finally
+        {
+            UpdateButton.IsEnabled = true;
+        }
+    }
+
+    private void InstalarAtualizacao_Click(object sender, RoutedEventArgs e)
+    {
+        if (UpdateButton.Tag is not Update.Disponivel nova) return;
+        Update.Instalar(nova);
+        UpdateButton.Content = "Instalador aberto — siga a instalação";
+        UpdateButton.IsEnabled = false;
+    }
+
     private void OpenSiteReleases_Click(object sender, RoutedEventArgs e)
     {
         try

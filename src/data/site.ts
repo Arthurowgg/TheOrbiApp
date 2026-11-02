@@ -88,8 +88,8 @@ export const SYNC_ITEMS = [
 /** Notas da versão mostradas na área da conta. */
 export const RELEASE_NOTES = [
   "597 ferramentas do Windows na barra",
-  "Barra compacta: Enter executa, / abre o catálogo, F1 também",
+  "Tela cheia, com volta no tamanho que você deixou",
+  "IA que só pensa no Enter e gasta menos contexto",
   "IA que usa o PC: vê a tela, clica, digita e encadeia ferramentas",
-  "Memória do dia a dia",
-  "Memória e preferências na sua conta",
+  "Aviso de versão nova dentro do app",
 ];

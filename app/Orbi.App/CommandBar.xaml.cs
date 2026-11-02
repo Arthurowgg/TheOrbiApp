@@ -582,6 +582,23 @@ public partial class CommandBar : Window
     {
         Hint.Text = Greeting;
         AiStatus.Text = Gemini.Mode;
+        _ = ProcurarVersaoNovaAsync();
+    }
+
+    /// <summary>
+    /// Uma vez por sessão: se saiu versão nova, o rodapé da barra avisa em vez de
+    /// esperar a pessoa entrar nos Ajustes. Sem internet, fica em silêncio.
+    /// </summary>
+    private bool _procurouVersao;
+
+    private async Task ProcurarVersaoNovaAsync()
+    {
+        if (_procurouVersao) return;
+        _procurouVersao = true;
+        var nova = await Update.ProcurarAsync();
+        if (nova is null) return;
+        AiStatus.Text = "versão " + nova.Versao + " disponível";
+        AiStatus.Foreground = new SolidColorBrush(Color.FromRgb(0xC7, 0x45, 0x2A));
     }
 
     /// <summary>

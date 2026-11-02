@@ -712,8 +712,15 @@ public static class ToolsExtra
             () => "Vá em Ajustes ▸ Memória e use “Esquecer tudo”.");
         Add("orbi-tools", "Quantas ferramentas o Orbi tem", orbi, "ferramentas,quantas,catalogo",
             () => $"O Orbi tem {Tools.All.Count} ferramentas em {Tools.Groups.Count()} grupos.");
-        Add("orbi-update", "Procurar atualização", orbi, "atualizar,versao,nova",
-            () => Open("https://orbi-app.web.app/baixar"));
+        Add("orbi-update", "Procurar atualização", orbi, "atualizar,versao,nova", () =>
+        {
+            // Task.Run: a espera da resposta não pode prender a thread da barra.
+            var nova = Task.Run(() => Update.ProcurarAsync()).GetAwaiter().GetResult();
+            return nova is null
+                ? "Você está na " + Update.Instalada + ", a mais nova."
+                : "Saiu a " + nova.Versao + " (você está na " + Update.Instalada +
+                  "). Abra os Ajustes ▸ Sobre para instalar.";
+        });
         Add("orbi-about", "Sobre o Orbi", orbi, "sobre,orbi,versao",
             () => "Orbi " + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "?") + " · Windows 11 · feito para português.");
         Add("orbi-bar-reset", "Voltar a barra ao centro", orbi, "barra,centro,resetar,posicao", () =>

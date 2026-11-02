@@ -105,8 +105,12 @@
             <TextBlock x:Name="VersionLine" Text="Orbi" Style="{StaticResource Body}" FontWeight="SemiBold"/>
             <TextBlock Style="{StaticResource Muted}" Margin="0,4,0,0" TextWrapping="Wrap"
                        Text="A chave da IA fica cifrada neste PC, presa ao seu usuário do Windows."/>
-            <Button Content="Ver a versão mais nova" Style="{StaticResource GhostButton}"
-                    HorizontalAlignment="Left" Margin="0,12,0,0" Click="OpenSiteReleases_Click"/>
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <Button x:Name="UpdateButton" Content="Procurar atualização" Style="{StaticResource GhostButton}"
+                      Click="ProcurarAtualizacao_Click"/>
+              <Button Content="Ver as versões" Style="{StaticResource GhostButton}" Margin="8,0,0,0"
+                      Click="OpenSiteReleases_Click"/>
+            </StackPanel>
           </StackPanel>
         </Border>
 

@@ -282,6 +282,27 @@ public partial class App : System.Windows.Application
                     Nota($"fora do meio: topo={_bar.Top:0} de {alturaTela:0} = {noTopo}");
                 }
 
+                // A versão que o app instalado exibe é a mesma da release.
+                Nota($"versão instalada={Update.Instalada}");
+                ok &= Update.Instalada != "0.0.0";
+
+                // Comparação de versões: só conta como nova quando é maior de verdade.
+                var comparacoes = new (string Nova, string Atual, bool Esperado)[]
+                {
+                    ("1.2.0", "1.1.2", true),
+                    ("1.2.0", "1.2.0", false),
+                    ("1.1.2", "1.2.0", false),
+                    ("1.2.10", "1.2.9", true),
+                    ("2.0.0", "1.9.9", true),
+                };
+                foreach (var (nova, atual, esperado) in comparacoes)
+                {
+                    var deu = Update.MaisNova(nova, atual);
+                    ok &= deu == esperado;
+                    if (deu != esperado) Nota($"comparação errada: {nova} > {atual} = {deu}");
+                }
+                Nota($"comparação de versões: {comparacoes.Length} casos ok={ok}");
+
                 // Tela cheia de verdade: cobre a tela e volta exatamente como estava.
                 if (_bar is not null)
                 {

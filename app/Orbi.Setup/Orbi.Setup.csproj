@@ -10,8 +10,6 @@
     <AssemblyName>OrbiSetup</AssemblyName>
     <RootNamespace>Orbi.Setup</RootNamespace>
     <ApplicationIcon>..\Orbi.App\Assets\orbi.ico</ApplicationIcon>
-    <Version>1.1.2</Version>
-    <FileVersion>1.1.2.0</FileVersion>
     <Company>Orbi</Company>
     <Product>Orbi</Product>
     <Description>Instalador do Orbi</Description>

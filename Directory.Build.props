@@ -1,0 +1,26 @@
+<Project>
+
+  <!--
+    A versão do Orbi vive SÓ aqui.
+
+    O app, o instalador e o nome do payload/release saem todos daqui. Para
+    publicar uma versão nova, mude esta linha e rode:
+
+        node scripts/version.mjs          # atualiza o site e o workflow
+        git commit -am "Orbi 1.2.0" && git push
+
+    O CI roda `--check` e falha se o site, o workflow ou o payload ficarem
+    apontando para uma versão diferente desta.
+  -->
+  <PropertyGroup>
+    <OrbiVersion>1.2.0</OrbiVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Version>$(OrbiVersion)</Version>
+    <FileVersion>$(OrbiVersion).0</FileVersion>
+    <AssemblyVersion>$(OrbiVersion).0</AssemblyVersion>
+    <InformationalVersion>$(OrbiVersion)</InformationalVersion>
+  </PropertyGroup>
+
+</Project>
