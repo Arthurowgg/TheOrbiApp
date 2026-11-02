@@ -153,6 +153,11 @@ public static class Store
 
     public static string? LoadApiKey()
     {
+        // Variável de ambiente tem prioridade: serve para o autoteste do CI e para
+        // quem gerencia a chave por script, sem gravar nada no disco.
+        var doAmbiente = Environment.GetEnvironmentVariable("ORBI_GEMINI_KEY");
+        if (!string.IsNullOrWhiteSpace(doAmbiente)) return doAmbiente.Trim();
+
         try
         {
             if (!File.Exists(SecretPath)) return null;

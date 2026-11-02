@@ -479,6 +479,28 @@ public partial class App : System.Windows.Application
                     Nota("chat falhou: " + error.GetType().Name + ": " + error.Message);
                 }
 
+                // Com a chave do CI, a IA de verdade: uma pergunta e uma ação no PC.
+                // Sem chave, o teste segue (e o log diz que ficou de fora).
+                if (Gemini.HasKey)
+                {
+                    var (resposta, passosIA, okIA) = await Agent.RunAsync(
+                        "Quanto é 12 vezes 8? Responda em uma frase curta.");
+                    var respondeu = okIA && resposta.Contains("96");
+                    ok &= respondeu;
+                    Nota($"ia: resposta=\"{Cortar(resposta)}\" passos={passosIA.Count} ok={respondeu}");
+
+                    var (acao, passosAcao, _) = await Agent.RunAsync(
+                        "Quanto é 37 mais 5? Use a ferramenta de somar e depois me diga só o resultado.");
+                    var usouFerramenta = passosAcao.Count > 0 && acao.Contains("42");
+                    ok &= usouFerramenta;
+                    Nota($"ia: ação=\"{Cortar(acao)}\" passos={passosAcao.Count} " +
+                         $"ferramenta={(passosAcao.FirstOrDefault()?.Title ?? "nenhuma")} ok={usouFerramenta}");
+                }
+                else
+                {
+                    Nota("ia: sem chave neste build — a chamada real não foi testada");
+                }
+
                 // abrir a barra de novo tem que fechar o painel: um na frente por vez
                 ShowBar();
                 await Task.Delay(200);
@@ -497,6 +519,13 @@ public partial class App : System.Windows.Application
             // Garante o código de saída mesmo se algum handle segurar o processo.
             Environment.Exit(ok ? 0 : 1);
         }));
+    }
+
+    /// <summary>Trecho curto para caber no log do autoteste.</summary>
+    private static string Cortar(string texto)
+    {
+        var limpo = texto.Replace("\r", " ").Replace("\n", " ").Trim();
+        return limpo.Length > 140 ? limpo[..140] + "…" : limpo;
     }
 
     /// <summary>A barra volta (usado depois de salvar a chave, fechar um painel…).</summary>

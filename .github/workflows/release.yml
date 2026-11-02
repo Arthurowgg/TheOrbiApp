@@ -240,9 +240,13 @@ jobs:
           -o artifacts/publish
 
       # O app abre de verdade? É isso que importa — build verde não prova nada.
+      # Com a chave do Google AI Studio (secret GEMINI_API_KEY), o autoteste fala
+      # com a IA de verdade: uma pergunta e uma ordem que exige ferramenta.
       - name: Abrir o Orbi e conferir o log
         shell: powershell
         timeout-minutes: 5
+        env:
+          ORBI_GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           $ErrorActionPreference = "Stop"
           function Falhar($msg) {
@@ -265,6 +269,10 @@ jobs:
           $p = Start-Process -FilePath $exe -ArgumentList "--tray" -PassThru
           Start-Sleep -Seconds 15
           if ($p.HasExited) { Falhar "o Orbi fechou sozinho (código $($p.ExitCode))" }
+
+          if (-not $env:ORBI_GEMINI_KEY) {
+            Write-Host "::warning::sem GEMINI_API_KEY: a chamada real da IA não será testada"
+          }
 
           $log = "$env:APPDATA\Orbi\orbi.log"
           if (-not (Test-Path $log)) {
