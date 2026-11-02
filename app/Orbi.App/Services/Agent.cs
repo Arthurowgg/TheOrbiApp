@@ -41,6 +41,9 @@ public static class Agent
     /// <summary>Histórico da conversa (fica no app; sobe só a memória resumida).</summary>
     private static readonly List<(string Role, string Text)> Historico = new();
 
+    /// <summary>Nomes de função que o modelo recebeu neste pedido.</summary>
+    private static readonly HashSet<string> Declarados = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Ferramentas já usadas nesta conversa: continuam declaradas.</summary>
     private static readonly HashSet<string> Usadas = new(StringComparer.OrdinalIgnoreCase);
 
@@ -85,9 +88,11 @@ public static class Agent
         // O teto da API é 128 funções: vão as de controle + as que casam com o pedido.
         var declaracoes = ToolSchema.Declaracoes(pedido, Usadas);
         var sistema = Sistema(pedido);
-        var nomesDeclarados = declaracoes
-            .Select(item => item!["name"]!.GetValue<string>())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Declarados.Clear();
+        foreach (var nome in declaracoes.Select(item => item!["name"]!.GetValue<string>()))
+        {
+            Declarados.Add(nome);
+        }
 
         var textoFinal = new StringBuilder();
         var erroFinal = (string?)null;
@@ -322,24 +327,24 @@ public static class Agent
 
                 case "pc_usar_ferramenta":
                 {
-                    var id = Texto("id").Trim();
-                    var dado = Texto("dado");
-                    var ferramenta = Tools.Find(id) ?? Tools.Find(id.Replace('_', '-'));
-                    if (ferramenta is null)
+                    var idPedido = Texto("id").Trim();
+                    var dadoPedido = Texto("dado");
+                    var alvo = Tools.Find(idPedido) ?? Tools.Find(idPedido.Replace('_', '-'));
+                    if (alvo is null)
                     {
-                        var achados = Tools.Search(id.Replace('_', ' ')).Take(5)
+                        var parecidas = Tools.Search(idPedido.Replace('_', ' ')).Take(5)
                             .Select(item => item.Id).ToList();
-                        return (new AgentStep("não achei essa ferramenta", id, false, "question"),
+                        return (new AgentStep("não achei essa ferramenta", idPedido, false, "question"),
                                 ("Não existe ferramenta com esse id. " +
-                                 (achados.Count > 0
-                                     ? "Parecidas: " + string.Join(", ", achados) + "."
+                                 (parecidas.Count > 0
+                                     ? "Parecidas: " + string.Join(", ", parecidas) + "."
                                      : "Use pc_buscar_no_catalogo para achar a certa."), false));
                     }
-                    var saiu = Tools.Run(ferramenta.Id, dado);
-                    var foi = !saiu.StartsWith("Não consegui", StringComparison.OrdinalIgnoreCase) &&
-                              !saiu.StartsWith("Preciso do dado", StringComparison.OrdinalIgnoreCase);
-                    return (new AgentStep(ferramenta.Name, Curto(saiu), foi, IconeDe(ferramenta.Group)),
-                            (saiu, foi));
+                    var saida = Tools.Run(alvo.Id, dadoPedido);
+                    var deu = !saida.StartsWith("Não consegui", StringComparison.OrdinalIgnoreCase) &&
+                              !saida.StartsWith("Preciso do dado", StringComparison.OrdinalIgnoreCase);
+                    return (new AgentStep(alvo.Name, Curto(saida), deu, IconeDe(alvo.Group)),
+                            (saida, deu));
                 }
 
                 case "pc_buscar_no_catalogo":
@@ -355,7 +360,7 @@ public static class Agent
             }
 
             // Catálogo: nome da função → id da ferramenta
-            if (!nomesDeclarados.Contains(nome))
+            if (!Declarados.Contains(nome))
             {
                 // veio do pacote de outra conversa (ou o modelo inventou): o resolver ainda acha
                 Log.Add("agente: função fora do pacote desta conversa: " + nome);
